@@ -1,9 +1,11 @@
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import {
   FileText, Download, TrendingUp, TrendingDown, DollarSign, PieChart,
   BarChart3, Calendar, Filter, Loader2, Printer, ArrowUpRight, ArrowDownRight,
 } from 'lucide-react';
 import { usePortfolio } from '@/hooks/usePortfolio';
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
 import { formatCurrency, formatPercent } from '@/lib/mockData';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -19,11 +21,82 @@ const COLORS = [
 
 type ReportTab = 'overview' | 'performance' | 'allocation' | 'brokers' | 'transactions';
 
+const PERIODS = [
+  { id: '1m', label: '1M', months: 1 },
+  { id: '3m', label: '3M', months: 3 },
+  { id: '6m', label: '6M', months: 6 },
+  { id: '1y', label: '1A', months: 12 },
+  { id: 'all', label: 'Total', months: 0 },
+];
+
+function getPeriodDate(months: number): Date | null {
+  if (months === 0) return null;
+  const d = new Date();
+  d.setMonth(d.getMonth() - months);
+  return d;
+}
+
+interface Transaction {
+  id: string;
+  ticker: string;
+  name: string;
+  type: string;
+  operation: string;
+  quantity: number;
+  price: number;
+  total: number;
+  fees: number;
+  date: string;
+  is_daytrade: boolean;
+  notes: string | null;
+}
+
 export default function Reports() {
   const { assets, holdings } = usePortfolio();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<ReportTab>('overview');
   const [period, setPeriod] = useState('all');
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [loadingTx, setLoadingTx] = useState(false);
   const reportRef = useRef<HTMLDivElement>(null);
+
+  const periodConfig = PERIODS.find(p => p.id === period) || PERIODS[4];
+  const periodDate = getPeriodDate(periodConfig.months);
+
+  // Load transactions
+  useEffect(() => {
+    if (!user) return;
+    const load = async () => {
+      setLoadingTx(true);
+      let query = supabase.from('transactions').select('*').eq('user_id', user.id).order('date', { ascending: false });
+      if (periodDate) {
+        query = query.gte('date', periodDate.toISOString().split('T')[0]);
+      }
+      const { data } = await query;
+      setTransactions((data as Transaction[]) || []);
+      setLoadingTx(false);
+    };
+    load();
+  }, [user, period]);
+
+  // Filter transactions by period
+  const filteredTransactions = useMemo(() => {
+    if (!periodDate) return transactions;
+    return transactions.filter(t => new Date(t.date) >= periodDate);
+  }, [transactions, periodDate]);
+
+  const txSummary = useMemo(() => {
+    const buys = filteredTransactions.filter(t => t.operation === 'buy');
+    const sells = filteredTransactions.filter(t => t.operation === 'sell');
+    return {
+      totalBuys: buys.reduce((s, t) => s + t.total, 0),
+      totalSells: sells.reduce((s, t) => s + t.total, 0),
+      totalFees: filteredTransactions.reduce((s, t) => s + t.fees, 0),
+      countBuys: buys.length,
+      countSells: sells.length,
+      count: filteredTransactions.length,
+    };
+  }, [filteredTransactions]);
 
   const total = useMemo(() => assets.reduce((s, a) => s + a.currentPrice * a.quantity, 0), [assets]);
   const cost = useMemo(() => assets.reduce((s, a) => s + a.avgPrice * a.quantity, 0), [assets]);
@@ -219,6 +292,7 @@ export default function Reports() {
     { id: 'performance', label: 'Performance', icon: TrendingUp },
     { id: 'allocation', label: 'Alocação', icon: PieChart },
     { id: 'brokers', label: 'Corretoras', icon: BarChart3 },
+    { id: 'transactions', label: 'Transações', icon: Calendar },
   ];
 
   return (
@@ -258,6 +332,34 @@ export default function Reports() {
             {tab.label}
           </button>
         ))}
+      </div>
+
+      {/* Period Filter */}
+      <div className="flex items-center gap-3 mb-6">
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <Calendar className="h-3.5 w-3.5" />
+          <span>Período:</span>
+        </div>
+        <div className="flex gap-1 bg-muted rounded-lg p-0.5">
+          {PERIODS.map(p => (
+            <button
+              key={p.id}
+              onClick={() => setPeriod(p.id)}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
+                period === p.id
+                  ? 'bg-card text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+        {periodDate && (
+          <span className="text-[11px] text-muted-foreground">
+            desde {periodDate.toLocaleDateString('pt-BR')}
+          </span>
+        )}
       </div>
 
       <div ref={reportRef}>
@@ -649,6 +751,84 @@ export default function Reports() {
                   </div>
                 );
               })}
+            </div>
+          </div>
+        )}
+
+        {/* Transactions Tab */}
+        {activeTab === 'transactions' && (
+          <div className="space-y-6">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <SummaryCard label="Total Operações" value={txSummary.count.toString()} icon={Calendar} />
+              <SummaryCard label="Compras" value={`${txSummary.countBuys} (${formatCurrency(txSummary.totalBuys)})`} icon={ArrowUpRight} variant="gain" />
+              <SummaryCard label="Vendas" value={`${txSummary.countSells} (${formatCurrency(txSummary.totalSells)})`} icon={ArrowDownRight} variant="loss" />
+              <SummaryCard label="Taxas Pagas" value={formatCurrency(txSummary.totalFees)} icon={DollarSign} />
+            </div>
+
+            <div className="rounded-xl border border-border bg-card overflow-hidden">
+              <div className="p-4 border-b border-border flex items-center justify-between">
+                <h3 className="text-sm font-semibold">Histórico de Transações</h3>
+                <span className="text-xs text-muted-foreground">{filteredTransactions.length} operações</span>
+              </div>
+              {loadingTx ? (
+                <div className="flex items-center justify-center py-12 gap-2">
+                  <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                  <span className="text-sm text-muted-foreground">Carregando transações...</span>
+                </div>
+              ) : filteredTransactions.length === 0 ? (
+                <div className="p-12 text-center text-muted-foreground text-sm">
+                  Nenhuma transação encontrada neste período
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border text-muted-foreground">
+                        <th className="text-left p-3 font-medium">Data</th>
+                        <th className="text-left p-3 font-medium">Ativo</th>
+                        <th className="text-left p-3 font-medium">Tipo</th>
+                        <th className="text-center p-3 font-medium">Operação</th>
+                        <th className="text-right p-3 font-medium">Qtd</th>
+                        <th className="text-right p-3 font-medium">Preço</th>
+                        <th className="text-right p-3 font-medium">Total</th>
+                        <th className="text-right p-3 font-medium">Taxas</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredTransactions.map(t => (
+                        <tr key={t.id} className="border-b border-border/30 hover:bg-accent/30">
+                          <td className="p-3 font-mono text-xs">{new Date(t.date).toLocaleDateString('pt-BR')}</td>
+                          <td className="p-3">
+                            <span className="font-mono font-semibold">{t.ticker}</span>
+                            <p className="text-[10px] text-muted-foreground">{t.name}</p>
+                          </td>
+                          <td className="p-3 text-xs">{t.type}</td>
+                          <td className="p-3 text-center">
+                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${
+                              t.operation === 'buy'
+                                ? 'bg-[hsl(var(--gain)/0.1)] text-[hsl(var(--gain-foreground))]'
+                                : 'bg-[hsl(var(--loss)/0.1)] text-[hsl(var(--loss-foreground))]'
+                            }`}>
+                              {t.operation === 'buy' ? 'COMPRA' : 'VENDA'}
+                            </span>
+                          </td>
+                          <td className="p-3 text-right font-mono">{t.quantity}</td>
+                          <td className="p-3 text-right font-mono">{formatCurrency(t.price)}</td>
+                          <td className="p-3 text-right font-mono font-medium">{formatCurrency(t.total)}</td>
+                          <td className="p-3 text-right font-mono text-muted-foreground">{formatCurrency(t.fees)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr className="border-t-2 border-border font-semibold">
+                        <td className="p-3" colSpan={6}>Total</td>
+                        <td className="p-3 text-right font-mono">{formatCurrency(txSummary.totalBuys + txSummary.totalSells)}</td>
+                        <td className="p-3 text-right font-mono">{formatCurrency(txSummary.totalFees)}</td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              )}
             </div>
           </div>
         )}
