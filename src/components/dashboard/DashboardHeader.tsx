@@ -31,6 +31,7 @@ export default function DashboardHeader({ onRefresh, lastUpdate }: Props) {
             </span>
           )}
         </p>
+        </div>
       </div>
       <div className="flex items-center gap-2">
         <button
