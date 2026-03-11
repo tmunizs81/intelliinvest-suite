@@ -136,7 +136,7 @@ APP_PORT=${APP_PORT:-3080}
 
 # ── 4. Parar container anterior (se existir) ──
 log_step "4/7" "Verificando instalação anterior..."
-if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -q "^investai-app$"; then
+if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -q "^simplynvest-app$"; then
     log_warn "Container anterior encontrado. Parando..."
     cd "$SCRIPT_DIR" && $COMPOSE_CMD --env-file "$ENV_FILE" down 2>/dev/null || true
     log_ok "Container anterior removido"
