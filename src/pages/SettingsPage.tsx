@@ -11,7 +11,7 @@ import { useRole } from '@/hooks/useRole';
 import { formatCurrency } from '@/lib/mockData';
 import { toast } from 'sonner';
 
-type SettingsTab = 'general' | 'users' | 'keys' | 'family' | 'telegram' | 'backup';
+type SettingsTab = 'general' | 'users' | 'keys' | 'license' | 'family' | 'telegram' | 'backup';
 
 // ─── Serial Key Generator ───
 function generateSerialKey(): string {
