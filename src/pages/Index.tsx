@@ -100,7 +100,8 @@ const Index = () => {
                   onDelete={deleteHolding}
                 />
               </div>
-              <div>
+              <div className="space-y-6">
+                <AlertsPanel />
                 <AIInsightsPanel assets={assets} />
               </div>
             </div>
