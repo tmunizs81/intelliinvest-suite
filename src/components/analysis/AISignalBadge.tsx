@@ -37,7 +37,7 @@ const recConfig: Record<string, { label: string; emoji: string; bg: string; text
   venda_forte: { label: 'VENDA FORTE', emoji: '🔴', bg: 'bg-loss/15', text: 'text-loss', border: 'border-loss/40' },
 };
 
-export default function AISignalBadge({ ticker, name, type, candles, holdingInfo }: Props) {
+export default function AISignalBadge({ ticker, name, type, candles, loadDelay = 0, holdingInfo }: Props) {
   const [signal, setSignal] = useState<SignalData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
