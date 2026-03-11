@@ -712,7 +712,7 @@ function TelegramTab() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
-
+  const [settingWebhook, setSettingWebhook] = useState(false);
   useEffect(() => {
     if (!user) return;
     supabase.from('telegram_settings').select('*').eq('user_id', user.id).single()
