@@ -33,7 +33,7 @@ serve(async (req) => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         chat_id: chatId,
-        text: "✅ *InvestAI* conectado com sucesso!\n\nVocê receberá notificações diárias sobre seus investimentos.",
+        text: "✅ *T2-Simplynvest* conectado com sucesso!\n\nVocê receberá notificações diárias sobre seus investimentos.",
         parse_mode: "Markdown",
       }),
     });

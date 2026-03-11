@@ -50,7 +50,7 @@ export default function Sidebar() {
           </button>
           <TrendingUp className="h-5 w-5 text-primary" />
           <span className="text-base font-bold tracking-tight">
-            Invest<span className="text-primary">AI</span>
+            T2-<span className="text-primary">Simplynvest</span>
           </span>
         </div>
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -82,7 +82,7 @@ export default function Sidebar() {
             <TrendingUp className="h-6 w-6 text-primary shrink-0" />
             {(!collapsed || mobileOpen) && (
               <span className="text-lg font-bold tracking-tight">
-                Invest<span className="text-primary">AI</span>
+                T2-<span className="text-primary">Simplynvest</span>
               </span>
             )}
           </div>

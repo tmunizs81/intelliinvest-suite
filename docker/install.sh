@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # ══════════════════════════════════════════════
-#  InvestAI - Instalador de Produção
+#  T2-Simplynvest - Instalador de Produção
 #  Ubuntu 24.04 LTS + Docker (Isolado)
 # ══════════════════════════════════════════════
 
@@ -21,10 +21,10 @@ log_err()  { echo -e "${RED}✗ $1${NC}"; }
 log_step() { echo -e "${YELLOW}[$1] $2${NC}"; }
 
 echo -e "${BLUE}"
-echo "╔══════════════════════════════════════════╗"
-echo "║     InvestAI - Instalador de Produção    ║"
-echo "║     Ubuntu 24.04 + Docker (Isolado)      ║"
-echo "╚══════════════════════════════════════════╝"
+echo "╔══════════════════════════════════════════════╗"
+echo "║   T2-Simplynvest - Instalador de Produção   ║"
+echo "║     Ubuntu 24.04 + Docker (Isolado)          ║"
+echo "╚══════════════════════════════════════════════╝"
 echo -e "${NC}"
 
 # ── 1. Verificar pré-requisitos ──
@@ -95,7 +95,7 @@ if [ ! -f "$ENV_FILE" ]; then
 
     # Perguntar porta
     echo ""
-    read -r -p "Porta para o InvestAI (padrão 3080): " CUSTOM_PORT
+    read -r -p "Porta para o T2-Simplynvest (padrão 3080): " CUSTOM_PORT
     CUSTOM_PORT=${CUSTOM_PORT:-3080}
 
     # Validar que é um número
@@ -150,7 +150,7 @@ cd "$SCRIPT_DIR" && $COMPOSE_CMD --env-file "$ENV_FILE" build --no-cache 2>&1 | 
 log_ok "Imagem construída com sucesso"
 
 # ── 6. Iniciar ──
-log_step "6/7" "Iniciando InvestAI..."
+log_step "6/7" "Iniciando T2-Simplynvest..."
 cd "$SCRIPT_DIR" && $COMPOSE_CMD --env-file "$ENV_FILE" up -d
 sleep 2
 log_ok "Container iniciado"
@@ -163,7 +163,7 @@ RETRY=0
 while [ $RETRY -lt $MAX_RETRIES ]; do
     HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:${APP_PORT}" 2>/dev/null || echo "000")
     if [ "$HTTP_CODE" = "200" ]; then
-        log_ok "InvestAI respondendo com HTTP 200!"
+        log_ok "T2-Simplynvest respondendo com HTTP 200!"
         break
     fi
     RETRY=$((RETRY + 1))
@@ -196,7 +196,7 @@ SERVER_IP=$(hostname -I 2>/dev/null | awk '{print $1}' || echo "SEU_IP")
 
 echo ""
 echo -e "${BLUE}══════════════════════════════════════════════${NC}"
-echo -e "${GREEN}  ✅ InvestAI instalado com sucesso!${NC}"
+echo -e "${GREEN}  ✅ T2-Simplynvest instalado com sucesso!${NC}"
 echo -e "${BLUE}══════════════════════════════════════════════${NC}"
 echo ""
 echo -e "  🌐 Acesse: ${GREEN}http://${SERVER_IP}:${APP_PORT}${NC}"

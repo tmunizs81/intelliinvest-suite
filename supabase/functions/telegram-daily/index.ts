@@ -128,7 +128,7 @@ serve(async (req) => {
 
         // Build message
         const now = new Date();
-        const message = `🏦 *InvestAI - Resumo Diário*
+        const message = `🏦 *T2-Simplynvest - Resumo Diário*
 📅 ${now.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}
 
 💼 *Patrimônio:* R$${totalValue.toFixed(2)}
@@ -138,7 +138,7 @@ ${totalGain >= 0 ? '✅' : '❌'} *Lucro total:* ${totalGain >= 0 ? '+' : ''}R$$
 📋 *Seus Ativos:*
 ${assetLines.join('\n')}${dividendLine}${alertsLine}
 
-_Powered by InvestAI_ 🤖`;
+_Powered by T2-Simplynvest_ 🤖`;
 
         // Send to Telegram
         const sendResp = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {

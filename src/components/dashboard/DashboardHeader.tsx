@@ -19,7 +19,7 @@ export default function DashboardHeader({ onRefresh, lastUpdate }: Props) {
     <header className="flex items-center justify-between py-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">
-          Invest<span className="text-primary">AI</span>
+          T2-<span className="text-primary">Simplynvest</span>
         </h1>
         <p className="text-sm text-muted-foreground">
           Controle inteligente de investimentos

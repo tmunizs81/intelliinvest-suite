@@ -58,7 +58,7 @@ serve(async (req) => {
 
           await sendMsg(
             `✅ *Conta vinculada com sucesso!*\n\n` +
-            `Seu Telegram foi conectado ao InvestAI.\n` +
+            `Seu Telegram foi conectado ao T2-Simplynvest.\n` +
             `Você receberá resumos diários sobre seus investimentos.\n\n` +
             `Comandos:\n` +
             `🔐 /senha - Alterar sua senha\n` +
@@ -68,7 +68,7 @@ serve(async (req) => {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         } else {
-          await sendMsg("❌ Código inválido ou expirado. Gere um novo código nas configurações do InvestAI.");
+          await sendMsg("❌ Código inválido ou expirado. Gere um novo código nas configurações do T2-Simplynvest.");
           return new Response(JSON.stringify({ ok: true }), {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
@@ -87,7 +87,7 @@ serve(async (req) => {
     if (text === "/start" || text === "/ajuda" || text === "/help") {
       if (tgSetting) {
         await sendMsg(
-          `🤖 *InvestAI Bot*\n\n` +
+          `🤖 *T2-Simplynvest Bot*\n\n` +
           `✅ Sua conta está vinculada.\n\n` +
           `Comandos disponíveis:\n` +
           `🔐 /senha - Receber link para alterar sua senha\n` +
@@ -96,8 +96,8 @@ serve(async (req) => {
         );
       } else {
         await sendMsg(
-          `🤖 *InvestAI Bot*\n\n` +
-          `Para vincular sua conta, acesse *Configurações > Telegram* no InvestAI e clique em *"Vincular Telegram"*.\n\n` +
+          `🤖 *T2-Simplynvest Bot*\n\n` +
+          `Para vincular sua conta, acesse *Configurações > Telegram* no T2-Simplynvest e clique em *"Vincular Telegram"*.\n\n` +
           `Você receberá um link para enviar aqui.`
         );
       }
@@ -107,7 +107,7 @@ serve(async (req) => {
     }
 
     if (!tgSetting) {
-      await sendMsg("⚠️ Conta não vinculada. Acesse Configurações > Telegram no InvestAI para vincular.");
+      await sendMsg("⚠️ Conta não vinculada. Acesse Configurações > Telegram no T2-Simplynvest para vincular.");
       return new Response(JSON.stringify({ ok: true }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
