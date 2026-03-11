@@ -169,11 +169,18 @@ export default function Assets() {
         </div>
         <div className="flex items-center gap-2">
           <button
+            onClick={() => setB3ImportOpen(true)}
+            className="h-9 px-3 rounded-lg border border-gain/30 bg-gain/10 text-sm text-gain hover:bg-gain/20 flex items-center gap-2 transition-all"
+          >
+            <FileSpreadsheet className="h-4 w-4" />
+            Importar CEI/B3
+          </button>
+          <button
             onClick={() => setBrokerageOpen(true)}
             className="h-9 px-3 rounded-lg border border-primary/30 bg-primary/10 text-sm text-primary hover:bg-primary/20 flex items-center gap-2 transition-all"
           >
             <FileUp className="h-4 w-4" />
-            Importar Nota B3
+            Nota Corretagem
           </button>
           <button
             onClick={() => setImportOpen(true)}
