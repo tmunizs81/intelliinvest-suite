@@ -132,7 +132,17 @@ export default function Assets() {
             <span className={gain >= 0 ? 'text-gain' : 'text-loss'}>
               {formatCurrency(gain)} ({formatPercent(cost > 0 ? (gain / cost) * 100 : 0)})
             </span>
+            {' '}• <span className="text-primary">Caixa: {formatCurrency(cashBalance)}</span>
           </p>
+        </div>
+
+        {/* Cash balance card */}
+        <div className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-2.5 flex items-center gap-2">
+          <Wallet className="h-4 w-4 text-primary" />
+          <div>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Saldo em Caixa</p>
+            <p className="text-lg font-bold font-mono text-primary">{formatCurrency(cashBalance)}</p>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <button
