@@ -31,6 +31,7 @@ import ProfitabilityPanel from '@/components/dashboard/ProfitabilityPanel';
 import BacktestingPanel from '@/components/dashboard/BacktestingPanel';
 import DividendForecastPanel from '@/components/dashboard/DividendForecastPanel';
 import AssetScoringPanel from '@/components/dashboard/AssetScoringPanel';
+import FixedIncomePanel from '@/components/dashboard/FixedIncomePanel';
 import OnboardingOverlay from '@/components/OnboardingOverlay';
 
 import { usePortfolio, type HoldingRow } from '@/hooks/usePortfolio';
