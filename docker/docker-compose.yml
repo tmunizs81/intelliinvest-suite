@@ -10,7 +10,7 @@ services:
     container_name: simplynvest-app
     restart: unless-stopped
     ports:
-      - "127.0.0.1:${APP_PORT:-3080}:80"
+      - "0.0.0.0:${APP_PORT:-3080}:80"
     networks:
       - simplynvest-net
     deploy:
