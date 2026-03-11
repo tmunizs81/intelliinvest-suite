@@ -54,7 +54,7 @@ serve(async (req) => {
       );
     }
 
-    const isCrypto = CRYPTO_TICKERS.includes(ticker);
+    const isCrypto = CRYPTO_SET.has(ticker.toUpperCase());
     const yahooTicker = mapToYahooTicker(ticker);
     const url = `https://query1.finance.yahoo.com/v8/finance/chart/${yahooTicker}?interval=${interval}&range=${range}`;
 
