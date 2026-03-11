@@ -210,6 +210,7 @@ export default function Analysis() {
               name={assetName || ticker}
               type={assetType}
               candles={candles}
+              loadDelay={2000}
               holdingInfo={asset ? {
                 quantity: asset.quantity,
                 avgPrice: asset.avgPrice,
