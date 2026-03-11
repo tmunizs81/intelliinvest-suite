@@ -13,6 +13,7 @@ export interface HoldingRow {
   quantity: number;
   avg_price: number;
   sector: string | null;
+  broker: string | null;
 }
 
 export function usePortfolio() {
@@ -141,7 +142,8 @@ export function usePortfolio() {
       quantity: holding.quantity,
       avg_price: holding.avg_price,
       sector: holding.sector,
-    });
+      broker: holding.broker || null,
+    } as any);
     if (error) throw error;
 
     // Auto-create buy transaction for tax tracking
@@ -172,7 +174,8 @@ export function usePortfolio() {
       ...(updates.quantity !== undefined && { quantity: updates.quantity }),
       ...(updates.avg_price !== undefined && { avg_price: updates.avg_price }),
       ...(updates.sector !== undefined && { sector: updates.sector }),
-    }).eq('id', id).eq('user_id', user.id);
+      ...(updates.broker !== undefined && { broker: updates.broker }),
+    } as any).eq('id', id).eq('user_id', user.id);
     if (error) throw error;
     await refresh();
   }, [user, refresh]);

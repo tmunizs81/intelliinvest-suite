@@ -70,6 +70,7 @@ export default function Assets() {
           quantity: parseFloat(quantity) || 0,
           avg_price: parseFloat(avgPrice?.replace(',', '.')) || 0,
           sector: sector || null,
+          broker: null,
         });
       }
 

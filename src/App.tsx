@@ -13,6 +13,7 @@ import Analysis from "./pages/Analysis";
 import AITrader from "./pages/AITrader";
 import Taxes from "./pages/Taxes";
 import Dividends from "./pages/Dividends";
+import Reports from "./pages/Reports";
 import SettingsPage from "./pages/SettingsPage";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
@@ -66,6 +67,7 @@ const App = () => (
             <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
               <Route path="/" element={<Index />} />
               <Route path="/assets" element={<Assets />} />
+              <Route path="/reports" element={<Reports />} />
               <Route path="/analysis" element={<Analysis />} />
               <Route path="/ai-trader" element={<AITrader />} />
               <Route path="/taxes" element={<Taxes />} />
