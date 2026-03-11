@@ -1,7 +1,7 @@
 export interface Asset {
   ticker: string;
   name: string;
-  type: 'Ação' | 'FII' | 'ETF' | 'Cripto' | 'Renda Fixa';
+  type: 'Ação' | 'FII' | 'ETF' | 'ETF Internacional' | 'Cripto' | 'Renda Fixa';
   quantity: number;
   avgPrice: number;
   currentPrice: number;
@@ -9,6 +9,9 @@ export interface Asset {
   allocation: number;
   sector?: string;
   source?: string;
+  currency?: string;        // Original currency (BRL, USD, EUR, GBP)
+  currentPriceBRL?: number;  // Price converted to BRL
+  exchangeRate?: number;     // Exchange rate used
 }
 
 export interface PortfolioSnapshot {

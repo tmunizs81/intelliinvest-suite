@@ -13,13 +13,85 @@ interface QuoteResult {
   previousClose: number;
   name: string;
   source: string;
+  currency: string;
+  currentPriceBRL: number;
+  exchangeRate: number;
   error?: string;
+}
+
+// ─── Exchange rates cache ───
+const rateCache: Record<string, number> = {};
+
+async function getExchangeRate(from: string): Promise<number> {
+  if (from === "BRL") return 1;
+  const key = `${from}BRL`;
+  if (rateCache[key]) return rateCache[key];
+
+  // Try Yahoo Finance for exchange rates
+  const pairs: Record<string, string> = {
+    USD: "USDBRL=X",
+    EUR: "EURBRL=X",
+    GBP: "GBPBRL=X",
+    CHF: "CHFBRL=X",
+    JPY: "JPYBRL=X",
+    CAD: "CADBRL=X",
+    AUD: "AUDBRL=X",
+    GBp: "GBPBRL=X", // GBp = pence, will divide by 100 later
+  };
+
+  const yahooSymbol = pairs[from] || `${from}BRL=X`;
+
+  try {
+    const resp = await fetch(
+      `https://query1.finance.yahoo.com/v8/finance/chart/${yahooSymbol}?interval=1d&range=1d`,
+      {
+        headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" },
+        signal: AbortSignal.timeout(5000),
+      }
+    );
+    if (resp.ok) {
+      const data = await resp.json();
+      const price = data.chart?.result?.[0]?.meta?.regularMarketPrice;
+      if (price) {
+        let rate = price;
+        // GBp (pence) → divide by 100 to get GBP rate
+        if (from === "GBp") rate = price / 100;
+        rateCache[key] = rate;
+        return rate;
+      }
+    }
+  } catch (err) {
+    console.warn(`Exchange rate fetch failed for ${from}:`, err);
+  }
+
+  // Fallback: try Brapi for USD
+  if (from === "USD") {
+    try {
+      const resp = await fetch("https://brapi.dev/api/v2/currency?search=USD-BRL", {
+        signal: AbortSignal.timeout(5000),
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        const rate = data.currency?.[0]?.bidPrice;
+        if (rate) {
+          rateCache[key] = parseFloat(rate);
+          return rateCache[key];
+        }
+      }
+    } catch { /* fallback */ }
+  }
+
+  // Hardcoded fallbacks
+  const fallbacks: Record<string, number> = {
+    USD: 5.5, EUR: 6.0, GBP: 7.0, GBp: 0.07, CHF: 6.2, JPY: 0.037, CAD: 4.1, AUD: 3.6,
+  };
+  rateCache[key] = fallbacks[from] || 5.5;
+  return rateCache[key];
 }
 
 // ─── Source 1: Brapi (Brazilian API - best for B3 + Crypto) ───
 async function fetchBrapiQuote(ticker: string): Promise<QuoteResult | null> {
   try {
-    // Brapi uses the raw ticker for B3 stocks and special endpoints for crypto
     const isCrypto = ["BTC", "ETH", "SOL", "ADA", "DOT", "AVAX", "MATIC", "LINK", "UNI", "DOGE", "XRP", "BNB", "LTC"].includes(ticker);
 
     if (isCrypto) {
@@ -44,6 +116,9 @@ async function fetchBrapiQuote(ticker: string): Promise<QuoteResult | null> {
         previousClose: Math.round(previousClose * 100) / 100,
         name: coin.coinName || coin.coin || ticker,
         source: "brapi",
+        currency: "BRL",
+        currentPriceBRL: currentPrice,
+        exchangeRate: 1,
       };
     }
 
@@ -65,6 +140,9 @@ async function fetchBrapiQuote(ticker: string): Promise<QuoteResult | null> {
       previousClose: result.regularMarketPreviousClose ?? result.previousClose ?? 0,
       name: result.shortName || result.longName || result.symbol || ticker,
       source: "brapi",
+      currency: "BRL",
+      currentPriceBRL: result.regularMarketPrice ?? 0,
+      exchangeRate: 1,
     };
   } catch (err) {
     console.warn(`Brapi failed for ${ticker}:`, err);
@@ -75,23 +153,14 @@ async function fetchBrapiQuote(ticker: string): Promise<QuoteResult | null> {
 // ─── Source 2: Yahoo Finance (global fallback) ───
 function mapToYahooTicker(ticker: string): string {
   const cryptoMappings: Record<string, string> = {
-    BTC: "BTC-USD",
-    ETH: "ETH-USD",
-    SOL: "SOL-USD",
-    ADA: "ADA-USD",
-    DOT: "DOT-USD",
-    XRP: "XRP-USD",
-    BNB: "BNB-USD",
-    DOGE: "DOGE-USD",
-    LTC: "LTC-USD",
-    AVAX: "AVAX-USD",
-    MATIC: "MATIC-USD",
-    LINK: "LINK-USD",
-    UNI: "UNI-USD",
+    BTC: "BTC-USD", ETH: "ETH-USD", SOL: "SOL-USD", ADA: "ADA-USD",
+    DOT: "DOT-USD", XRP: "XRP-USD", BNB: "BNB-USD", DOGE: "DOGE-USD",
+    LTC: "LTC-USD", AVAX: "AVAX-USD", MATIC: "MATIC-USD",
+    LINK: "LINK-USD", UNI: "UNI-USD",
   };
   if (cryptoMappings[ticker]) return cryptoMappings[ticker];
 
-  // Irish/European ETFs on London Stock Exchange (common ones)
+  // Irish/European ETFs
   const irishEtfs: Record<string, string> = {
     CSPX: "CSPX.L", IWDA: "IWDA.L", EIMI: "EIMI.L", SWDA: "SWDA.L",
     VWRA: "VWRA.L", VWRL: "VWRL.L", VUAA: "VUAA.L", VUSA: "VUSA.L",
@@ -104,13 +173,8 @@ function mapToYahooTicker(ticker: string): string {
   };
   if (irishEtfs[ticker]) return irishEtfs[ticker];
 
-  // If ticker contains a dot (e.g. CSPX.L, SXR8.DE), use as-is
   if (ticker.includes(".")) return ticker;
-
-  // B3 Brazilian stocks pattern (4 letters + 1-2 digits)
   if (/^[A-Z]{4}\d{1,2}$/.test(ticker)) return `${ticker}.SA`;
-
-  // Default: try as-is (US stocks like AAPL, MSFT)
   return ticker;
 }
 
@@ -139,29 +203,63 @@ async function fetchYahooQuote(ticker: string): Promise<QuoteResult | null> {
     const previousClose = meta.chartPreviousClose ?? meta.previousClose ?? currentPrice;
     const change24h = previousClose > 0 ? ((currentPrice - previousClose) / previousClose) * 100 : 0;
 
-    // For crypto mapped to USD, convert to BRL using exchange rate
+    // Detect currency from Yahoo response
+    let currency = meta.currency || "USD";
+
+    // For crypto mapped to USD, convert to BRL
     const isCryptoUSD = ["BTC", "ETH", "SOL", "ADA", "DOT", "XRP", "BNB", "DOGE", "LTC", "AVAX", "MATIC", "LINK", "UNI"].includes(ticker);
     if (isCryptoUSD && currentPrice > 0) {
-      const usdBrl = await getUsdBrlRate();
-      currentPrice = currentPrice * usdBrl;
-      const prevBrl = previousClose * usdBrl;
+      const rate = await getExchangeRate("USD");
       return {
         ticker,
-        currentPrice: Math.round(currentPrice * 100) / 100,
+        currentPrice,
         change24h: Math.round(change24h * 100) / 100,
-        previousClose: Math.round(prevBrl * 100) / 100,
+        previousClose,
         name: meta.shortName || meta.symbol || ticker,
         source: "yahoo",
+        currency: "USD",
+        currentPriceBRL: Math.round(currentPrice * rate * 100) / 100,
+        exchangeRate: rate,
       };
     }
 
+    // For .SA (Brazilian) tickers, currency is BRL
+    if (yahooTicker.endsWith(".SA") || currency === "BRL") {
+      return {
+        ticker,
+        currentPrice,
+        change24h: Math.round(change24h * 100) / 100,
+        previousClose,
+        name: meta.shortName || meta.symbol || ticker,
+        source: "yahoo",
+        currency: "BRL",
+        currentPriceBRL: currentPrice,
+        exchangeRate: 1,
+      };
+    }
+
+    // For international assets, convert to BRL
+    const rate = await getExchangeRate(currency);
+    // GBp (pence) special handling
+    let priceInCurrency = currentPrice;
+    let displayCurrency = currency;
+    if (currency === "GBp") {
+      priceInCurrency = currentPrice / 100;
+      displayCurrency = "GBP";
+    }
+
+    const priceBRL = priceInCurrency * (currency === "GBp" ? rate * 100 : rate);
+
     return {
       ticker,
-      currentPrice,
+      currentPrice: currency === "GBp" ? priceInCurrency : currentPrice,
       change24h: Math.round(change24h * 100) / 100,
-      previousClose,
+      previousClose: currency === "GBp" ? previousClose / 100 : previousClose,
       name: meta.shortName || meta.symbol || ticker,
       source: "yahoo",
+      currency: displayCurrency,
+      currentPriceBRL: Math.round(priceBRL * 100) / 100,
+      exchangeRate: currency === "GBp" ? rate / 100 : rate,
     };
   } catch (err) {
     console.warn(`Yahoo Finance failed for ${yahooTicker}:`, err);
@@ -169,61 +267,18 @@ async function fetchYahooQuote(ticker: string): Promise<QuoteResult | null> {
   }
 }
 
-// ─── USD/BRL exchange rate (cached per request batch) ───
-let cachedUsdBrl: number | null = null;
-
-async function getUsdBrlRate(): Promise<number> {
-  if (cachedUsdBrl) return cachedUsdBrl;
-  try {
-    // Try Brapi first
-    const resp = await fetch("https://brapi.dev/api/v2/currency?search=USD-BRL", {
-      signal: AbortSignal.timeout(5000),
-    });
-    if (resp.ok) {
-      const data = await resp.json();
-      const rate = data.currency?.[0]?.bidPrice;
-      if (rate) {
-        cachedUsdBrl = parseFloat(rate);
-        return cachedUsdBrl;
-      }
-    }
-  } catch { /* fallback */ }
-
-  try {
-    // Fallback: Yahoo Finance
-    const resp = await fetch("https://query1.finance.yahoo.com/v8/finance/chart/USDBRL=X?interval=1d&range=1d", {
-      headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" },
-      signal: AbortSignal.timeout(5000),
-    });
-    if (resp.ok) {
-      const data = await resp.json();
-      const price = data.chart?.result?.[0]?.meta?.regularMarketPrice;
-      if (price) {
-        cachedUsdBrl = price;
-        return cachedUsdBrl;
-      }
-    }
-  } catch { /* fallback */ }
-
-  cachedUsdBrl = 5.5; // safe fallback
-  return cachedUsdBrl;
-}
-
 // ─── Multi-source fetch with fallback ───
 async function fetchQuoteWithFallback(ticker: string): Promise<QuoteResult> {
-  // Source 1: Brapi (primary for BR assets)
   const brapiResult = await fetchBrapiQuote(ticker);
   if (brapiResult && brapiResult.currentPrice > 0) {
     return brapiResult;
   }
 
-  // Source 2: Yahoo Finance (fallback)
   const yahooResult = await fetchYahooQuote(ticker);
   if (yahooResult && yahooResult.currentPrice > 0) {
     return yahooResult;
   }
 
-  // All sources failed
   return {
     ticker,
     currentPrice: 0,
@@ -231,6 +286,9 @@ async function fetchQuoteWithFallback(ticker: string): Promise<QuoteResult> {
     previousClose: 0,
     name: ticker,
     source: "none",
+    currency: "BRL",
+    currentPriceBRL: 0,
+    exchangeRate: 1,
     error: "All sources failed",
   };
 }
@@ -250,8 +308,8 @@ serve(async (req) => {
       );
     }
 
-    // Reset USD/BRL cache for each request
-    cachedUsdBrl = null;
+    // Reset rate cache for each request batch
+    for (const k of Object.keys(rateCache)) delete rateCache[k];
 
     const limitedTickers = tickers.slice(0, 30);
     const quotes = await Promise.all(limitedTickers.map((t: string) => fetchQuoteWithFallback(t)));
