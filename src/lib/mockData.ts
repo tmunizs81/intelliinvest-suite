@@ -1,7 +1,7 @@
 export interface Asset {
   ticker: string;
   name: string;
-  type: 'Ação' | 'FII' | 'ETF' | 'Cripto' | 'Renda Fixa';
+  type: 'Ação' | 'FII' | 'ETF' | 'ETF Internacional' | 'Cripto' | 'Renda Fixa';
   quantity: number;
   avgPrice: number;
   currentPrice: number;
@@ -9,6 +9,9 @@ export interface Asset {
   allocation: number;
   sector?: string;
   source?: string;
+  currency?: string;        // Original currency (BRL, USD, EUR, GBP)
+  currentPriceBRL?: number;  // Price converted to BRL
+  exchangeRate?: number;     // Exchange rate used
 }
 
 export interface PortfolioSnapshot {
@@ -94,8 +97,13 @@ export const mockInsights: AIInsight[] = [
   },
 ];
 
-export function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+export function formatCurrency(value: number, currency: string = 'BRL'): string {
+  const currencyMap: Record<string, string> = {
+    BRL: 'BRL', USD: 'USD', EUR: 'EUR', GBP: 'GBP', CHF: 'CHF', JPY: 'JPY',
+  };
+  const cur = currencyMap[currency] || 'BRL';
+  const locale = cur === 'BRL' ? 'pt-BR' : 'en-US';
+  return new Intl.NumberFormat(locale, { style: 'currency', currency: cur }).format(value);
 }
 
 export function formatPercent(value: number): string {
