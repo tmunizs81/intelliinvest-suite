@@ -76,6 +76,7 @@ export default function AssetProfilePanel({ ticker, name, type }: Props) {
           if ((data.error.includes('Rate limit') || data.error.includes('429')) && attempt < retries) continue;
           throw new Error(data.error);
         }
+        profileCache.set(ticker, { data, ts: Date.now() });
         setProfile(data);
         if (data.sections) {
           setExpandedSections(new Set(data.sections.map((_: any, i: number) => i)));
