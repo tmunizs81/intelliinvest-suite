@@ -141,7 +141,15 @@ function loadLayouts(): any {
 }
 
 const Index = () => {
-  const { assets, holdings, loading, error, lastUpdate, refresh, addHolding, updateHolding, deleteHolding } = usePortfolio();
+  const { assets, holdings, loading, error, lastUpdate, nextUpdate, refresh, addHolding, updateHolding, deleteHolding } = usePortfolio();
+  const { snapshots, loading: snapshotsLoading, saveSnapshot } = usePortfolioSnapshots();
+
+  // Save snapshot when assets are loaded
+  useEffect(() => {
+    if (assets.length > 0 && !loading) {
+      saveSnapshot(assets);
+    }
+  }, [assets, loading, saveSnapshot]);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingHolding, setEditingHolding] = useState<HoldingRow | null>(null);
   const [layouts, setLayouts] = useState(loadLayouts);
