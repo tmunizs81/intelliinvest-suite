@@ -10,6 +10,7 @@ import {
   Plus, MessageSquare, Clock, MoreVertical, X,
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+import { PieChart as RechartsPie, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 
 const analysisOptions: { type: AnalysisType; label: string; icon: React.ElementType; description: string; prompt: string }[] = [
   {
@@ -177,6 +178,65 @@ function groupByDate(conversations: Conversation[]) {
   return groups.filter(g => g.items.length > 0);
 }
 
+const DONUT_COLORS = [
+  'hsl(160, 84%, 39%)', 'hsl(200, 80%, 50%)', 'hsl(38, 92%, 50%)',
+  'hsl(280, 60%, 55%)', 'hsl(340, 75%, 55%)', 'hsl(160, 50%, 55%)',
+  'hsl(220, 70%, 55%)', 'hsl(30, 80%, 50%)', 'hsl(0, 72%, 51%)', 'hsl(180, 60%, 45%)',
+];
+
+function MiniAllocationChart({ assets, total }: { assets: Asset[]; total: number }) {
+  const data = assets
+    .map(a => ({ name: a.ticker, value: Math.round((a.currentPrice * a.quantity / total) * 1000) / 10 }))
+    .sort((a, b) => b.value - a.value);
+
+  return (
+    <div className="px-4 py-3 border-b border-border shrink-0">
+      <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2">Alocação</p>
+      <div className="flex items-center gap-3">
+        <div className="w-[90px] h-[90px] shrink-0">
+          <ResponsiveContainer width="100%" height="100%">
+            <RechartsPie>
+              <Pie
+                data={data}
+                cx="50%"
+                cy="50%"
+                innerRadius={28}
+                outerRadius={42}
+                paddingAngle={2}
+                dataKey="value"
+                stroke="none"
+              >
+                {data.map((_, i) => (
+                  <Cell key={i} fill={DONUT_COLORS[i % DONUT_COLORS.length]} />
+                ))}
+              </Pie>
+              <Tooltip
+                formatter={(value: number) => `${value}%`}
+                contentStyle={{ background: 'hsl(220,18%,9%)', border: '1px solid hsl(220,14%,16%)', borderRadius: '8px', fontSize: '11px' }}
+                itemStyle={{ color: 'hsl(210,20%,92%)' }}
+              />
+            </RechartsPie>
+          </ResponsiveContainer>
+        </div>
+        <div className="flex-1 min-w-0 space-y-1">
+          {data.slice(0, 5).map((item, i) => (
+            <div key={item.name} className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <div className="h-2 w-2 rounded-full shrink-0" style={{ background: DONUT_COLORS[i % DONUT_COLORS.length] }} />
+                <span className="text-[10px] font-mono truncate">{item.name}</span>
+              </div>
+              <span className="text-[10px] font-mono text-muted-foreground shrink-0">{item.value}%</span>
+            </div>
+          ))}
+          {data.length > 5 && (
+            <p className="text-[9px] text-muted-foreground">+{data.length - 5} outros</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // --- Portfolio Sidebar ---
 function PortfolioSidebar({ assets, open, onToggle }: { assets: Asset[]; open: boolean; onToggle: () => void }) {
   const total = assets.reduce((s, a) => s + a.currentPrice * a.quantity, 0);
@@ -197,6 +257,9 @@ function PortfolioSidebar({ assets, open, onToggle }: { assets: Asset[]; open: b
           <PanelRightClose className="h-3.5 w-3.5" />
         </button>
       </div>
+
+      {/* Mini Donut Chart */}
+      <MiniAllocationChart assets={assets} total={total} />
 
       <div className="px-4 py-3 border-b border-border space-y-2 shrink-0">
         <div>
