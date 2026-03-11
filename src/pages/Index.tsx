@@ -22,7 +22,7 @@ const ResponsiveGridLayout = WidthProvider(Responsive);
 
 const STORAGE_KEY = 'investai-dashboard-layouts';
 
-const defaultLayouts: Record<string, Layout[]> = {
+const defaultLayouts: any = {
   lg: [
     { i: 'summary', x: 0, y: 0, w: 12, h: 3, minW: 6, minH: 3 },
     { i: 'portfolio-chart', x: 0, y: 3, w: 8, h: 7, minW: 4, minH: 5 },
