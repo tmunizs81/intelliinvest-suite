@@ -779,8 +779,40 @@ Disponível apenas para usuários com papel **Admin**.
     `,
   },
   {
+    id: 'comparator',
+    title: '18. Comparador de Ativos',
+    content: `
+## Comparador de Ativos
+
+O **Comparador** permite analisar lado a lado até 3 ativos simultaneamente.
+
+### Como Usar:
+
+1. Acesse **Comparador** no menu lateral
+2. Pesquise e adicione até **3 ativos** para comparar
+3. O sistema carregará automaticamente:
+   - Preços e variações
+   - Indicadores técnicos (RSI, MACD, Médias Móveis)
+   - Indicadores fundamentalistas (P/L, P/VP, DY)
+   - Sinal IA (Compra/Venda/Manter)
+
+### Veredito IA:
+
+Após adicionar os ativos:
+1. Clique no botão **"🏆 Veredito IA"**
+2. A IA analisará todos os indicadores comparativamente
+3. O resultado incluirá:
+   - **Ativo vencedor** destacado
+   - Justificativa detalhada
+   - Tabela comparativa resumida
+4. Clique em **"Atualizar"** para refazer a análise
+
+> 💡 O veredito considera análise técnica, fundamentalista, momento de mercado e dados de preço em tempo real.
+    `,
+  },
+  {
     id: 'shortcuts',
-    title: '18. Dicas e Atalhos',
+    title: '19. Dicas e Atalhos',
     content: `
 ## Dicas para Melhor Uso
 
