@@ -8,6 +8,7 @@ import 'react-resizable/css/styles.css';
 import PortfolioSummary from '@/components/dashboard/PortfolioSummary';
 import PortfolioChart from '@/components/dashboard/PortfolioChart';
 import PortfolioHistoryChart from '@/components/dashboard/PortfolioHistoryChart';
+import BenchmarkChart from '@/components/dashboard/BenchmarkChart';
 import AllocationChart from '@/components/dashboard/AllocationChart';
 import PerformanceChart from '@/components/dashboard/PerformanceChart';
 import DividendsPanel from '@/components/dashboard/DividendsPanel';
@@ -33,6 +34,8 @@ import BacktestingPanel from '@/components/dashboard/BacktestingPanel';
 import DividendForecastPanel from '@/components/dashboard/DividendForecastPanel';
 import AssetScoringPanel from '@/components/dashboard/AssetScoringPanel';
 import FixedIncomePanel from '@/components/dashboard/FixedIncomePanel';
+import AIAdvisorPanel from '@/components/dashboard/AIAdvisorPanel';
+import AIRiskPanel from '@/components/dashboard/AIRiskPanel';
 import OnboardingOverlay from '@/components/OnboardingOverlay';
 
 import { usePortfolio, type HoldingRow } from '@/hooks/usePortfolio';
