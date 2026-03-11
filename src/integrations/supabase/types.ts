@@ -263,6 +263,7 @@ export type Database = {
           created_at: string
           enabled: boolean
           id: string
+          link_code: string | null
           updated_at: string
           user_id: string
         }
@@ -272,6 +273,7 @@ export type Database = {
           created_at?: string
           enabled?: boolean
           id?: string
+          link_code?: string | null
           updated_at?: string
           user_id: string
         }
@@ -281,6 +283,7 @@ export type Database = {
           created_at?: string
           enabled?: boolean
           id?: string
+          link_code?: string | null
           updated_at?: string
           user_id?: string
         }
