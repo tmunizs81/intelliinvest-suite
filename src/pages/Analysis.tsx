@@ -299,7 +299,7 @@ export default function Analysis() {
               <IndicatorsPanel candles={candles} />
             </div>
             <div>
-              <FundamentalIndicators ticker={ticker} type={assetType} />
+              <FundamentalIndicators ticker={ticker} type={assetType} loadDelay={1000} />
             </div>
             <div>
               <AIAnalysisPanel
