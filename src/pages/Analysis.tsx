@@ -189,6 +189,11 @@ export default function Analysis() {
             <AssetProfilePanel ticker={ticker} name={assetName || ticker} type={assetType} />
           </div>
 
+          {/* Market News & AI Opinion */}
+          <div className="mb-4">
+            <MarketNewsPanel ticker={ticker} name={assetName || ticker} type={assetType} />
+          </div>
+
           {/* AI Signal Badge */}
           <div className="mb-4">
             <AISignalBadge
