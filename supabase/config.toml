@@ -41,3 +41,6 @@ verify_jwt = false
 
 [functions.telegram-setup-webhook]
 verify_jwt = false
+
+[functions.telegram-license-notify]
+verify_jwt = false

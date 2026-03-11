@@ -267,10 +267,24 @@ function LicenseTab() {
     if (!confirm(`Deseja ${actionName} esta licença?`)) return;
     setActionLoading(keyId);
     try {
+      // Find the license to get the user_id
+      const targetLicense = allLicenses.find(l => l.id === keyId);
       const { error } = await supabase.from('serial_keys').update({ status: newStatus }).eq('id', keyId);
       if (error) throw error;
       const pastName = newStatus === 'paused' ? 'pausada' : newStatus === 'frozen' ? 'congelada' : newStatus === 'revoked' ? 'revogada' : 'reativada';
       toast.success(`Licença ${pastName} com sucesso`);
+
+      // Send Telegram notification
+      if (targetLicense?.used_by) {
+        supabase.functions.invoke('telegram-license-notify', {
+          body: { userId: targetLicense.used_by, newStatus },
+        }).then(({ data }) => {
+          if (data?.telegram && data?.delivered) {
+            toast.success('Notificação enviada via Telegram');
+          }
+        }).catch(() => { /* silent */ });
+      }
+
       await loadData();
     } catch {
       toast.error('Erro ao atualizar licença');
