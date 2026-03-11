@@ -62,7 +62,7 @@ export default function SettingsPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-muted rounded-lg p-1 flex-wrap">
+      <div className="flex gap-1 bg-muted rounded-lg p-1 overflow-x-auto">
         {tabs.map(t => (
           <button
             key={t.key}
