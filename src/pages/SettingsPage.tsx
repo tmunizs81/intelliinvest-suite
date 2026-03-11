@@ -781,6 +781,29 @@ function TelegramTab() {
     }
   };
 
+  const setupWebhook = async () => {
+    if (!botToken) return;
+    setSettingWebhook(true);
+    try {
+      const webhookUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/telegram-webhook`;
+      const resp = await fetch(`https://api.telegram.org/bot${botToken}/setWebhook`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: webhookUrl }),
+      });
+      const data = await resp.json();
+      if (data.ok) {
+        toast.success('Webhook ativado! O bot agora responde a comandos como /senha');
+      } else {
+        toast.error(`Erro: ${data.description}`);
+      }
+    } catch {
+      toast.error('Erro ao configurar webhook');
+    } finally {
+      setSettingWebhook(false);
+    }
+  };
+
   if (loading) return <div className="flex justify-center p-8"><Loader2 className="h-5 w-5 animate-spin" /></div>;
 
   return (
