@@ -86,6 +86,7 @@ export default function AIAnalysisPanel({ ticker, name, type, candles, holdingIn
           if ((String(data.error).includes('Rate limit') || String(data.error).includes('429')) && attempt < retries) continue;
           throw new Error(data.error);
         }
+        analysisCache.set(ticker, { data, ts: Date.now() });
         setAnalysis(data);
         setLoading(false);
         return;
