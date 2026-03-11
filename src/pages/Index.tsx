@@ -407,6 +407,21 @@ const Index = () => {
                   <FixedIncomePanel assets={assets} />
                 </DashboardPanel>
               </div>
+              <div key="benchmark-chart">
+                <DashboardPanel title="Carteira vs Benchmarks (CDI/IBOV/Dólar)" locked={locked}>
+                  <BenchmarkChart snapshots={snapshots} />
+                </DashboardPanel>
+              </div>
+              <div key="ai-advisor">
+                <DashboardPanel title="Consultor IA de Investimentos" locked={locked}>
+                  <AIAdvisorPanel assets={assets} cashBalance={0} />
+                </DashboardPanel>
+              </div>
+              <div key="ai-risk">
+                <DashboardPanel title="Análise de Risco IA" locked={locked}>
+                  <AIRiskPanel assets={assets} />
+                </DashboardPanel>
+              </div>
             </ResponsiveGrid>
           </div>
         )}
