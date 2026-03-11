@@ -21,6 +21,7 @@ import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 import FamilyPortfolio from "./pages/FamilyPortfolio";
+import Manual from "./pages/Manual";
 import PWAInstallPrompt from "./components/PWAInstallPrompt";
 import { Loader2 } from "lucide-react";
 
@@ -75,6 +76,7 @@ const App = () => (
               <Route path="/dividends" element={<Dividends />} />
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/family" element={<FamilyPortfolio />} />
+              <Route path="/manual" element={<Manual />} />
               <Route path="/asset/:ticker" element={<Analysis />} />
             </Route>
 

@@ -1,0 +1,1027 @@
+import { useState } from 'react';
+import { Book, Download, ChevronDown, ChevronRight, Printer } from 'lucide-react';
+
+const sections = [
+  {
+    id: 'intro',
+    title: '1. Introdução',
+    content: `
+## Bem-vindo ao T2-SimplyNvest
+
+O **T2-SimplyNvest** é uma plataforma inteligente de gestão de investimentos que combina tecnologia de ponta com inteligência artificial para ajudá-lo a tomar decisões financeiras mais informadas.
+
+### O que o sistema oferece:
+- **Dashboard personalizável** com visão 360° da sua carteira
+- **Inteligência Artificial** para análises e recomendações
+- **Controle fiscal** automatizado com cálculo de DARF
+- **Gestão de dividendos** com projeções futuras
+- **Relatórios profissionais** exportáveis
+- **Alertas inteligentes** em tempo real
+- **Suporte a múltiplas corretoras** e tipos de ativos
+- **Carteira familiar** para gestão compartilhada
+
+### Requisitos do Sistema:
+- Navegador moderno (Chrome, Firefox, Edge, Safari)
+- Conexão com internet
+- Resolução mínima recomendada: 1280x720
+
+### Primeiro Acesso:
+Seu acesso é criado pelo administrador do sistema. Você receberá um e-mail com as credenciais de acesso. No primeiro login, é recomendado alterar sua senha.
+    `,
+  },
+  {
+    id: 'login',
+    title: '2. Acesso e Autenticação',
+    content: `
+## Login
+
+1. Acesse o endereço do sistema fornecido pelo administrador
+2. Insira seu **e-mail** e **senha**
+3. Clique em **"Entrar"**
+
+### Esqueci Minha Senha
+1. Na tela de login, clique em **"Esqueceu a senha?"**
+2. Insira seu e-mail cadastrado
+3. Verifique sua caixa de entrada (e spam) para o link de redefinição
+4. Crie uma nova senha segura (mínimo 6 caracteres)
+
+### Licença e Ativação
+O sistema utiliza **chaves seriais** para controle de licença:
+- **Plano Standard**: Funcionalidades básicas de gestão
+- **Plano Premium**: Todas as funcionalidades + IA avançada
+
+Para ativar sua licença:
+1. Vá em **Configurações → Licença**
+2. Insira a chave serial fornecida
+3. Clique em **"Ativar Licença"**
+4. O sistema confirmará a ativação e o período de validade
+
+> ⚠️ Licenças expiradas ou congeladas restringem o acesso ao sistema. Contate o administrador para renovação.
+    `,
+  },
+  {
+    id: 'dashboard',
+    title: '3. Dashboard Principal',
+    content: `
+## Visão Geral do Dashboard
+
+O Dashboard é a tela principal do sistema, oferecendo uma visão completa e personalizável de toda sua carteira.
+
+### Painéis Disponíveis:
+
+#### 📊 Resumo da Carteira
+- Patrimônio total investido
+- Rentabilidade geral (R$ e %)
+- Variação no dia
+- Número de ativos
+
+#### 🏥 Score de Saúde
+- Nota de 0 a 100 para sua carteira
+- Avaliação de diversificação, risco e concentração
+- Recomendações de melhoria
+
+#### 📈 Gráfico de Evolução
+- Evolução patrimonial ao longo do tempo
+- Comparação com benchmarks (CDI, IBOV, IFIX)
+- Filtros de período (1M, 3M, 6M, 1A, Total)
+
+#### 🎯 Alocação por Tipo
+- Gráfico de pizza com distribuição por classe de ativo
+- Percentuais: Ações, FIIs, ETFs, Renda Fixa, Cripto
+
+#### ⚖️ Rebalanceamento
+- Comparação alocação atual vs. ideal
+- Sugestões automáticas de compra/venda para rebalancear
+
+#### 🔗 Correlação (Heatmap)
+- Mapa de calor mostrando correlação entre seus ativos
+- Identificação de ativos muito correlacionados (risco de concentração)
+
+#### 📉 Performance por Ativo
+- Rentabilidade individual de cada ativo
+- Comparação de desempenho entre ativos
+
+#### 💰 Dividendos
+- Últimos dividendos recebidos
+- Total recebido no mês/ano
+- Yield on Cost médio
+
+#### 🔮 Previsão de Dividendos
+- Projeção de dividendos futuros com IA
+- Estimativa de rendimento mensal
+
+#### 📋 Tabela de Ativos
+- Lista completa dos seus ativos
+- Quantidade, preço médio, valor atual, rentabilidade
+- Opções de adicionar, editar e vender
+
+#### 🔔 Alertas de Preço
+- Alertas configurados e disparados
+- Status em tempo real
+
+#### 💱 Câmbio
+- Cotações USD/BRL, EUR/BRL, BTC/BRL
+- Variação do dia
+
+#### 🎮 Simulador
+- Simule aportes futuros
+- Projeção de patrimônio com taxa de retorno estimada
+
+#### 🎯 Metas de Investimento
+- Defina metas financeiras (aposentadoria, reserva, etc.)
+- Acompanhe o progresso visualmente
+
+#### 📰 Notícias
+- Notícias relevantes do mercado financeiro
+- Atualizadas via IA
+
+#### 🤖 Insights IA
+- Análises automáticas da sua carteira
+- Recomendações personalizadas
+
+#### ⚡ Alertas Inteligentes
+- Análise automatizada de oportunidades e riscos
+- Notificações baseadas em IA
+
+#### 📑 Relatório Mensal
+- Resumo mensal automático do desempenho
+- Gerado por IA
+
+#### 💡 Aporte Inteligente
+- Sugestão de onde alocar novos aportes
+- Baseado no rebalanceamento ideal
+
+#### 📊 Preço Teto
+- Cálculo do preço teto de ações e FIIs
+- Baseado em dividendos e taxa desejada
+
+#### 📈 Rentabilidade Detalhada
+- Análise detalhada de rentabilidade por ativo e período
+
+#### 🔄 Backtesting
+- Simule estratégias com dados históricos
+- Compare resultados com buy & hold
+
+#### ⭐ Scoring de Ativos
+- Nota de qualidade para cada ativo (0-100)
+- Análise fundamentalista via IA
+
+#### 🏦 Renda Fixa
+- Gestão de títulos de renda fixa
+- CDB, LCI, LCA, Tesouro Direto, Debêntures
+- Controle de vencimento e indexadores
+
+### Personalização do Dashboard
+
+O Dashboard é **totalmente personalizável**:
+
+1. **Mover painéis**: Clique e arraste qualquer painel para reposicioná-lo
+2. **Redimensionar**: Arraste as bordas dos painéis para alterar o tamanho
+3. **Travar layout**: Clique no ícone de cadeado (🔒) para impedir movimentações acidentais
+4. **Resetar layout**: Clique no ícone de reset (↩️) para voltar ao layout padrão
+
+> 💡 O layout é salvo automaticamente no navegador. Cada usuário tem seu layout personalizado.
+    `,
+  },
+  {
+    id: 'holdings',
+    title: '4. Gestão de Ativos',
+    content: `
+## Adicionando Ativos à Carteira
+
+### Adicionar Manualmente
+
+1. No Dashboard, localize o painel **"Meus Ativos"**
+2. Clique no botão **"+ Adicionar"**
+3. Preencha os campos:
+   - **Ticker**: Código do ativo (ex: PETR4, HGLG11, IVVB11)
+   - **Nome**: Nome descritivo
+   - **Tipo**: Ação, FII, ETF, Cripto ou Renda Fixa
+   - **Quantidade**: Número de cotas/ações
+   - **Preço Médio**: Preço médio de aquisição
+   - **Corretora**: (Opcional) Nome da corretora
+   - **Setor**: (Opcional) Setor do ativo
+4. Clique em **"Salvar"**
+
+### Importar da B3
+
+1. Acesse o portal do investidor da B3 (cei.b3.com.br)
+2. Exporte seu extrato em formato PDF ou CSV
+3. No SimplyNvest, use o painel de **importação B3** no Dashboard
+4. Faça upload do arquivo
+5. O sistema processará automaticamente seus dados
+
+### Importar Nota de Corretagem
+
+1. Obtenha a nota de corretagem em PDF da sua corretora
+2. No sistema, use o importador de **Nota de Corretagem**
+3. Faça upload do PDF
+4. A IA extrairá automaticamente as operações
+5. Revise e confirme os dados antes de salvar
+
+### Editar Ativo
+
+1. Clique no ativo desejado na tabela
+2. O modal de edição será aberto
+3. Altere os campos necessários
+4. Clique em **"Salvar"**
+
+### Registrar Venda
+
+1. Clique no ativo que deseja vender
+2. Clique em **"Vender"**
+3. Informe:
+   - Quantidade vendida
+   - Preço de venda
+   - Data da operação
+   - Se é Day Trade
+4. O sistema calculará automaticamente o lucro/prejuízo
+5. A transação será registrada para fins fiscais
+    `,
+  },
+  {
+    id: 'ai-trader',
+    title: '5. AI Pro Trader',
+    content: `
+## Inteligência Artificial para Trading
+
+O **AI Pro Trader** é um assistente de investimentos baseado em inteligência artificial que analisa sua carteira e o mercado para fornecer recomendações personalizadas.
+
+### Tipos de Análise Disponíveis:
+
+#### 📈 Position Trades
+- Sugestões de operações de médio/longo prazo
+- Pontos de entrada, stop loss e alvos de preço
+- Justificativa completa com análise técnica e fundamentalista
+
+#### 🛒 Compra & Venda
+- Recomendações do que comprar e vender no momento
+- Análise individual de cada ativo da carteira
+- Identificação de oportunidades de mercado
+
+#### 📊 Revisão da Carteira
+- Análise completa de diversificação
+- Avaliação de correlações e riscos
+- Sugestões de melhoria na alocação
+
+#### 🌍 Análise Macro
+- Cenário econômico atual (Selic, inflação, dólar)
+- Impacto na sua carteira
+- Perspectivas e tendências globais
+
+#### 🛡️ Gestão de Risco
+- Identificação de concentrações perigosas
+- Sugestões de stops e dimensionamento
+- Proteção do patrimônio
+
+### Como Usar:
+
+1. Acesse **AI Pro Trader** no menu lateral
+2. Na barra inferior, escolha um tipo de análise ou digite sua pergunta
+3. A IA analisará sua carteira real e o mercado
+4. A resposta incluirá dados, gráficos e recomendações
+
+### Histórico de Conversas
+- Todas as conversas são salvas automaticamente
+- Acesse o histórico clicando no ícone de **painel lateral**
+- Você pode retomar qualquer conversa anterior
+- Use **"Nova Conversa"** para iniciar uma análise limpa
+
+### Chatbot do Dashboard
+- No Dashboard principal, há um **chatbot flutuante** (ícone 🤖 no canto inferior direito)
+- Faça perguntas rápidas sobre sua carteira
+- O chatbot tem acesso a todos os seus dados em tempo real
+
+> ⚠️ **Importante**: As análises de IA são sugestões baseadas em dados. Não constituem recomendação de investimento. Consulte sempre um profissional certificado.
+    `,
+  },
+  {
+    id: 'dividends',
+    title: '6. Dividendos',
+    content: `
+## Gestão de Dividendos
+
+A tela de **Dividendos** oferece controle completo sobre seus proventos recebidos e previstos.
+
+### Funcionalidades:
+
+#### Histórico de Dividendos
+- Lista completa de todos os dividendos recebidos
+- Filtros por período, tipo de ativo e ticker
+- Valor total recebido por período
+
+#### Dividend Yield
+- Yield atual de cada ativo
+- Yield on Cost (com base no seu preço médio)
+- Ranking dos melhores pagadores
+
+#### Calendário de Proventos
+- Datas de ex-dividendo e pagamento
+- Próximos dividendos previstos
+
+#### Previsão com IA
+- Projeção de dividendos futuros
+- Estimativa mensal e anual
+- Baseada no histórico de pagamentos
+
+### Dashboard de Dividendos (Painel)
+O painel de dividendos no Dashboard mostra:
+- Último dividendo recebido
+- Total do mês e do ano
+- Média mensal
+- Yield médio da carteira
+    `,
+  },
+  {
+    id: 'taxes',
+    title: '7. Impostos e DARF',
+    content: `
+## Controle Fiscal de Investimentos
+
+O módulo de **Impostos** automatiza o cálculo de IR sobre operações na bolsa, conforme legislação brasileira.
+
+### Regras Fiscais Implementadas:
+
+| Tipo | Alíquota | Isenção |
+|------|----------|---------|
+| Ações (Swing Trade) | 15% | Vendas até R$ 20.000/mês |
+| Ações (Day Trade) | 20% | Sem isenção |
+| FIIs | 20% | Sem isenção |
+| ETFs | 15% | Sem isenção |
+| Cripto | 15% | Vendas até R$ 35.000/mês |
+
+### Registrando Operações:
+
+1. Acesse **Impostos** no menu lateral
+2. Clique em **"+ Nova Operação"**
+3. Preencha:
+   - Ticker, Nome, Tipo de ativo
+   - Operação (Compra/Venda)
+   - Quantidade e Preço
+   - Data e Taxas/Corretagem
+   - Se é Day Trade
+4. Clique em **"Salvar"**
+
+### Importação via Nota de Corretagem
+1. Clique em **"Importar"**
+2. Faça upload do PDF da nota de corretagem
+3. A IA extrairá automaticamente todas as operações
+4. Revise e confirme
+
+### Cálculo de DARF:
+- O sistema calcula automaticamente o imposto devido por mês
+- Compensa prejuízos acumulados de meses anteriores
+- Indica o código DARF correto para cada tipo de operação
+- Mostra se há imposto a pagar ou isenção
+
+### Gráficos e Análises:
+- Gráfico mensal de lucros/prejuízos
+- Total de impostos pagos no ano
+- Prejuízo acumulado a compensar
+- Breakdown por tipo de ativo
+
+### Exportação:
+- Exporte o relatório fiscal em formato adequado
+- Útil para declaração de IR anual
+    `,
+  },
+  {
+    id: 'analysis',
+    title: '8. Análise Avançada',
+    content: `
+## Análise Técnica e Fundamentalista
+
+A tela de **Análise Avançada** oferece ferramentas profissionais para análise de ativos.
+
+### Análise Técnica:
+- **Gráfico de Candlestick** interativo
+- Indicadores técnicos:
+  - Médias Móveis (SMA 20, 50, 200)
+  - Bandas de Bollinger
+  - RSI (Índice de Força Relativa)
+  - MACD (Moving Average Convergence Divergence)
+  - Estocástico
+  - ATR (Average True Range)
+
+### Análise Fundamentalista (via IA):
+- P/L (Preço/Lucro)
+- P/VP (Preço/Valor Patrimonial)
+- ROE (Return on Equity)
+- Dividend Yield
+- Margem Líquida
+- Dívida Líquida/EBITDA
+
+### Widget TradingView:
+- Gráfico profissional integrado do TradingView
+- Ferramentas de desenho e análise
+- Múltiplos timeframes
+
+### Análise IA do Ativo:
+1. Digite o ticker na barra de busca
+2. O sistema buscará dados em tempo real
+3. A IA gerará uma análise completa incluindo:
+   - Cenário técnico atual
+   - Fundamentos da empresa
+   - Recomendação (Compra/Venda/Manter)
+   - Preço-alvo estimado
+
+### Como Usar:
+1. Acesse **Análise Avançada** no menu
+2. Selecione ou busque um ativo
+3. Alterne entre as abas: **Técnica**, **Fundamentalista** e **IA**
+4. Ajuste período e indicadores conforme necessário
+    `,
+  },
+  {
+    id: 'reports',
+    title: '9. Relatórios',
+    content: `
+## Relatórios Profissionais
+
+O módulo de **Relatórios** gera documentos completos sobre sua carteira.
+
+### Abas de Relatório:
+
+#### 📊 Visão Geral
+- Resumo executivo da carteira
+- Patrimônio, rentabilidade, número de ativos
+- Comparação com benchmarks
+
+#### 📈 Performance
+- Gráfico de evolução patrimonial
+- Rentabilidade por período
+- Comparação com CDI, IBOV, IFIX
+
+#### 🎯 Alocação
+- Distribuição por tipo de ativo
+- Distribuição por setor
+- Distribuição por corretora
+
+#### 🏦 Corretoras
+- Patrimônio por corretora
+- Comparação de custos
+- Diversificação entre plataformas
+
+#### 📋 Transações
+- Histórico completo de operações
+- Filtros por tipo, período e ativo
+- Lucros/Prejuízos realizados
+
+### Filtros de Período:
+- 1 Mês, 3 Meses, 6 Meses, 1 Ano, Total
+
+### Exportação:
+- Clique em **"Exportar PDF"** ou **"Imprimir"** para gerar o relatório
+- Formato otimizado para impressão A4
+    `,
+  },
+  {
+    id: 'family',
+    title: '10. Carteira Familiar',
+    content: `
+## Gestão de Carteira Familiar
+
+O recurso de **Carteira Familiar** permite compartilhar e visualizar carteiras de membros da família.
+
+### Configuração:
+
+1. Acesse **Carteira Familiar** no menu lateral
+2. Ou vá em **Configurações → Família**
+3. Clique em **"Convidar Membro"**
+4. Insira o e-mail do familiar
+5. O membro receberá um convite para vincular sua conta
+
+### Funcionalidades:
+- **Visão consolidada**: Patrimônio total da família
+- **Comparação**: Compare a performance entre membros
+- **Alocação familiar**: Veja a diversificação da família como um todo
+- **Ranking**: Quem está performando melhor
+
+### Permissões:
+- O proprietário pode ver as carteiras dos membros
+- Membros podem ver apenas sua própria carteira (por padrão)
+- Dados sensíveis são protegidos por criptografia
+
+### Status dos Convites:
+- **Pendente**: Convite enviado, aguardando aceitação
+- **Aceito**: Membro vinculado com sucesso
+- **Recusado**: Convite recusado pelo membro
+    `,
+  },
+  {
+    id: 'settings',
+    title: '11. Configurações',
+    content: `
+## Configurações do Sistema
+
+### Abas Disponíveis:
+
+#### ⚙️ Geral
+- Informações da conta
+- Tema (Claro/Escuro) — alternável pelo ícone 🌙/☀️
+- Preferências de exibição
+
+#### 📋 Licença
+- Status da licença atual
+- Plano ativo (Standard/Premium)
+- Data de expiração
+- Ativar nova chave serial
+
+#### 👥 Usuários (Admin)
+- Gerenciar usuários do sistema
+- Criar novos usuários
+- Ativar/desativar contas
+- Atribuir papéis (Admin/Usuário)
+
+#### 🔑 Chaves (Admin)
+- Gerar novas chaves seriais
+- Visualizar chaves existentes
+- Status: Ativa, Usada, Expirada
+- Copiar chave para envio ao cliente
+
+#### 👨‍👩‍👧‍👦 Família
+- Gerenciar membros da carteira familiar
+- Enviar e gerenciar convites
+
+#### 📱 Telegram
+- Configurar notificações via Telegram
+- Vincular bot do Telegram
+- Receber alertas de preço no celular
+- Relatório diário automático
+
+#### 💾 Backup
+- Backup manual dos dados
+- Histórico de backups
+- Restauração de dados
+
+#### 📋 Atividades (Auditoria)
+- Log de todas as ações realizadas no sistema
+- Quem fez o quê e quando
+- Útil para segurança e rastreabilidade
+    `,
+  },
+  {
+    id: 'telegram',
+    title: '12. Integração Telegram',
+    content: `
+## Notificações via Telegram
+
+O sistema pode enviar notificações em tempo real para seu Telegram.
+
+### Configuração Inicial:
+
+1. Acesse **Configurações → Telegram**
+2. O sistema gerará um **código de vinculação**
+3. No Telegram:
+   - Busque o bot do SimplyNvest
+   - Envie o comando \`/start\`
+   - Envie o código de vinculação
+4. O sistema confirmará a vinculação
+
+### Notificações Disponíveis:
+
+- **Alertas de preço**: Quando um ativo atinge o preço alvo
+- **Relatório diário**: Resumo da carteira enviado diariamente
+- **Alertas inteligentes**: Oportunidades e riscos detectados pela IA
+- **Dividendos**: Aviso quando dividendos são creditados
+
+### Gerenciamento:
+- Ative/desative notificações a qualquer momento
+- Teste o envio com o botão **"Enviar Teste"**
+- Desvinculação pode ser feita nas configurações
+    `,
+  },
+  {
+    id: 'alerts',
+    title: '13. Alertas de Preço',
+    content: `
+## Sistema de Alertas
+
+### Criando um Alerta:
+
+1. No Dashboard, localize o painel **"Alertas"**
+2. Clique em **"+ Novo Alerta"**
+3. Configure:
+   - **Ticker**: Ativo monitorado
+   - **Tipo de Alerta**:
+     - Preço acima de (Take Profit)
+     - Preço abaixo de (Stop Loss)
+     - Variação positiva (%)
+     - Variação negativa (%)
+   - **Valor alvo**: Preço ou percentual
+   - **Notificar via Telegram**: Sim/Não
+4. Clique em **"Criar Alerta"**
+
+### Status dos Alertas:
+- 🟢 **Ativo**: Monitorando em tempo real
+- 🟡 **Disparado**: Condição atingida
+- ⏸️ **Pausado**: Temporariamente desativado
+
+### Alertas Inteligentes (IA):
+O painel de **Alertas Inteligentes** usa IA para:
+- Detectar padrões técnicos (suporte/resistência)
+- Identificar oportunidades de compra/venda
+- Alertar sobre riscos macroeconômicos
+- Monitorar mudanças nos fundamentos
+    `,
+  },
+  {
+    id: 'fixed-income',
+    title: '14. Renda Fixa',
+    content: `
+## Gestão de Renda Fixa
+
+O painel de **Renda Fixa** permite gerenciar seus investimentos em títulos.
+
+### Tipos Suportados:
+- **CDB** (Certificado de Depósito Bancário)
+- **LCI/LCA** (Letras de Crédito Imobiliário/Agrícola)
+- **Tesouro Direto** (SELIC, IPCA+, Prefixado)
+- **Debêntures**
+- **CRI/CRA**
+
+### Campos de Cadastro:
+- Título/Nome do investimento
+- Tipo e Indexador (CDI, IPCA, Prefixado, SELIC)
+- Taxa contratada (ex: CDI + 2%, IPCA + 6%)
+- Valor investido
+- Data de vencimento
+- Corretora
+
+### Acompanhamento:
+- Valor atualizado estimado
+- Rentabilidade no período
+- Dias até o vencimento
+- Indicação de vencimentos próximos
+    `,
+  },
+  {
+    id: 'cash',
+    title: '15. Saldo em Caixa',
+    content: `
+## Controle de Saldo em Caixa
+
+O sistema permite controlar o saldo disponível em caixa nas suas corretoras.
+
+### Funcionalidades:
+- Registrar saldo por corretora
+- Acompanhar movimentações (depósitos/retiradas)
+- Incluir saldo no patrimônio total
+
+### Como Usar:
+1. No Dashboard, clique no valor do **Saldo em Caixa**
+2. Adicione ou edite o saldo de cada corretora
+3. Registre depósitos e retiradas com descrição
+
+### Importância:
+- O saldo em caixa é somado ao patrimônio total
+- Ajuda no planejamento de novos aportes
+- Controle de liquidez disponível
+    `,
+  },
+  {
+    id: 'pwa',
+    title: '16. Instalação como App (PWA)',
+    content: `
+## Instalar no Celular ou Desktop
+
+O T2-SimplyNvest pode ser instalado como um **aplicativo** no seu celular ou computador.
+
+### No Celular (Android/iOS):
+1. Acesse o sistema pelo navegador
+2. Um banner aparecerá sugerindo a instalação
+3. Clique em **"Instalar"**
+4. O app ficará na tela inicial do celular
+
+### No Desktop (Chrome):
+1. Acesse o sistema
+2. Clique no ícone de instalação na barra de endereço (📥)
+3. Confirme a instalação
+4. O app abrirá em janela própria
+
+### Vantagens do PWA:
+- Acesso rápido pela tela inicial
+- Experiência de app nativo
+- Funciona em tela cheia
+- Ícone personalizado
+    `,
+  },
+  {
+    id: 'admin',
+    title: '17. Administração (Admin)',
+    content: `
+## Funcionalidades Administrativas
+
+Disponível apenas para usuários com papel **Admin**.
+
+### Gestão de Usuários:
+1. Acesse **Configurações → Usuários**
+2. Funções disponíveis:
+   - **Criar usuário**: E-mail + senha temporária
+   - **Ativar/Desativar**: Controle de acesso
+   - **Definir papel**: Admin ou Usuário padrão
+
+### Gestão de Chaves Seriais:
+1. Acesse **Configurações → Chaves**
+2. Clique em **"Gerar Chave"**
+3. Selecione o plano (Standard/Premium)
+4. A chave será gerada automaticamente (formato: XXXX-XXXX-XXXX-XXXX)
+5. Copie e envie ao cliente
+
+### Status das Chaves:
+- **Disponível**: Pronta para uso
+- **Ativada**: Em uso por um cliente
+- **Expirada**: Período de validade encerrado
+- **Congelada**: Suspensa pelo administrador
+
+### Log de Auditoria:
+- Todas as ações administrativas são registradas
+- Acesse em **Configurações → Atividades**
+- Inclui: criação de usuários, geração de chaves, alterações de configuração
+
+### Backup do Sistema:
+- **Configurações → Backup**
+- Backup manual ou automático
+- Inclui: carteira, transações, configurações
+    `,
+  },
+  {
+    id: 'shortcuts',
+    title: '18. Dicas e Atalhos',
+    content: `
+## Dicas para Melhor Uso
+
+### 🎨 Tema Escuro/Claro
+- Clique no ícone 🌙/☀️ no menu lateral para alternar
+
+### 📱 Responsividade
+- O sistema se adapta a qualquer tela
+- No celular, o menu lateral vira um drawer (hamburger menu)
+
+### 🔍 Busca de Ativos
+- Na Análise Avançada, use a barra de busca para encontrar qualquer ativo
+- Digite o ticker (ex: PETR4) ou nome da empresa
+
+### 📊 Dashboard Personalizado
+- Arraste os painéis para reorganizar
+- Redimensione conforme sua preferência
+- Trave o layout quando estiver satisfeito
+
+### 💡 Chatbot IA
+- Use o chatbot no canto inferior direito do Dashboard
+- Pergunte qualquer coisa sobre sua carteira
+- Exemplos:
+  - "Qual meu ativo mais rentável?"
+  - "Quanto recebi de dividendos este ano?"
+  - "Devo vender PETR4?"
+
+### 📤 Exportação de Dados
+- Relatórios podem ser impressos/exportados em PDF
+- Use Ctrl+P ou o botão "Imprimir" nas telas de relatório
+
+### 🔐 Segurança
+- Sempre faça logout ao usar computadores compartilhados
+- Não compartilhe suas credenciais
+- Altere sua senha periodicamente
+    `,
+  },
+  {
+    id: 'support',
+    title: '19. Suporte e Contato',
+    content: `
+## Suporte Técnico
+
+### Problemas Comuns:
+
+#### "Não consigo fazer login"
+1. Verifique se o e-mail está correto
+2. Use a opção "Esqueci minha senha"
+3. Verifique se sua licença não expirou
+4. Contate o administrador
+
+#### "Dados não aparecem"
+1. Verifique sua conexão com internet
+2. Faça logout e login novamente
+3. Limpe o cache do navegador (Ctrl+Shift+Del)
+4. Tente outro navegador
+
+#### "Sistema lento"
+1. Verifique sua conexão de internet
+2. Feche outras abas/programas
+3. Use um navegador atualizado
+4. Limpe o cache do navegador
+
+#### "Cotações desatualizadas"
+- As cotações são obtidas em tempo real via Yahoo Finance
+- Pode haver atraso de 15-20 minutos em algumas fontes
+- Fora do horário do mercado, mostra último preço disponível
+
+### Contato:
+- **E-mail**: suporte@t2systems.com.br
+- **Telegram**: Entre em contato com o administrador
+- **Horário**: Segunda a Sexta, 9h às 18h
+
+---
+
+**T2-SimplyNvest** — Investimentos Inteligentes  
+*Versão 1.0 — Manual do Usuário*  
+*© 2025 T2 Systems. Todos os direitos reservados.*
+    `,
+  },
+];
+
+export default function Manual() {
+  const [openSections, setOpenSections] = useState<Set<string>>(new Set(sections.map(s => s.id)));
+
+  const toggleSection = (id: string) => {
+    setOpenSections(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const expandAll = () => setOpenSections(new Set(sections.map(s => s.id)));
+  const collapseAll = () => setOpenSections(new Set());
+
+  const handlePrint = () => {
+    expandAll();
+    setTimeout(() => window.print(), 300);
+  };
+
+  return (
+    <div className="p-4 md:p-8 max-w-4xl mx-auto">
+      {/* Header - hidden on print */}
+      <div className="flex items-center justify-between mb-8 print:hidden">
+        <div className="flex items-center gap-3">
+          <Book className="h-8 w-8 text-primary" />
+          <div>
+            <h1 className="text-2xl font-bold">Manual do Usuário</h1>
+            <p className="text-sm text-muted-foreground">T2-SimplyNvest — Guia Completo</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={expandAll}
+            className="px-3 py-1.5 text-xs rounded-lg border border-border hover:bg-accent/50 transition-colors"
+          >
+            Expandir Tudo
+          </button>
+          <button
+            onClick={collapseAll}
+            className="px-3 py-1.5 text-xs rounded-lg border border-border hover:bg-accent/50 transition-colors"
+          >
+            Recolher Tudo
+          </button>
+          <button
+            onClick={handlePrint}
+            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+          >
+            <Printer className="h-4 w-4" />
+            Imprimir / Salvar PDF
+          </button>
+        </div>
+      </div>
+
+      {/* Print header */}
+      <div className="hidden print:block mb-8 text-center border-b-2 border-primary pb-6">
+        <img src="/pwa-icon-192.png" alt="T2" className="h-16 w-16 mx-auto mb-4 rounded-xl" />
+        <h1 className="text-3xl font-bold mb-2">T2-SimplyNvest</h1>
+        <h2 className="text-xl text-muted-foreground mb-1">Manual do Usuário</h2>
+        <p className="text-sm text-muted-foreground">Versão 1.0 — Guia Completo de Funcionalidades</p>
+      </div>
+
+      {/* Table of Contents - print only */}
+      <div className="hidden print:block mb-8 p-6 border rounded-lg">
+        <h2 className="text-lg font-bold mb-4">Índice</h2>
+        <div className="grid grid-cols-2 gap-1">
+          {sections.map((s, i) => (
+            <div key={s.id} className="text-sm py-0.5">
+              {s.title}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Sections */}
+      <div className="space-y-3 print:space-y-6">
+        {sections.map((section) => {
+          const isOpen = openSections.has(section.id);
+          return (
+            <div key={section.id} className="border border-border rounded-lg overflow-hidden print:border-none print:break-inside-avoid-page">
+              <button
+                onClick={() => toggleSection(section.id)}
+                className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-accent/30 transition-colors print:hidden"
+              >
+                {isOpen ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+                <span className="font-semibold text-base">{section.title}</span>
+              </button>
+              <div className={`${isOpen ? 'block' : 'hidden'} print:!block`}>
+                <div
+                  className="px-6 pb-6 prose prose-sm dark:prose-invert max-w-none
+                    prose-headings:text-foreground prose-p:text-foreground/90
+                    prose-strong:text-foreground prose-li:text-foreground/90
+                    prose-a:text-primary prose-code:text-primary
+                    prose-blockquote:border-primary/50 prose-blockquote:text-muted-foreground
+                    prose-table:text-sm prose-th:bg-muted prose-th:px-3 prose-th:py-2
+                    prose-td:px-3 prose-td:py-2 prose-td:border-border
+                    print:text-black print:prose-headings:text-black"
+                  dangerouslySetInnerHTML={{ __html: markdownToHtml(section.content) }}
+                />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Footer - print only */}
+      <div className="hidden print:block mt-12 pt-4 border-t text-center text-xs text-muted-foreground">
+        <p>T2-SimplyNvest — Manual do Usuário v1.0</p>
+        <p>© 2025 T2 Systems. Todos os direitos reservados.</p>
+      </div>
+    </div>
+  );
+}
+
+// Simple markdown to HTML converter (no external deps)
+function markdownToHtml(md: string): string {
+  let html = md.trim();
+
+  // Tables
+  html = html.replace(/^\|(.+)\|$/gm, (match) => {
+    return match;
+  });
+  const lines = html.split('\n');
+  let inTable = false;
+  let tableHtml = '';
+  const result: string[] = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (line.startsWith('|') && line.endsWith('|')) {
+      if (!inTable) {
+        inTable = true;
+        tableHtml = '<table><thead><tr>';
+        const cells = line.split('|').filter(c => c.trim());
+        cells.forEach(c => tableHtml += `<th>${c.trim()}</th>`);
+        tableHtml += '</tr></thead>';
+        continue;
+      }
+      if (line.match(/^\|[\s\-|]+\|$/)) {
+        tableHtml += '<tbody>';
+        continue;
+      }
+      tableHtml += '<tr>';
+      const cells = line.split('|').filter(c => c.trim());
+      cells.forEach(c => tableHtml += `<td>${c.trim()}</td>`);
+      tableHtml += '</tr>';
+    } else {
+      if (inTable) {
+        tableHtml += '</tbody></table>';
+        result.push(tableHtml);
+        inTable = false;
+        tableHtml = '';
+      }
+      result.push(line);
+    }
+  }
+  if (inTable) {
+    tableHtml += '</tbody></table>';
+    result.push(tableHtml);
+  }
+  html = result.join('\n');
+
+  // Headers
+  html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+  html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+  html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+
+  // Blockquotes
+  html = html.replace(/^> (.+)$/gm, '<blockquote><p>$1</p></blockquote>');
+
+  // Bold and italic
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
+
+  // Inline code
+  html = html.replace(/`(.+?)`/g, '<code>$1</code>');
+
+  // Horizontal rule
+  html = html.replace(/^---$/gm, '<hr>');
+
+  // Unordered lists
+  html = html.replace(/^- (.+)$/gm, '<li>$1</li>');
+  html = html.replace(/(<li>.*<\/li>\n?)+/g, (match) => `<ul>${match}</ul>`);
+
+  // Ordered lists
+  html = html.replace(/^\d+\. (.+)$/gm, '<li>$1</li>');
+
+  // Paragraphs - wrap remaining text lines
+  html = html.replace(/^(?!<[a-z])((?!<).+)$/gm, '<p>$1</p>');
+
+  // Clean empty paragraphs
+  html = html.replace(/<p>\s*<\/p>/g, '');
+
+  return html;
+}

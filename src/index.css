@@ -248,3 +248,15 @@
   opacity: 0.9;
   box-shadow: 0 20px 40px -12px hsl(var(--primary) / 0.2) !important;
 }
+
+/* Print styles for Manual */
+@media print {
+  body { background: white !important; color: black !important; }
+  .print\:hidden, nav, aside, header, .react-grid-layout { display: none !important; }
+  .print\:\!block { display: block !important; }
+  .print\:block { display: block !important; }
+  main { margin: 0 !important; padding: 0 !important; }
+  @page { margin: 1.5cm 2cm; size: A4; }
+  h2 { page-break-after: avoid; }
+  .print\:break-inside-avoid-page { break-inside: avoid; }
+}
