@@ -858,25 +858,59 @@ function SerialKeysTab() {
 function FamilyTab() {
   const { user } = useAuth();
   const [members, setMembers] = useState<any[]>([]);
+  const [receivedInvites, setReceivedInvites] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState('');
   const [inviting, setInviting] = useState(false);
+  const [accepting, setAccepting] = useState<string | null>(null);
 
-  const loadMembers = useCallback(async () => {
+  const loadAll = useCallback(async () => {
     if (!user) return;
     setLoading(true);
-    const { data } = await supabase
+
+    // Auto-link pending invites for this user's email
+    const { data: pendingForMe } = await supabase
       .from('family_members')
       .select('*')
-      .or(`owner_id.eq.${user.id},member_id.eq.${user.id}`);
-    setMembers(data || []);
+      .eq('invited_email', user.email?.toLowerCase() || '')
+      .eq('status', 'pending')
+      .is('member_id', null);
+
+    if (pendingForMe && pendingForMe.length > 0) {
+      for (const invite of pendingForMe) {
+        await supabase
+          .from('family_members')
+          .update({ member_id: user.id })
+          .eq('id', invite.id);
+      }
+    }
+
+    // Load sent invites (I'm owner)
+    const { data: sent } = await supabase
+      .from('family_members')
+      .select('*')
+      .eq('owner_id', user.id);
+    setMembers(sent || []);
+
+    // Load received invites (I'm member)
+    const { data: received } = await supabase
+      .from('family_members')
+      .select('*')
+      .eq('member_id', user.id)
+      .neq('owner_id', user.id);
+    setReceivedInvites(received || []);
+
     setLoading(false);
   }, [user]);
 
-  useEffect(() => { loadMembers(); }, [loadMembers]);
+  useEffect(() => { loadAll(); }, [loadAll]);
 
   const invite = async () => {
     if (!user || !email.trim()) return;
+    if (email.trim().toLowerCase() === user.email?.toLowerCase()) {
+      toast.error('Você não pode convidar a si mesmo');
+      return;
+    }
     setInviting(true);
     try {
       const { error } = await supabase.from('family_members').insert({
@@ -887,7 +921,7 @@ function FamilyTab() {
       if (error) throw error;
       toast.success(`Convite enviado para ${email}`);
       setEmail('');
-      await loadMembers();
+      await loadAll();
     } catch (err) {
       toast.error('Erro ao enviar convite. Email já convidado?');
     } finally {
@@ -898,18 +932,103 @@ function FamilyTab() {
   const removeMember = async (id: string) => {
     if (!confirm('Remover este membro?')) return;
     await supabase.from('family_members').delete().eq('id', id);
-    await loadMembers();
+    await loadAll();
     toast.success('Membro removido');
+  };
+
+  const acceptInvite = async (id: string) => {
+    if (!user) return;
+    setAccepting(id);
+    try {
+      await supabase.from('family_members').update({ status: 'active', member_id: user.id }).eq('id', id);
+      toast.success('Convite aceito! Agora você pode visualizar a carteira compartilhada.');
+      await loadAll();
+    } catch {
+      toast.error('Erro ao aceitar convite');
+    } finally {
+      setAccepting(null);
+    }
+  };
+
+  const rejectInvite = async (id: string) => {
+    if (!confirm('Recusar este convite?')) return;
+    await supabase.from('family_members').delete().eq('id', id);
+    await loadAll();
+    toast.success('Convite recusado');
   };
 
   return (
     <div className="space-y-4">
+      {/* Received invites */}
+      {receivedInvites.filter(r => r.status === 'pending').length > 0 && (
+        <div className="rounded-lg border border-primary/30 bg-primary/5 p-5 space-y-3">
+          <h3 className="font-semibold flex items-center gap-2 text-primary">
+            <Bell className="h-4 w-4" /> Convites Recebidos
+          </h3>
+          <div className="space-y-2">
+            {receivedInvites.filter(r => r.status === 'pending').map(inv => (
+              <div key={inv.id} className="flex items-center justify-between rounded-lg bg-card border border-border p-3">
+                <div>
+                  <p className="text-sm font-medium">Convite para compartilhamento familiar</p>
+                  <p className="text-xs text-muted-foreground">De: proprietário da carteira</p>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => acceptInvite(inv.id)}
+                    disabled={accepting === inv.id}
+                    className="px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:opacity-90 disabled:opacity-50 flex items-center gap-1"
+                  >
+                    {accepting === inv.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+                    Aceitar
+                  </button>
+                  <button
+                    onClick={() => rejectInvite(inv.id)}
+                    className="px-3 py-1.5 rounded-md bg-destructive/10 text-destructive text-xs font-medium hover:bg-destructive/20 flex items-center gap-1"
+                  >
+                    <X className="h-3 w-3" /> Recusar
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Active shared portfolios */}
+      {receivedInvites.filter(r => r.status === 'active').length > 0 && (
+        <div className="rounded-lg border border-border bg-card p-5 space-y-3">
+          <h3 className="font-semibold flex items-center gap-2">
+            <Users className="h-4 w-4 text-gain" /> Carteiras Compartilhadas Comigo
+          </h3>
+          <p className="text-sm text-muted-foreground">
+            Você tem acesso de visualização às seguintes carteiras familiares.
+          </p>
+          <div className="space-y-2">
+            {receivedInvites.filter(r => r.status === 'active').map(inv => (
+              <div key={inv.id} className="flex items-center justify-between rounded-lg bg-muted/30 p-3">
+                <div className="flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                    <User className="h-4 w-4 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">Carteira Familiar</p>
+                    <p className="text-xs text-muted-foreground">Acesso de visualização ativo</p>
+                  </div>
+                </div>
+                <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-gain/10 text-gain">Ativo</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Send invites */}
       <div className="rounded-lg border border-border bg-card p-5 space-y-3">
         <h3 className="font-semibold flex items-center gap-2">
           <Users className="h-4 w-4" /> Compartilhamento Familiar
         </h3>
         <p className="text-sm text-muted-foreground">
-          Convide familiares para visualizar sua carteira de investimentos.
+          Convide familiares para visualizar sua carteira de investimentos. Eles poderão ver seus ativos, alocação e performance, mas não poderão fazer alterações.
         </p>
         <div className="flex gap-2">
           <input
@@ -930,6 +1049,7 @@ function FamilyTab() {
         </div>
       </div>
 
+      {/* Sent invites list */}
       {loading ? (
         <div className="flex justify-center p-8"><Loader2 className="h-5 w-5 animate-spin" /></div>
       ) : members.length === 0 ? (
