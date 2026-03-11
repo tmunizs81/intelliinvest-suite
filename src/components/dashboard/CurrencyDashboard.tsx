@@ -9,12 +9,18 @@ interface RateData {
   rate: number;
   change: number;
   prevClose: number;
+  format: 'BRL' | 'USD';
 }
 
-const PAIRS = [
-  { pair: 'USDBRL=X', label: 'USD/BRL', flag: '🇺🇸', name: 'Dólar Americano' },
-  { pair: 'EURBRL=X', label: 'EUR/BRL', flag: '🇪🇺', name: 'Euro' },
-  { pair: 'GBPBRL=X', label: 'GBP/BRL', flag: '🇬🇧', name: 'Libra Esterlina' },
+const CURRENCY_PAIRS = [
+  { ticker: 'USDBRL', label: 'USD/BRL', flag: 'US', name: 'Dólar Americano', format: 'BRL' as const },
+  { ticker: 'EURBRL', label: 'EUR/BRL', flag: 'EU', name: 'Euro', format: 'BRL' as const },
+  { ticker: 'GBPBRL', label: 'GBP/BRL', flag: 'GB', name: 'Libra Esterlina', format: 'BRL' as const },
+];
+
+const STABLECOIN_PAIRS = [
+  { ticker: 'USDT', label: 'USDT/USD', flag: '₮', name: 'Tether', format: 'USD' as const },
+  { ticker: 'USDC', label: 'USDC/USD', flag: '◈', name: 'USD Coin', format: 'USD' as const },
 ];
 
 export default function CurrencyDashboard() {
@@ -27,69 +33,46 @@ export default function CurrencyDashboard() {
     try {
       const results: RateData[] = [];
 
-      for (const p of PAIRS) {
-        try {
-          const resp = await fetch(
-            `https://query1.finance.yahoo.com/v8/finance/chart/${p.pair}?interval=1d&range=2d`,
-            {
-              headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-              },
-            }
-          );
+      // Fetch currency rates via edge function
+      const { data: currencyData } = await supabase.functions.invoke('yahoo-finance', {
+        body: { tickers: CURRENCY_PAIRS.map(p => p.ticker), mode: 'currency' },
+      });
 
-          // If direct fetch fails (CORS), use edge function
-          if (!resp.ok) throw new Error('Direct fetch failed');
+      for (const p of CURRENCY_PAIRS) {
+        const quote = currencyData?.quotes?.[p.ticker];
+        results.push({
+          pair: p.label,
+          label: p.name,
+          flag: p.flag,
+          rate: quote?.currentPrice ?? 0,
+          change: quote?.change24h ?? 0,
+          prevClose: quote?.previousClose ?? 0,
+          format: p.format,
+        });
+      }
 
-          const data = await resp.json();
-          const meta = data.chart?.result?.[0]?.meta;
-          if (meta) {
-            const rate = meta.regularMarketPrice || 0;
-            const prevClose = meta.chartPreviousClose || meta.previousClose || rate;
-            const change = prevClose > 0 ? ((rate - prevClose) / prevClose) * 100 : 0;
-            results.push({
-              pair: p.label,
-              label: p.name,
-              flag: p.flag,
-              rate,
-              change: Math.round(change * 100) / 100,
-              prevClose,
-            });
-          }
-        } catch {
-          // Fallback: use our yahoo-finance edge function
-          try {
-            const { data } = await supabase.functions.invoke('yahoo-finance', {
-              body: { tickers: [p.pair.replace('=X', '')] },
-            });
-            const quote = data?.quotes?.[p.pair.replace('=X', '')];
-            if (quote) {
-              results.push({
-                pair: p.label,
-                label: p.name,
-                flag: p.flag,
-                rate: quote.currentPrice,
-                change: quote.change24h,
-                prevClose: quote.previousClose,
-              });
-            }
-          } catch {
-            results.push({
-              pair: p.label,
-              label: p.name,
-              flag: p.flag,
-              rate: 0,
-              change: 0,
-              prevClose: 0,
-            });
-          }
-        }
+      // Fetch stablecoins via edge function (CoinGecko)
+      const { data: cryptoData } = await supabase.functions.invoke('yahoo-finance', {
+        body: { tickers: STABLECOIN_PAIRS.map(p => p.ticker), mode: 'crypto' },
+      });
+
+      for (const p of STABLECOIN_PAIRS) {
+        const quote = cryptoData?.quotes?.[p.ticker];
+        results.push({
+          pair: p.label,
+          label: p.name,
+          flag: p.flag,
+          rate: quote?.currentPrice ?? 0,
+          change: quote?.change24h ?? 0,
+          prevClose: quote?.previousClose ?? 0,
+          format: p.format,
+        });
       }
 
       setRates(results);
       setLastUpdate(new Date());
-    } catch {
-      // silent
+    } catch (err) {
+      console.error('Currency fetch error:', err);
     } finally {
       setLoading(false);
     }
@@ -97,9 +80,18 @@ export default function CurrencyDashboard() {
 
   useEffect(() => {
     fetchRates();
-    const interval = setInterval(fetchRates, 5 * 60 * 1000); // 5 min
+    const interval = setInterval(fetchRates, 5 * 60 * 1000);
     return () => clearInterval(interval);
   }, []);
+
+  const formatPrice = (rate: number, format: 'BRL' | 'USD') => {
+    if (rate <= 0) return '—';
+    return new Intl.NumberFormat(format === 'BRL' ? 'pt-BR' : 'en-US', {
+      style: 'currency',
+      currency: format,
+      minimumFractionDigits: 4,
+    }).format(rate);
+  };
 
   return (
     <div className="rounded-lg border border-border bg-card p-4 space-y-3">
@@ -135,7 +127,7 @@ export default function CurrencyDashboard() {
                 className="flex items-center justify-between rounded-lg bg-muted/30 px-3 py-2.5"
               >
                 <div className="flex items-center gap-2.5">
-                  <span className="text-lg">{r.flag}</span>
+                  <span className="text-sm font-bold text-muted-foreground w-6 text-center">{r.flag}</span>
                   <div>
                     <p className="text-xs font-semibold">{r.pair}</p>
                     <p className="text-[10px] text-muted-foreground">{r.label}</p>
@@ -143,13 +135,7 @@ export default function CurrencyDashboard() {
                 </div>
                 <div className="text-right">
                   <p className="text-sm font-mono font-semibold">
-                    {r.rate > 0
-                      ? new Intl.NumberFormat('pt-BR', {
-                          style: 'currency',
-                          currency: 'BRL',
-                          minimumFractionDigits: 4,
-                        }).format(r.rate)
-                      : '—'}
+                    {formatPrice(r.rate, r.format)}
                   </p>
                   {r.rate > 0 && (
                     <span
