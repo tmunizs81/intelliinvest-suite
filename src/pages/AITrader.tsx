@@ -331,8 +331,8 @@ export default function AITrader() {
     loadConversation, deleteConversation,
   } = useAITrader();
   const [input, setInput] = useState('');
-  const [historyOpen, setHistoryOpen] = useState(true);
-  const [portfolioOpen, setPortfolioOpen] = useState(true);
+  const [historyOpen, setHistoryOpen] = useState(typeof window !== 'undefined' && window.innerWidth >= 768);
+  const [portfolioOpen, setPortfolioOpen] = useState(typeof window !== 'undefined' && window.innerWidth >= 768);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
