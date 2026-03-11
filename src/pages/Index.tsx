@@ -68,6 +68,9 @@ const defaultLayouts: any = {
     { i: 'goals', x: 0, y: 67, w: 10, h: 10, minW: 6, minH: 6 },
     { i: 'news', x: 0, y: 77, w: 10, h: 8, minW: 6, minH: 5 },
     { i: 'ai-insights', x: 0, y: 85, w: 10, h: 5, minW: 3, minH: 4 },
+    { i: 'smart-alerts', x: 0, y: 90, w: 10, h: 8, minW: 6, minH: 5 },
+    { i: 'monthly-report', x: 0, y: 98, w: 10, h: 8, minW: 6, minH: 5 },
+    { i: 'brokerage-import', x: 0, y: 106, w: 10, h: 8, minW: 6, minH: 5 },
   ],
   sm: [
     { i: 'summary', x: 0, y: 0, w: 6, h: 4, minW: 6, minH: 3 },
