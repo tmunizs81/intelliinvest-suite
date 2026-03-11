@@ -75,7 +75,7 @@ function formatAlertMessage(alert: any, currentPrice: number): string {
     `💰 Preço atual: R$ ${currentPrice.toFixed(2)}\n` +
     `🎯 Target: R$ ${alert.target_value.toFixed(2)}\n` +
     `⏰ ${new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}\n` +
-    `\n<i>InvestAI - Alerta automático</i>`;
+    `\n<i>T2-Simplynvest - Alerta automático</i>`;
 }
 
 serve(async (req) => {

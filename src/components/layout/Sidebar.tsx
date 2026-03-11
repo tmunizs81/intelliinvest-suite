@@ -82,7 +82,7 @@ export default function Sidebar() {
             <TrendingUp className="h-6 w-6 text-primary shrink-0" />
             {(!collapsed || mobileOpen) && (
               <span className="text-lg font-bold tracking-tight">
-                Invest<span className="text-primary">AI</span>
+                T2-<span className="text-primary">Simplynvest</span>
               </span>
             )}
           </div>

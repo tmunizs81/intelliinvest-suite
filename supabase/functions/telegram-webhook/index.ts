@@ -107,7 +107,7 @@ serve(async (req) => {
     }
 
     if (!tgSetting) {
-      await sendMsg("⚠️ Conta não vinculada. Acesse Configurações > Telegram no InvestAI para vincular.");
+      await sendMsg("⚠️ Conta não vinculada. Acesse Configurações > Telegram no T2-Simplynvest para vincular.");
       return new Response(JSON.stringify({ ok: true }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });

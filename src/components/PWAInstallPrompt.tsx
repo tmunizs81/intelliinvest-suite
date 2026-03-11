@@ -72,7 +72,7 @@ export default function PWAInstallPrompt() {
               <Smartphone className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <p className="text-sm font-semibold">Instalar InvestAI</p>
+              <p className="text-sm font-semibold">Instalar T2-Simplynvest</p>
               <p className="text-xs text-muted-foreground">
                 Acesse como um app nativo no seu celular
               </p>

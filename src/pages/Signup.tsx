@@ -43,7 +43,7 @@ export default function SignupPage() {
       <div className="w-full max-w-md space-y-8 animate-fade-in">
         <div className="text-center">
           <h1 className="text-3xl font-bold tracking-tight">
-            Invest<span className="text-primary">AI</span>
+            T2-<span className="text-primary">Simplynvest</span>
           </h1>
           <p className="text-sm text-muted-foreground mt-2">Crie sua conta e comece a investir com inteligência</p>
         </div>

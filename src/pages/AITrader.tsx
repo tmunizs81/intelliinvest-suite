@@ -395,7 +395,7 @@ export default function AITrader() {
               </div>
               <div>
                 <h1 className="text-base font-bold flex items-center gap-2">
-                  InvestAI Pro Trader
+                  T2-Simplynvest Pro Trader
                   <Sparkles className="h-3.5 w-3.5 text-ai" />
                 </h1>
                 <p className="text-[11px] text-muted-foreground">

@@ -24,8 +24,8 @@ export default defineConfig(({ mode }) => ({
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
       },
       manifest: {
-        name: "InvestAI - Carteira Inteligente",
-        short_name: "InvestAI",
+        name: "T2-Simplynvest - Carteira Inteligente",
+        short_name: "T2-Simplynvest",
         description: "Gerencie sua carteira de investimentos com inteligência artificial",
         theme_color: "#0a0e1a",
         background_color: "#0a0e1a",
