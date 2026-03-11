@@ -5,6 +5,7 @@ const ResponsiveGrid: any = ResponsiveOrig;
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
 import { useIsMobile } from '@/hooks/use-mobile';
+import MobileDashboardTabs, { type MobileTab } from '@/components/dashboard/MobileDashboardTabs';
 
 import PortfolioSummary from '@/components/dashboard/PortfolioSummary';
 import PortfolioChart from '@/components/dashboard/PortfolioChart';
