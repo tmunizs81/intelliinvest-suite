@@ -102,7 +102,7 @@ export default function Comparator() {
       setAssets(prev => prev.map(a => a.ticker === ticker ? {
         ...a,
         name: histData?.name || ticker,
-        type: fundData?.type || (ticker.match(/\d{2}$/) ? 'FII' : 'Ação'),
+        type: fundData?.type || classifyAssetType(ticker),
         currentPrice: histData?.currentPrice || 0,
         change24h: histData?.previousClose > 0
           ? ((histData.currentPrice - histData.previousClose) / histData.previousClose * 100) : 0,
