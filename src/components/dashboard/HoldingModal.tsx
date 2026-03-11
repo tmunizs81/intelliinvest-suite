@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X, Plus, Loader2 } from 'lucide-react';
 import type { HoldingRow } from '@/hooks/usePortfolio';
 
