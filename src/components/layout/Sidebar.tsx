@@ -6,6 +6,7 @@ import {
   Menu, X, FileText,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import ThemeToggle from '@/components/ThemeToggle';
 
 const navItems = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -55,6 +56,7 @@ export default function Sidebar() {
           </span>
         </div>
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <ThemeToggle />
           <User className="h-3.5 w-3.5" />
           <span className="truncate max-w-[120px]">{user?.email}</span>
         </div>
@@ -123,6 +125,9 @@ export default function Sidebar() {
             <div className="flex items-center gap-2 px-2 py-1 text-xs text-muted-foreground truncate">
               <User className="h-3.5 w-3.5 shrink-0" />
               <span className="truncate">{user?.email}</span>
+              <div className="ml-auto">
+                <ThemeToggle />
+              </div>
             </div>
           )}
           <div className="flex items-center gap-1">

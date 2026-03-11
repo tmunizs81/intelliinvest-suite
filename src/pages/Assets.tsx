@@ -10,6 +10,7 @@ import HoldingModal from '@/components/dashboard/HoldingModal';
 import SellModal from '@/components/dashboard/SellModal';
 import CashBalanceModal from '@/components/dashboard/CashBalanceModal';
 import BrokerageImportPanel from '@/components/dashboard/BrokerageImportPanel';
+import B3ImportPanel from '@/components/dashboard/B3ImportPanel';
 import { type Asset, formatCurrency, formatPercent } from '@/lib/mockData';
 
 const typeBadgeClass: Record<string, string> = {
@@ -36,6 +37,7 @@ export default function Assets() {
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState('');
   const [brokerageOpen, setBrokerageOpen] = useState(false);
+  const [b3ImportOpen, setB3ImportOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [cashModalOpen, setCashModalOpen] = useState(false);
 
@@ -167,11 +169,18 @@ export default function Assets() {
         </div>
         <div className="flex items-center gap-2">
           <button
+            onClick={() => setB3ImportOpen(true)}
+            className="h-9 px-3 rounded-lg border border-gain/30 bg-gain/10 text-sm text-gain hover:bg-gain/20 flex items-center gap-2 transition-all"
+          >
+            <FileSpreadsheet className="h-4 w-4" />
+            Importar CEI/B3
+          </button>
+          <button
             onClick={() => setBrokerageOpen(true)}
             className="h-9 px-3 rounded-lg border border-primary/30 bg-primary/10 text-sm text-primary hover:bg-primary/20 flex items-center gap-2 transition-all"
           >
             <FileUp className="h-4 w-4" />
-            Importar Nota B3
+            Nota Corretagem
           </button>
           <button
             onClick={() => setImportOpen(true)}
@@ -522,6 +531,26 @@ export default function Assets() {
                 {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
                 Importar Ativos
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* B3/CEI Import Modal */}
+      {b3ImportOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4">
+          <div className="w-full max-w-lg rounded-lg border border-border bg-card shadow-xl animate-fade-in max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between p-4 border-b border-border shrink-0">
+              <div className="flex items-center gap-2">
+                <FileSpreadsheet className="h-5 w-5 text-gain" />
+                <h2 className="text-lg font-semibold">Importar Extrato CEI/B3</h2>
+              </div>
+              <button onClick={() => setB3ImportOpen(false)} className="text-muted-foreground hover:text-foreground">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4">
+              <B3ImportPanel onImportComplete={() => { setB3ImportOpen(false); refresh(); }} />
             </div>
           </div>
         </div>

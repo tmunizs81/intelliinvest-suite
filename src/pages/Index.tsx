@@ -27,6 +27,9 @@ import SmartAlertsPanel from '@/components/dashboard/SmartAlertsPanel';
 import MonthlyReportPanel from '@/components/dashboard/MonthlyReportPanel';
 import SmartContributionPanel from '@/components/dashboard/SmartContributionPanel';
 import CeilingPricePanel from '@/components/dashboard/CeilingPricePanel';
+import ProfitabilityPanel from '@/components/dashboard/ProfitabilityPanel';
+import BacktestingPanel from '@/components/dashboard/BacktestingPanel';
+import OnboardingOverlay from '@/components/OnboardingOverlay';
 
 import { usePortfolio, type HoldingRow } from '@/hooks/usePortfolio';
 import { Loader2, Lock, Unlock, RotateCcw } from 'lucide-react';
@@ -54,6 +57,8 @@ const defaultLayouts: any = {
     { i: 'monthly-report', x: 6, y: 59, w: 6, h: 7, minW: 3, minH: 5 },
     { i: 'smart-contribution', x: 0, y: 66, w: 6, h: 9, minW: 4, minH: 6 },
     { i: 'ceiling-price', x: 6, y: 66, w: 6, h: 9, minW: 4, minH: 6 },
+    { i: 'profitability', x: 0, y: 75, w: 6, h: 9, minW: 4, minH: 6 },
+    { i: 'backtesting', x: 6, y: 75, w: 6, h: 9, minW: 4, minH: 6 },
   ],
   md: [
     { i: 'summary', x: 0, y: 0, w: 10, h: 3, minW: 6, minH: 3 },
@@ -75,6 +80,8 @@ const defaultLayouts: any = {
     { i: 'monthly-report', x: 5, y: 71, w: 5, h: 7, minW: 3, minH: 5 },
     { i: 'smart-contribution', x: 0, y: 78, w: 5, h: 9, minW: 4, minH: 6 },
     { i: 'ceiling-price', x: 5, y: 78, w: 5, h: 9, minW: 4, minH: 6 },
+    { i: 'profitability', x: 0, y: 87, w: 5, h: 9, minW: 4, minH: 6 },
+    { i: 'backtesting', x: 5, y: 87, w: 5, h: 9, minW: 4, minH: 6 },
   ],
   sm: [
     { i: 'summary', x: 0, y: 0, w: 6, h: 4, minW: 6, minH: 3 },
@@ -96,6 +103,8 @@ const defaultLayouts: any = {
     { i: 'monthly-report', x: 0, y: 112, w: 6, h: 7, minW: 6, minH: 5 },
     { i: 'smart-contribution', x: 0, y: 119, w: 6, h: 9, minW: 6, minH: 6 },
     { i: 'ceiling-price', x: 0, y: 128, w: 6, h: 9, minW: 6, minH: 6 },
+    { i: 'profitability', x: 0, y: 137, w: 6, h: 9, minW: 6, minH: 6 },
+    { i: 'backtesting', x: 0, y: 146, w: 6, h: 9, minW: 6, minH: 6 },
   ],
 };
 
@@ -331,6 +340,16 @@ const Index = () => {
                   <CeilingPricePanel assets={assets} />
                 </DashboardPanel>
               </div>
+              <div key="profitability">
+                <DashboardPanel title="Rentabilidade vs Benchmarks" locked={locked}>
+                  <ProfitabilityPanel assets={assets} />
+                </DashboardPanel>
+              </div>
+              <div key="backtesting">
+                <DashboardPanel title="Backtesting Histórico" locked={locked}>
+                  <BacktestingPanel assets={assets} />
+                </DashboardPanel>
+              </div>
             </ResponsiveGrid>
           </div>
         )}
@@ -338,6 +357,9 @@ const Index = () => {
 
       {/* Floating AI Chatbot */}
       <DashboardChatbot assets={assets} />
+
+      {/* Onboarding */}
+      <OnboardingOverlay />
 
       <HoldingModal
         open={modalOpen}

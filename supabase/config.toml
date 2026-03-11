@@ -83,3 +83,12 @@ verify_jwt = false
 
 [functions.ceiling-price]
 verify_jwt = false
+
+[functions.profitability]
+verify_jwt = false
+
+[functions.backtesting]
+verify_jwt = false
+
+[functions.parse-b3-extract]
+verify_jwt = false
