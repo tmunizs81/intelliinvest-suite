@@ -13,6 +13,7 @@ import FundamentalIndicators from '@/components/analysis/FundamentalIndicators';
 import AISignalBadge from '@/components/analysis/AISignalBadge';
 import AIChartSummary from '@/components/analysis/AIChartSummary';
 import AssetProfilePanel from '@/components/analysis/AssetProfilePanel';
+import MarketNewsPanel from '@/components/analysis/MarketNewsPanel';
 
 type RangeOption = '1mo' | '3mo' | '6mo' | '1y' | '2y' | '5y' | '10y' | 'max';
 
