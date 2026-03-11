@@ -143,3 +143,9 @@ verify_jwt = false
 
 [functions.telegram-security-alert]
 verify_jwt = false
+
+[functions.ai-pattern-detector]
+verify_jwt = false
+
+[functions.ai-ir-assistant]
+verify_jwt = false

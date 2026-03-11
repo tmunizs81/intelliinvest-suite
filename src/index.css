@@ -263,3 +263,13 @@
 
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Privacy mode - blur monetary values */
+.privacy-blur .font-mono {
+  filter: blur(8px);
+  transition: filter 0.2s ease;
+  user-select: none;
+}
+.privacy-blur .font-mono:hover {
+  filter: blur(0);
+}
