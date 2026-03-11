@@ -230,6 +230,8 @@ function UsersTab() {
   const [newPassword, setNewPassword] = useState('');
   const [newName, setNewName] = useState('');
   const [newRole, setNewRole] = useState<'admin' | 'user'>('user');
+  const [newBotToken, setNewBotToken] = useState('');
+  const [newChatId, setNewChatId] = useState('');
   const [creating, setCreating] = useState(false);
 
   const loadUsers = useCallback(async () => {
