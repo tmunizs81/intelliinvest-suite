@@ -1,5 +1,6 @@
-import { useState, useCallback, useEffect } from 'react';
-import { Responsive, WidthProvider, Layout } from 'react-grid-layout';
+import { useState, useCallback } from 'react';
+import { Responsive, WidthProvider } from 'react-grid-layout';
+import type { Layout as RGLLayout } from 'react-grid-layout';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
 
