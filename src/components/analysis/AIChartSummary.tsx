@@ -29,8 +29,14 @@ export default function AIChartSummary({ ticker, name, type, candles, loadDelay 
   const [error, setError] = useState<string | null>(null);
   const [lastTicker, setLastTicker] = useState('');
 
-  const analyze = useCallback(async (retries = 3) => {
+  const analyze = useCallback(async (retries = 3, skipCache = false) => {
     if (candles.length < 20) return;
+    const cached = chartCache.get(ticker);
+    if (!skipCache && cached && Date.now() - cached.ts < CACHE_TTL) {
+      setSummary(cached.data);
+      setLastTicker(ticker);
+      return;
+    }
     setLoading(true);
     setError(null);
 
