@@ -707,37 +707,77 @@ function TelegramTab() {
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
   const [settingWebhook, setSettingWebhook] = useState(false);
+  const [linkCode, setLinkCode] = useState<string | null>(null);
+  const [generating, setGenerating] = useState(false);
+  const [polling, setPolling] = useState(false);
 
-  useEffect(() => {
+  const loadSettings = useCallback(async () => {
     if (!user) return;
-    supabase.from('telegram_settings').select('*').eq('user_id', user.id).single()
-      .then(({ data }) => {
-        if (data) {
-          setSettings(data);
-          setChatId(data.chat_id || '');
-          setEnabled(data.enabled || false);
-        }
-        setLoading(false);
-      });
+    const { data } = await supabase.from('telegram_settings').select('*').eq('user_id', user.id).maybeSingle();
+    if (data) {
+      setSettings(data);
+      setChatId(data.chat_id || '');
+      setEnabled(data.enabled || false);
+      setLinkCode(data.link_code || null);
+    }
+    setLoading(false);
   }, [user]);
+
+  useEffect(() => { loadSettings(); }, [loadSettings]);
+
+  // Poll for auto-link when code is active
+  useEffect(() => {
+    if (!linkCode || !user) return;
+    setPolling(true);
+    const interval = setInterval(async () => {
+      const { data } = await supabase.from('telegram_settings').select('*').eq('user_id', user.id).maybeSingle();
+      if (data && data.chat_id && !data.link_code) {
+        setSettings(data);
+        setChatId(data.chat_id);
+        setEnabled(data.enabled);
+        setLinkCode(null);
+        setPolling(false);
+        clearInterval(interval);
+        toast.success('🎉 Telegram vinculado automaticamente!');
+      }
+    }, 3000);
+    return () => { clearInterval(interval); setPolling(false); };
+  }, [linkCode, user]);
+
+  const generateLinkCode = async () => {
+    if (!user) return;
+    setGenerating(true);
+    try {
+      const code = Math.random().toString(36).substring(2, 10).toUpperCase();
+      if (settings) {
+        await supabase.from('telegram_settings').update({ link_code: code }).eq('id', settings.id);
+      } else {
+        await supabase.from('telegram_settings').insert({
+          user_id: user.id,
+          link_code: code,
+          enabled: false,
+        });
+      }
+      setLinkCode(code);
+      toast.success('Código gerado! Envie ao bot no Telegram.');
+    } catch {
+      toast.error('Erro ao gerar código');
+    } finally {
+      setGenerating(false);
+    }
+  };
 
   const save = async () => {
     if (!user) return;
     setSaving(true);
     try {
       if (settings) {
-        await supabase.from('telegram_settings').update({
-          chat_id: chatId,
-          enabled,
-        }).eq('id', settings.id);
+        await supabase.from('telegram_settings').update({ chat_id: chatId, enabled }).eq('id', settings.id);
       } else {
-        await supabase.from('telegram_settings').insert({
-          user_id: user.id,
-          chat_id: chatId,
-          enabled,
-        });
+        await supabase.from('telegram_settings').insert({ user_id: user.id, chat_id: chatId, enabled });
       }
-      toast.success('Configurações do Telegram salvas');
+      toast.success('Configurações salvas');
+      await loadSettings();
     } catch {
       toast.error('Erro ao salvar');
     } finally {
@@ -746,19 +786,14 @@ function TelegramTab() {
   };
 
   const testConnection = async () => {
-    if (!chatId) {
-      toast.error('Preencha seu Chat ID');
-      return;
-    }
+    if (!chatId) { toast.error('Chat ID não configurado'); return; }
     setTesting(true);
     try {
-      const { data, error } = await supabase.functions.invoke('telegram-test', {
-        body: { chatId },
-      });
+      const { error } = await supabase.functions.invoke('telegram-test', { body: { chatId } });
       if (error) throw error;
       toast.success('Mensagem de teste enviada!');
     } catch {
-      toast.error('Falha ao enviar. Verifique seu Chat ID.');
+      toast.error('Falha ao enviar.');
     } finally {
       setTesting(false);
     }
@@ -767,9 +802,9 @@ function TelegramTab() {
   const setupWebhook = async () => {
     setSettingWebhook(true);
     try {
-      const { data, error } = await supabase.functions.invoke('telegram-setup-webhook');
+      const { error } = await supabase.functions.invoke('telegram-setup-webhook');
       if (error) throw error;
-      toast.success('Webhook ativado! O bot agora responde a comandos como /senha');
+      toast.success('Webhook ativado!');
     } catch {
       toast.error('Erro ao configurar webhook');
     } finally {
@@ -779,83 +814,128 @@ function TelegramTab() {
 
   if (loading) return <div className="flex justify-center p-8"><Loader2 className="h-5 w-5 animate-spin" /></div>;
 
+  const isLinked = !!chatId;
+  const botUsername = 'InvestAI_Bot'; // adjust to your bot's username
+
   return (
     <div className="space-y-4">
       <div className="rounded-lg border border-border bg-card p-5 space-y-4">
         <h3 className="font-semibold flex items-center gap-2">
           <Bell className="h-4 w-4" /> Configuração do Telegram
         </h3>
-        <p className="text-sm text-muted-foreground">
-          Receba notificações diárias sobre seus investimentos, dividendos, alertas e recomendações de compra/venda.
-        </p>
 
-        <div className="rounded-lg bg-muted/30 border border-border p-4 space-y-2">
-          <p className="text-xs font-medium text-foreground">Como obter seu Chat ID:</p>
-          <ol className="list-decimal list-inside text-xs text-muted-foreground space-y-1">
-            <li>Abra o Telegram e busque o bot <span className="font-mono text-primary">@InvestAI_Bot</span></li>
-            <li>Envie <span className="font-mono">/start</span> para o bot</li>
-            <li>Busque <span className="font-mono text-primary">@userinfobot</span> no Telegram</li>
-            <li>Envie qualquer mensagem para ele e copie seu <b>Chat ID</b></li>
-          </ol>
-        </div>
-
-        <div className="space-y-3">
+        {/* Status */}
+        <div className={`rounded-lg p-4 flex items-center gap-3 ${isLinked ? 'bg-gain/10 border border-gain/20' : 'bg-muted/30 border border-border'}`}>
+          <div className={`h-3 w-3 rounded-full ${isLinked ? 'bg-gain animate-pulse' : 'bg-muted-foreground'}`} />
           <div>
-            <label className="text-xs font-medium text-foreground">Seu Chat ID</label>
-            <input
-              value={chatId}
-              onChange={e => setChatId(e.target.value)}
-              placeholder="123456789"
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono mt-1"
-            />
-          </div>
-
-          <div className="flex items-center gap-3">
-            <label className="text-sm font-medium">Notificações ativas</label>
-            <button
-              onClick={() => setEnabled(!enabled)}
-              className={`relative w-11 h-6 rounded-full transition-colors ${enabled ? 'bg-primary' : 'bg-muted'}`}
-            >
-              <span className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white transition-transform ${enabled ? 'translate-x-5' : ''}`} />
-            </button>
+            <p className={`text-sm font-medium ${isLinked ? 'text-gain' : 'text-muted-foreground'}`}>
+              {isLinked ? '✅ Telegram vinculado' : 'Telegram não vinculado'}
+            </p>
+            {isLinked && <p className="text-xs text-muted-foreground">Chat ID: {chatId}</p>}
           </div>
         </div>
 
-        <div className="rounded-lg bg-muted/30 p-4 space-y-2">
-          <p className="text-xs font-semibold text-muted-foreground uppercase">Notificações incluem:</p>
-          <ul className="text-xs text-muted-foreground space-y-1">
-            <li>📊 Resumo diário da carteira com variação e patrimônio</li>
-            <li>🤖 Insights da IA sobre seus ativos</li>
-            <li>💰 Alertas de pagamento de dividendos e proventos</li>
-            <li>📈 Indicações de compra e venda baseadas em análise técnica</li>
-            <li>⚠️ Alertas de preço atingidos</li>
-          </ul>
-        </div>
+        {/* Auto-link section */}
+        {!isLinked && (
+          <div className="rounded-lg border border-primary/20 bg-primary/5 p-5 space-y-4">
+            <p className="text-sm font-semibold text-foreground">Vincular automaticamente</p>
+            <p className="text-xs text-muted-foreground">
+              Clique no botão abaixo para gerar um código. Depois, envie-o ao bot no Telegram e sua conta será vinculada automaticamente.
+            </p>
 
-        <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 space-y-2">
-          <p className="text-xs font-semibold text-foreground">🔐 Comandos disponíveis no Bot</p>
-          <ul className="text-xs text-muted-foreground space-y-1 font-mono">
-            <li><span className="text-primary">/senha</span> — Receber link para alterar a senha</li>
-            <li><span className="text-primary">/ajuda</span> — Ver comandos disponíveis</li>
-          </ul>
-        </div>
+            {linkCode ? (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">Envie esta mensagem ao bot:</span>
+                </div>
+                <div className="rounded-lg bg-background border border-border p-3 flex items-center justify-between">
+                  <code className="text-sm font-mono text-primary font-bold">/start {linkCode}</code>
+                  <button
+                    onClick={() => { navigator.clipboard.writeText(`/start ${linkCode}`); toast.success('Copiado!'); }}
+                    className="text-xs px-2 py-1 rounded border border-border hover:bg-accent/50"
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+                <a
+                  href={`https://t.me/${botUsername}?start=${linkCode}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-md bg-[hsl(200,80%,50%)] text-white text-sm font-medium hover:opacity-90"
+                >
+                  <Send className="h-4 w-4" />
+                  Abrir no Telegram
+                </a>
+                {polling && (
+                  <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    Aguardando vinculação...
+                  </p>
+                )}
+              </div>
+            ) : (
+              <button
+                onClick={generateLinkCode}
+                disabled={generating}
+                className="px-4 py-2.5 rounded-md bg-primary text-primary-foreground text-sm font-medium disabled:opacity-50 flex items-center gap-2"
+              >
+                {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                Vincular Telegram
+              </button>
+            )}
+          </div>
+        )}
 
-        <div className="flex gap-2 flex-wrap">
-          <button onClick={save} disabled={saving} className="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium disabled:opacity-50 flex items-center gap-2">
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-            Salvar
-          </button>
-          <button onClick={testConnection} disabled={testing || !chatId} className="px-4 py-2 rounded-md border border-border text-sm font-medium flex items-center gap-2 hover:bg-accent/50 disabled:opacity-50">
-            {testing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-            Testar Conexão
-          </button>
-          {isAdmin && (
-            <button onClick={setupWebhook} disabled={settingWebhook} className="px-4 py-2 rounded-md border border-border text-sm font-medium flex items-center gap-2 hover:bg-accent/50 disabled:opacity-50">
-              {settingWebhook ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-              Ativar Webhook
-            </button>
-          )}
-        </div>
+        {/* If linked, show controls */}
+        {isLinked && (
+          <>
+            <div className="flex items-center gap-3">
+              <label className="text-sm font-medium">Notificações ativas</label>
+              <button
+                onClick={() => setEnabled(!enabled)}
+                className={`relative w-11 h-6 rounded-full transition-colors ${enabled ? 'bg-primary' : 'bg-muted'}`}
+              >
+                <span className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white transition-transform ${enabled ? 'translate-x-5' : ''}`} />
+              </button>
+            </div>
+
+            <div className="rounded-lg bg-muted/30 p-4 space-y-2">
+              <p className="text-xs font-semibold text-muted-foreground uppercase">Você receberá:</p>
+              <ul className="text-xs text-muted-foreground space-y-1">
+                <li>📊 Resumo diário da carteira com variação e patrimônio</li>
+                <li>🤖 Insights da IA sobre seus ativos</li>
+                <li>💰 Alertas de pagamento de dividendos e proventos</li>
+                <li>📈 Indicações de compra e venda</li>
+                <li>⚠️ Alertas de preço atingidos</li>
+              </ul>
+            </div>
+
+            <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 space-y-2">
+              <p className="text-xs font-semibold text-foreground">🔐 Comandos do Bot</p>
+              <ul className="text-xs text-muted-foreground space-y-1 font-mono">
+                <li><span className="text-primary">/senha</span> — Alterar senha</li>
+                <li><span className="text-primary">/ajuda</span> — Ver comandos</li>
+              </ul>
+            </div>
+
+            <div className="flex gap-2 flex-wrap">
+              <button onClick={save} disabled={saving} className="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium disabled:opacity-50 flex items-center gap-2">
+                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                Salvar
+              </button>
+              <button onClick={testConnection} disabled={testing} className="px-4 py-2 rounded-md border border-border text-sm font-medium flex items-center gap-2 hover:bg-accent/50 disabled:opacity-50">
+                {testing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                Testar
+              </button>
+              {isAdmin && (
+                <button onClick={setupWebhook} disabled={settingWebhook} className="px-4 py-2 rounded-md border border-border text-sm font-medium flex items-center gap-2 hover:bg-accent/50 disabled:opacity-50">
+                  {settingWebhook ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                  Ativar Webhook
+                </button>
+              )}
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
