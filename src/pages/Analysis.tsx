@@ -190,6 +190,13 @@ export default function Analysis() {
             <AssetProfilePanel ticker={ticker} name={assetName || ticker} type={assetType} />
           </div>
 
+          {/* FII Properties List - right after profile */}
+          {(assetType === 'FII' || /^[A-Z]{4}11$/i.test(ticker)) && (
+            <div className="mb-4">
+              <FiiPropertiesPanel ticker={ticker} />
+            </div>
+          )}
+
           {/* Market News & AI Opinion */}
           <div className="mb-4">
             <MarketNewsPanel ticker={ticker} name={assetName || ticker} type={assetType} />
