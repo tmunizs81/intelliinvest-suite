@@ -41,7 +41,7 @@ serve(async (req) => {
 
     for (const tgUser of telegramUsers) {
       try {
-        if (!tgUser.bot_token || !tgUser.chat_id) continue;
+        if (!tgUser.chat_id) continue;
 
         // Fetch user holdings
         const { data: holdings } = await adminClient
