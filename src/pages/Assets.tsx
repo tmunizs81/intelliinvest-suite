@@ -29,6 +29,7 @@ export default function Assets() {
   const [importData, setImportData] = useState('');
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState('');
+  const [brokerageOpen, setBrokerageOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const filtered = assets.filter(a => {
