@@ -183,6 +183,11 @@ export default function Analysis() {
             </div>
           </div>
 
+          {/* Asset Profile Summary */}
+          <div className="mb-4">
+            <AssetProfilePanel ticker={ticker} name={assetName || ticker} type={assetType} />
+          </div>
+
           {/* AI Signal Badge */}
           <div className="mb-4">
             <AISignalBadge
@@ -296,10 +301,6 @@ export default function Analysis() {
             </div>
           </div>
 
-          {/* Asset Profile Summary */}
-          <div className="mt-6">
-            <AssetProfilePanel ticker={ticker} name={assetName || ticker} type={assetType} />
-          </div>
 
           {/* Position info */}
           {asset && profitInfo && (
