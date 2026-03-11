@@ -45,7 +45,7 @@ serve(async (req) => {
     }
 
     const sendTelegramMessage = async (text: string) => {
-      await fetch(`https://api.telegram.org/bot${tgSetting.bot_token}/sendMessage`, {
+      await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
