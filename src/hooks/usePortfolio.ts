@@ -61,8 +61,11 @@ export function usePortfolio() {
 
       const enriched = h.map((item) => {
         const quote = quotes[item.ticker];
+        const currency = quote?.currency || 'BRL';
         const currentPrice = quote?.currentPrice || 0;
-        const value = currentPrice * item.quantity;
+        const currentPriceBRL = quote?.currentPriceBRL || currentPrice;
+        const exchangeRate = quote?.exchangeRate || 1;
+        const value = currentPriceBRL * item.quantity;
         totalValue += value;
         return {
           ticker: item.ticker,
@@ -70,11 +73,14 @@ export function usePortfolio() {
           type: item.type as Asset['type'],
           quantity: item.quantity,
           avgPrice: item.avg_price,
-          currentPrice,
+          currentPrice: currentPriceBRL, // Use BRL price for portfolio calculations
           change24h: quote?.change24h || 0,
           allocation: 0,
           sector: item.sector || undefined,
           source: quote?.source || undefined,
+          currency,
+          currentPriceBRL,
+          exchangeRate,
         };
       });
 
