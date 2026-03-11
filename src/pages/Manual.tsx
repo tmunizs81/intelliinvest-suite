@@ -152,10 +152,12 @@ O Dashboard é a tela principal do sistema, oferecendo uma visão completa e per
 #### ⚡ Alertas Inteligentes
 - Análise automatizada de oportunidades e riscos
 - Notificações baseadas em IA
+- Proteção contra excesso de chamadas (rate limiting)
 
-#### 📑 Relatório Mensal
-- Resumo mensal automático do desempenho
-- Gerado por IA
+#### 🔔 Notificações Push (PWA)
+- Receba alertas diretamente no navegador/celular
+- Ative clicando no ícone 🔔 no painel de alertas
+- Funciona mesmo com o app minimizado (quando instalado como PWA)
 
 #### 💡 Aporte Inteligente
 - Sugestão de onde alocar novos aportes
