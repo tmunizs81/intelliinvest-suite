@@ -1,10 +1,31 @@
-
-
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
+
+async function callAI(body: any): Promise<Response> {
+  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+  const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
+  if (LOVABLE_API_KEY) {
+    const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (resp.ok || resp.status === 402) return resp;
+    if (resp.status !== 429 && resp.status < 500) return resp;
+    console.warn(`Lovable AI failed (${resp.status}), trying DeepSeek fallback...`);
+    try { await resp.text(); } catch {}
+  }
+  if (!DEEPSEEK_API_KEY) throw new Error("No AI provider available");
+  console.log("Using DeepSeek fallback");
+  return fetch("https://api.deepseek.com/v1/chat/completions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${DEEPSEEK_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ ...body, model: "deepseek-chat" }),
+  });
+}
 
 const SYSTEM_PROMPT = `Você é um consultor de investimentos AI de elite, especialista no mercado brasileiro (B3), criptomoedas, renda fixa e fundos imobiliários.
 
@@ -29,26 +50,12 @@ TIPOS DE ANÁLISE:
 7. Comparação com benchmarks (CDI, Ibovespa)`;
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
+  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
-    }
-
     const { portfolio } = await req.json();
+    if (!portfolio || !Array.isArray(portfolio)) return new Response(JSON.stringify({ error: "portfolio array required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
-    if (!portfolio || !Array.isArray(portfolio)) {
-      return new Response(
-        JSON.stringify({ error: "portfolio array required" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // Build portfolio summary for the AI
     const totalValue = portfolio.reduce((s: number, a: any) => s + (a.currentPrice * a.quantity), 0);
     const totalCost = portfolio.reduce((s: number, a: any) => s + (a.avgPrice * a.quantity), 0);
     const totalReturn = totalCost > 0 ? ((totalValue - totalCost) / totalCost * 100) : 0;
@@ -76,87 +83,48 @@ Data atual: ${new Date().toLocaleDateString('pt-BR')}
 
 Gere insights inteligentes, alertas e recomendações baseados nestes dados reais.`;
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content: userPrompt },
-        ],
-        tools: [
-          {
-            type: "function",
-            function: {
-              name: "generate_insights",
-              description: "Return structured investment insights for the portfolio",
-              parameters: {
-                type: "object",
-                properties: {
-                  insights: {
-                    type: "array",
-                    items: {
-                      type: "object",
-                      properties: {
-                        type: {
-                          type: "string",
-                          enum: ["recommendation", "alert", "analysis"],
-                          description: "Type of insight",
-                        },
-                        title: {
-                          type: "string",
-                          description: "Short title for the insight (max 60 chars)",
-                        },
-                        description: {
-                          type: "string",
-                          description: "Detailed explanation with numbers and actionable advice (max 200 chars)",
-                        },
-                        severity: {
-                          type: "string",
-                          enum: ["info", "warning", "critical"],
-                          description: "Severity level",
-                        },
-                        ticker: {
-                          type: "string",
-                          description: "Related ticker symbol, if applicable",
-                        },
-                      },
-                      required: ["type", "title", "description", "severity"],
-                      additionalProperties: false,
-                    },
+    const response = await callAI({
+      model: "google/gemini-2.5-flash",
+      messages: [
+        { role: "system", content: SYSTEM_PROMPT },
+        { role: "user", content: userPrompt },
+      ],
+      tools: [{
+        type: "function",
+        function: {
+          name: "generate_insights",
+          description: "Return structured investment insights for the portfolio",
+          parameters: {
+            type: "object",
+            properties: {
+              insights: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    type: { type: "string", enum: ["recommendation", "alert", "analysis"] },
+                    title: { type: "string", description: "Short title (max 60 chars)" },
+                    description: { type: "string", description: "Detailed explanation (max 200 chars)" },
+                    severity: { type: "string", enum: ["info", "warning", "critical"] },
+                    ticker: { type: "string" },
                   },
-                  summary: {
-                    type: "string",
-                    description: "One-line overall portfolio assessment in Portuguese (max 100 chars)",
-                  },
+                  required: ["type", "title", "description", "severity"],
+                  additionalProperties: false,
                 },
-                required: ["insights", "summary"],
-                additionalProperties: false,
               },
+              summary: { type: "string", description: "One-line assessment (max 100 chars)" },
             },
+            required: ["insights", "summary"],
+            additionalProperties: false,
           },
-        ],
-        tool_choice: { type: "function", function: { name: "generate_insights" } },
-      }),
+        },
+      }],
+      tool_choice: { type: "function", function: { name: "generate_insights" } },
     });
 
     if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(
-          JSON.stringify({ error: "Rate limit exceeded. Tente novamente em alguns instantes." }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "Créditos insuficientes. Adicione créditos ao workspace." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
+      if (response.status === 429) return new Response(JSON.stringify({ error: "Rate limit exceeded." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      if (response.status === 402) return new Response(JSON.stringify({ error: "Créditos insuficientes." }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       const text = await response.text();
       console.error("AI gateway error:", response.status, text);
       throw new Error(`AI gateway error: ${response.status}`);
@@ -164,26 +132,12 @@ Gere insights inteligentes, alertas e recomendações baseados nestes dados reai
 
     const data = await response.json();
     const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
-
-    if (!toolCall?.function?.arguments) {
-      throw new Error("No structured response from AI");
-    }
+    if (!toolCall?.function?.arguments) throw new Error("No structured response from AI");
 
     const parsed = JSON.parse(toolCall.function.arguments);
-
-    return new Response(
-      JSON.stringify({
-        insights: parsed.insights,
-        summary: parsed.summary,
-        timestamp: new Date().toISOString(),
-      }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ insights: parsed.insights, summary: parsed.summary, timestamp: new Date().toISOString() }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (err) {
     console.error("ai-insights error:", err);
-    return new Response(
-      JSON.stringify({ error: err instanceof Error ? err.message : "Unknown error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ error: err instanceof Error ? err.message : "Unknown error" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });

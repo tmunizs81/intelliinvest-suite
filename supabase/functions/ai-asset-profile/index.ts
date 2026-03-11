@@ -1,88 +1,66 @@
-
-
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+async function callAI(body: any): Promise<Response> {
+  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+  const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
+  if (LOVABLE_API_KEY) {
+    const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (resp.ok || resp.status === 402) return resp;
+    if (resp.status !== 429 && resp.status < 500) return resp;
+    console.warn(`Lovable AI failed (${resp.status}), trying DeepSeek fallback...`);
+    try { await resp.text(); } catch {}
+  }
+  if (!DEEPSEEK_API_KEY) throw new Error("No AI provider available");
+  console.log("Using DeepSeek fallback");
+  return fetch("https://api.deepseek.com/v1/chat/completions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${DEEPSEEK_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ ...body, model: "deepseek-chat" }),
+  });
+}
+
 const userAgents = [
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
 ];
 
-function randomUA() {
-  return userAgents[Math.floor(Math.random() * userAgents.length)];
-}
+function randomUA() { return userAgents[Math.floor(Math.random() * userAgents.length)]; }
 
 async function fetchPageText(url: string): Promise<string | null> {
   try {
     const resp = await fetch(url, {
-      headers: {
-        "User-Agent": randomUA(),
-        "Accept": "text/html,application/xhtml+xml",
-        "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
-      },
+      headers: { "User-Agent": randomUA(), "Accept": "text/html,application/xhtml+xml", "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8" },
       signal: AbortSignal.timeout(10000),
     });
     if (!resp.ok) return null;
     const html = await resp.text();
-    // Strip to text
-    return html
-      .replace(/<script[\s\S]*?<\/script>/gi, " ")
-      .replace(/<style[\s\S]*?<\/style>/gi, " ")
-      .replace(/<[^>]+>/g, " ")
-      .replace(/&nbsp;/g, " ")
-      .replace(/&amp;/g, "&")
-      .replace(/&quot;/g, '"')
-      .replace(/&#39;/g, "'")
-      .replace(/&lt;/g, "<")
-      .replace(/&gt;/g, ">")
-      .replace(/\s+/g, " ")
-      .trim()
-      .substring(0, 15000);
-  } catch (err) {
-    console.warn(`fetchPageText failed for ${url}:`, err);
-    return null;
-  }
+    return html.replace(/<script[\s\S]*?<\/script>/gi, " ").replace(/<style[\s\S]*?<\/style>/gi, " ").replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/\s+/g, " ").trim().substring(0, 15000);
+  } catch { return null; }
 }
 
-// Map of common crypto tickers to CoinGecko IDs
 const CRYPTO_MAP: Record<string, string> = {
-  BTC: "bitcoin", BITCOIN: "bitcoin",
-  ETH: "ethereum", ETHEREUM: "ethereum",
-  BNB: "binancecoin", SOL: "solana",
-  ADA: "cardano", XRP: "ripple",
-  DOT: "polkadot", DOGE: "dogecoin",
-  AVAX: "avalanche-2", MATIC: "matic-network",
-  LINK: "chainlink", UNI: "uniswap",
-  ATOM: "cosmos", LTC: "litecoin",
-  NEAR: "near", APT: "aptos",
-  ARB: "arbitrum", OP: "optimism",
-  USDT: "tether", USDC: "usd-coin",
-  SHIB: "shiba-inu", FIL: "filecoin",
-  ALGO: "algorand", HBAR: "hedera-hashgraph",
-  VET: "vechain", ICP: "internet-computer",
-  AAVE: "aave", GRT: "the-graph",
-  SAND: "the-sandbox", MANA: "decentraland",
-  CRV: "curve-dao-token", MKR: "maker",
-  RENDER: "render-token", FET: "fetch-ai",
-  SUI: "sui", SEI: "sei-network",
-  TIA: "celestia", INJ: "injective-protocol",
-  PEPE: "pepe", WIF: "dogwifcoin",
+  BTC: "bitcoin", ETH: "ethereum", BNB: "binancecoin", SOL: "solana",
+  ADA: "cardano", XRP: "ripple", DOT: "polkadot", DOGE: "dogecoin",
+  AVAX: "avalanche-2", LINK: "chainlink", UNI: "uniswap", LTC: "litecoin",
+  NEAR: "near", SUI: "sui", PEPE: "pepe",
 };
 
 function isCrypto(ticker: string, type?: string): boolean {
-  if (type === "Cripto" || type === "Crypto") return true;
-  return ticker.toUpperCase() in CRYPTO_MAP;
+  return type === "Cripto" || type === "Crypto" || ticker.toUpperCase() in CRYPTO_MAP;
 }
 
-function getCoinGeckoId(ticker: string): string | null {
-  return CRYPTO_MAP[ticker.toUpperCase()] || null;
-}
+function getCoinGeckoId(ticker: string): string | null { return CRYPTO_MAP[ticker.toUpperCase()] || null; }
 
 function getAssetCategory(ticker: string, type?: string): string {
-  if (type === "Cripto" || type === "Crypto" || isCrypto(ticker, type)) return "crypto";
+  if (isCrypto(ticker, type)) return "crypto";
   if (type === "FII") return "fii";
   if (type === "ETF") return "etf";
   if (type === "BDR") return "bdr";
@@ -95,222 +73,93 @@ function getAssetCategory(ticker: string, type?: string): string {
 
 async function fetchCoinGeckoData(coinId: string): Promise<string | null> {
   try {
-    const resp = await fetch(
-      `https://api.coingecko.com/api/v3/coins/${coinId}?localization=false&tickers=false&community_data=false&developer_data=false`,
-      { signal: AbortSignal.timeout(10000) }
-    );
+    const resp = await fetch(`https://api.coingecko.com/api/v3/coins/${coinId}?localization=false&tickers=false&community_data=false&developer_data=false`, { signal: AbortSignal.timeout(10000) });
     if (!resp.ok) return null;
     const data = await resp.json();
-
-    const lines = [
+    return [
       `Nome: ${data.name} (${data.symbol?.toUpperCase()})`,
-      `Categoria: ${(data.categories || []).join(", ")}`,
-      `Descrição: ${data.description?.pt || data.description?.en || "N/A"}`,
       `Market Cap Rank: #${data.market_cap_rank || "N/A"}`,
-      `Preço atual (USD): $${data.market_data?.current_price?.usd || "N/A"}`,
-      `Preço atual (BRL): R$${data.market_data?.current_price?.brl || "N/A"}`,
-      `Market Cap (USD): $${data.market_data?.market_cap?.usd?.toLocaleString() || "N/A"}`,
-      `Volume 24h (USD): $${data.market_data?.total_volume?.usd?.toLocaleString() || "N/A"}`,
-      `Variação 24h: ${data.market_data?.price_change_percentage_24h?.toFixed(2) || "N/A"}%`,
-      `Variação 7d: ${data.market_data?.price_change_percentage_7d?.toFixed(2) || "N/A"}%`,
-      `Variação 30d: ${data.market_data?.price_change_percentage_30d?.toFixed(2) || "N/A"}%`,
-      `Variação 1y: ${data.market_data?.price_change_percentage_1y?.toFixed(2) || "N/A"}%`,
-      `ATH (USD): $${data.market_data?.ath?.usd || "N/A"} em ${data.market_data?.ath_date?.usd?.substring(0, 10) || "N/A"}`,
-      `ATL (USD): $${data.market_data?.atl?.usd || "N/A"}`,
-      `Supply Circulante: ${data.market_data?.circulating_supply?.toLocaleString() || "N/A"}`,
-      `Supply Total: ${data.market_data?.total_supply?.toLocaleString() || "N/A"}`,
-      `Supply Máximo: ${data.market_data?.max_supply?.toLocaleString() || "Infinito"}`,
-      `Hash Algorithm: ${data.hashing_algorithm || "N/A"}`,
-      `Genesis Date: ${data.genesis_date || "N/A"}`,
-      `Site: ${data.links?.homepage?.[0] || "N/A"}`,
-      `Blockchain: ${data.links?.blockchain_site?.[0] || "N/A"}`,
-      `Sentimento positivo: ${data.sentiment_votes_up_percentage || "N/A"}%`,
-      `Sentimento negativo: ${data.sentiment_votes_down_percentage || "N/A"}%`,
-    ];
-
-    return lines.join("\n");
-  } catch (err) {
-    console.warn("CoinGecko fetch failed:", err);
-    return null;
-  }
+      `Preço (BRL): R$${data.market_data?.current_price?.brl || "N/A"}`,
+      `Var 24h: ${data.market_data?.price_change_percentage_24h?.toFixed(2) || "N/A"}%`,
+      `Var 30d: ${data.market_data?.price_change_percentage_30d?.toFixed(2) || "N/A"}%`,
+      `Supply: ${data.market_data?.circulating_supply?.toLocaleString() || "N/A"} / ${data.market_data?.max_supply?.toLocaleString() || "∞"}`,
+      `Descrição: ${(data.description?.pt || data.description?.en || "N/A").substring(0, 2000)}`,
+    ].join("\n");
+  } catch { return null; }
 }
 
 function getScrapingUrls(ticker: string, category: string): string[] {
   const t = ticker.toLowerCase();
-  const urls: string[] = [];
-
-  if (category === "fii") {
-    urls.push(`https://investidor10.com.br/fiis/${t}/`);
-    urls.push(`https://statusinvest.com.br/fundos-imobiliarios/${t}`);
-    urls.push(`https://www.fundsexplorer.com.br/funds/${t}`);
-    urls.push(`https://fiis.com.br/${t}/`);
-  } else if (category === "stock") {
-    urls.push(`https://investidor10.com.br/acoes/${t}/`);
-    urls.push(`https://statusinvest.com.br/acoes/${t}`);
-    urls.push(`https://www.google.com/finance/quote/${ticker.toUpperCase()}:BVMF`);
-  } else if (category === "etf") {
-    urls.push(`https://investidor10.com.br/etfs/${t}/`);
-    urls.push(`https://statusinvest.com.br/etfs/${t}`);
-  } else if (category === "bdr") {
-    urls.push(`https://investidor10.com.br/bdrs/${t}/`);
-    urls.push(`https://statusinvest.com.br/bdrs/${t}`);
-  }
-
-  return urls;
+  if (category === "fii") return [`https://investidor10.com.br/fiis/${t}/`, `https://statusinvest.com.br/fundos-imobiliarios/${t}`];
+  if (category === "stock") return [`https://investidor10.com.br/acoes/${t}/`, `https://statusinvest.com.br/acoes/${t}`];
+  if (category === "etf") return [`https://investidor10.com.br/etfs/${t}/`];
+  if (category === "bdr") return [`https://investidor10.com.br/bdrs/${t}/`];
+  return [];
 }
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
-
     const { ticker, type, name } = await req.json();
-    if (!ticker) {
-      return new Response(JSON.stringify({ error: "ticker required" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    if (!ticker) return new Response(JSON.stringify({ error: "ticker required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
     const category = getAssetCategory(ticker, type);
     const urls = getScrapingUrls(ticker, category);
-
-    console.log(`Fetching asset profile for ${ticker} (${category}), scraping ${urls.length} sources`);
-
-    // Fetch data sources in parallel
-    let scrapedContent = "";
-    let coinGeckoContent = "";
+    let scrapedContent = "", coinGeckoContent = "";
 
     if (category === "crypto") {
       const coinId = getCoinGeckoId(ticker);
-      if (coinId) {
-        coinGeckoContent = await fetchCoinGeckoData(coinId) || "";
-        console.log(`CoinGecko data fetched for ${coinId}: ${coinGeckoContent ? "success" : "empty"}`);
-      }
+      if (coinId) coinGeckoContent = await fetchCoinGeckoData(coinId) || "";
     }
 
     if (urls.length > 0) {
-      const pageTexts = await Promise.all(urls.map((url) => fetchPageText(url)));
-      scrapedContent = pageTexts
-        .filter(Boolean)
-        .map((text, i) => `[Fonte ${i + 1}: ${urls[i]}]\n${text!.substring(0, 7000)}`)
-        .join("\n\n---\n\n");
+      const pageTexts = await Promise.all(urls.map(fetchPageText));
+      scrapedContent = pageTexts.filter(Boolean).map((text, i) => `[Fonte ${i + 1}: ${urls[i]}]\n${text!.substring(0, 7000)}`).join("\n\n---\n\n");
     }
 
-    const dataSection = [
-      coinGeckoContent ? `Dados do CoinGecko (API oficial):\n${coinGeckoContent}` : "",
-      scrapedContent ? `Dados coletados de fontes brasileiras:\n${scrapedContent}` : "",
-    ].filter(Boolean).join("\n\n---\n\n");
+    const dataSection = [coinGeckoContent ? `CoinGecko:\n${coinGeckoContent}` : "", scrapedContent ? `Fontes brasileiras:\n${scrapedContent}` : ""].filter(Boolean).join("\n\n---\n\n");
 
-    const prompt = `Gere um resumo completo e detalhado sobre o ativo ${ticker} (${name || ticker}, tipo: ${type || category}).
-
-${dataSection ? `${dataSection}\n\n` : ""}
-
-Use a ferramenta para retornar o resultado estruturado. Preencha TODOS os campos com as informações disponíveis. Se não houver informação, coloque null.
-
-Para o campo "sections", crie seções relevantes conforme o tipo de ativo:
-- FII: Estratégia, Composição da Carteira, Diversificação, Estrutura e Taxas, Distribuição de Rendimentos
-- Ação: Sobre a Empresa, Segmentos de Negócio, Posição no Mercado, Governança, Riscos e Oportunidades
-- ETF: Estratégia do Fundo, Composição, Metodologia do Índice, Custos, Exposição
-- BDR: Empresa Original, Negócios Principais, Presença Global, Estrutura do BDR
-- Cripto: Sobre o Projeto, Tecnologia e Blockchain, Tokenomics, Ecossistema, Casos de Uso, Dados de Mercado
-
-Para "key_assets", liste os principais ativos/imóveis/subsidiárias/holdings que compõem o fundo, empresa ou ecossistema crypto.`;
-
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          {
-            role: "system",
-            content:
-              "Você é um analista financeiro especializado no mercado brasileiro. Gere resumos completos e profissionais sobre ativos, similares aos encontrados no Investidor10 e StatusInvest. Use dados reais quando disponíveis nas fontes. Seja detalhado e informativo.",
-          },
-          { role: "user", content: prompt },
-        ],
-        tools: [
-          {
-            type: "function",
-            function: {
-              name: "generate_asset_profile",
-              description: "Generate a structured asset profile summary",
-              parameters: {
-                type: "object",
-                properties: {
-                  description: {
-                    type: "string",
-                    description: "Parágrafo introdutório sobre o ativo (2-4 frases)",
-                  },
-                  administrator: { type: "string", description: "Administrador/gestora (se aplicável)" },
-                  manager: { type: "string", description: "Gestor (se aplicável)" },
-                  segment: { type: "string", description: "Segmento/setor de atuação" },
-                  classification: { type: "string", description: "Classificação (ex: Híbrido, Tijolo, Growth, etc.)" },
-                  listing_date: { type: "string", description: "Data de listagem/IPO" },
-                  admin_fee: { type: "string", description: "Taxa de administração" },
-                  performance_fee: { type: "string", description: "Taxa de performance" },
-                  ticker_exchange: { type: "string", description: "Bolsa onde é negociado (B3, NYSE, etc.)" },
-                  sections: {
-                    type: "array",
-                    description: "Seções detalhadas do resumo",
-                    items: {
-                      type: "object",
-                      properties: {
-                        title: { type: "string" },
-                        content: { type: "string", description: "Texto em markdown com detalhes" },
-                      },
-                      required: ["title", "content"],
-                      additionalProperties: false,
-                    },
-                  },
-                  key_assets: {
-                    type: "array",
-                    description: "Principais ativos/imóveis/subsidiárias que compõem o fundo ou empresa",
-                    items: {
-                      type: "object",
-                      properties: {
-                        name: { type: "string" },
-                        location: { type: "string" },
-                        type: { type: "string", description: "Tipo (Escritório, Galpão, Subsidiária, etc.)" },
-                      },
-                      required: ["name"],
-                      additionalProperties: false,
-                    },
-                  },
-                  risks: {
-                    type: "array",
-                    description: "Principais riscos",
-                    items: { type: "string" },
-                  },
-                  highlights: {
-                    type: "array",
-                    description: "Destaques positivos",
-                    items: { type: "string" },
-                  },
-                },
-                required: ["description", "sections"],
-                additionalProperties: false,
+    const response = await callAI({
+      model: "google/gemini-2.5-flash",
+      messages: [
+        { role: "system", content: "Você é um analista financeiro especializado no mercado brasileiro. Gere resumos completos sobre ativos." },
+        { role: "user", content: `Gere resumo sobre ${ticker} (${name || ticker}, tipo: ${type || category}).\n\n${dataSection}` },
+      ],
+      tools: [{
+        type: "function",
+        function: {
+          name: "generate_asset_profile",
+          description: "Generate structured asset profile",
+          parameters: {
+            type: "object",
+            properties: {
+              description: { type: "string" },
+              administrator: { type: "string" }, manager: { type: "string" },
+              segment: { type: "string" }, classification: { type: "string" },
+              listing_date: { type: "string" }, admin_fee: { type: "string" },
+              performance_fee: { type: "string" }, ticker_exchange: { type: "string" },
+              sections: {
+                type: "array",
+                items: { type: "object", properties: { title: { type: "string" }, content: { type: "string" } }, required: ["title", "content"], additionalProperties: false },
               },
+              key_assets: {
+                type: "array",
+                items: { type: "object", properties: { name: { type: "string" }, location: { type: "string" }, type: { type: "string" } }, required: ["name"], additionalProperties: false },
+              },
+              risks: { type: "array", items: { type: "string" } },
+              highlights: { type: "array", items: { type: "string" } },
             },
+            required: ["description", "sections"],
+            additionalProperties: false,
           },
-        ],
-        tool_choice: { type: "function", function: { name: "generate_asset_profile" } },
-      }),
+        },
+      }],
+      tool_choice: { type: "function", function: { name: "generate_asset_profile" } },
     });
 
     if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Rate limit atingido. Tente novamente em instantes." }), {
-          status: 429,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
+      if (response.status === 429) return new Response(JSON.stringify({ error: "Rate limit." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       throw new Error(`AI error: ${response.status}`);
     }
 
@@ -318,14 +167,9 @@ Para "key_assets", liste os principais ativos/imóveis/subsidiárias/holdings qu
     const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
     if (!toolCall?.function?.arguments) throw new Error("No structured response from AI");
 
-    return new Response(toolCall.function.arguments, {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(toolCall.function.arguments, { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (err) {
     console.error("ai-asset-profile error:", err);
-    return new Response(
-      JSON.stringify({ error: err instanceof Error ? err.message : "Unknown error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ error: err instanceof Error ? err.message : "Unknown error" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });

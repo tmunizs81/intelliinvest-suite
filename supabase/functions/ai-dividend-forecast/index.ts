@@ -1,84 +1,80 @@
-
-
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+async function callAI(body: any): Promise<Response> {
+  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+  const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
+  if (LOVABLE_API_KEY) {
+    const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (resp.ok || resp.status === 402) return resp;
+    if (resp.status !== 429 && resp.status < 500) return resp;
+    console.warn(`Lovable AI failed (${resp.status}), trying DeepSeek fallback...`);
+    try { await resp.text(); } catch {}
+  }
+  if (!DEEPSEEK_API_KEY) throw new Error("No AI provider available");
+  console.log("Using DeepSeek fallback");
+  return fetch("https://api.deepseek.com/v1/chat/completions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${DEEPSEEK_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ ...body, model: "deepseek-chat" }),
+  });
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
-
     const { holdings } = await req.json();
-    if (!holdings?.length) {
-      return new Response(JSON.stringify({ error: "holdings required" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    if (!holdings?.length) return new Response(JSON.stringify({ error: "holdings required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
-    const holdingsText = holdings.map((a: any) =>
-      `${a.ticker} (${a.type}): ${a.quantity}un a R$${a.currentPrice?.toFixed(2)}`
-    ).join("\n");
+    const holdingsText = holdings.map((a: any) => `${a.ticker} (${a.type}): ${a.quantity}un a R$${a.currentPrice?.toFixed(2)}`).join("\n");
 
-    const prompt = `Projete dividendos futuros (próximos 12 meses) para estes ativos, baseado em histórico típico de dividendos brasileiros:
-
-${holdingsText}
-
-Para cada ativo pagador de dividendos, estime: frequência de pagamento, yield esperado, valor projetado por cota, e total para o investidor.`;
-
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash-lite",
-        messages: [
-          { role: "system", content: "Você é um especialista em dividendos do mercado brasileiro. Projete dividendos futuros com base em dados históricos típicos, payout ratios e características setoriais. Seja realista e conservador." },
-          { role: "user", content: prompt },
-        ],
-        tools: [{
-          type: "function",
-          function: {
-            name: "dividend_forecast",
-            description: "Return dividend projections",
-            parameters: {
-              type: "object",
-              properties: {
-                total_projected_12m: { type: "number" },
-                monthly_average: { type: "number" },
-                yield_on_cost: { type: "number", description: "Yield médio ponderado sobre custo" },
-                forecasts: {
-                  type: "array",
-                  items: {
-                    type: "object",
-                    properties: {
-                      ticker: { type: "string" },
-                      frequency: { type: "string", description: "mensal, trimestral, semestral, anual" },
-                      expected_yield: { type: "number" },
-                      projected_per_share: { type: "number" },
-                      projected_total: { type: "number" },
-                      confidence: { type: "string", enum: ["alta", "média", "baixa"] },
-                      notes: { type: "string" },
-                    },
-                    required: ["ticker", "frequency", "expected_yield", "projected_per_share", "projected_total", "confidence", "notes"],
-                    additionalProperties: false,
+    const response = await callAI({
+      model: "google/gemini-2.5-flash-lite",
+      messages: [
+        { role: "system", content: "Você é um especialista em dividendos do mercado brasileiro. Projete dividendos futuros com base em dados históricos típicos." },
+        { role: "user", content: `Projete dividendos futuros (próximos 12 meses):\n\n${holdingsText}` },
+      ],
+      tools: [{
+        type: "function",
+        function: {
+          name: "dividend_forecast",
+          description: "Return dividend projections",
+          parameters: {
+            type: "object",
+            properties: {
+              total_projected_12m: { type: "number" }, monthly_average: { type: "number" },
+              yield_on_cost: { type: "number" },
+              forecasts: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    ticker: { type: "string" }, frequency: { type: "string" },
+                    expected_yield: { type: "number" }, projected_per_share: { type: "number" },
+                    projected_total: { type: "number" },
+                    confidence: { type: "string", enum: ["alta", "média", "baixa"] },
+                    notes: { type: "string" },
                   },
+                  required: ["ticker", "frequency", "expected_yield", "projected_per_share", "projected_total", "confidence", "notes"],
+                  additionalProperties: false,
                 },
-                insights: { type: "string", description: "Overall dividend analysis and tips" },
               },
-              required: ["total_projected_12m", "monthly_average", "yield_on_cost", "forecasts", "insights"],
-              additionalProperties: false,
+              insights: { type: "string" },
             },
+            required: ["total_projected_12m", "monthly_average", "yield_on_cost", "forecasts", "insights"],
+            additionalProperties: false,
           },
-        }],
-        tool_choice: { type: "function", function: { name: "dividend_forecast" } },
-      }),
+        },
+      }],
+      tool_choice: { type: "function", function: { name: "dividend_forecast" } },
     });
 
     if (!response.ok) {
@@ -91,13 +87,9 @@ Para cada ativo pagador de dividendos, estime: frequência de pagamento, yield e
     const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
     if (!toolCall?.function?.arguments) throw new Error("No structured response");
 
-    return new Response(toolCall.function.arguments, {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(toolCall.function.arguments, { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (err) {
     console.error("ai-dividend-forecast error:", err);
-    return new Response(JSON.stringify({ error: err instanceof Error ? err.message : "Unknown error" }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(JSON.stringify({ error: err instanceof Error ? err.message : "Unknown error" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });
