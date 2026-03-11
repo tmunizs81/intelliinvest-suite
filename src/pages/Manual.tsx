@@ -76,17 +76,24 @@ O Dashboard é a tela principal do sistema, oferecendo uma visão completa e per
 - Patrimônio total investido
 - Rentabilidade geral (R$ e %)
 - Variação no dia
-- Número de ativos
+- Countdown para próxima atualização automática (5 min)
 
 #### 🏥 Score de Saúde
 - Nota de 0 a 100 para sua carteira
 - Avaliação de diversificação, risco e concentração
 - Recomendações de melhoria
+- Rate limiting: máx. 4 consultas IA/minuto
 
 #### 📈 Gráfico de Evolução
 - Evolução patrimonial ao longo do tempo
 - Comparação com benchmarks (CDI, IBOV, IFIX)
 - Filtros de período (1M, 3M, 6M, 1A, Total)
+
+#### 📊 Histórico Patrimonial (Real)
+- Gráfico baseado em **snapshots reais** salvos diariamente
+- Linha de patrimônio + linha tracejada de custo
+- Dados construídos automaticamente a cada login
+- Filtros: 7D, 1M, 3M, 6M, 1A, Total
 
 #### 🎯 Alocação por Tipo
 - Gráfico de pizza com distribuição por classe de ativo
