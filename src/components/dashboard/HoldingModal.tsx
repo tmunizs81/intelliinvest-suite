@@ -2,6 +2,8 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { X, Plus, Loader2, Search } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import type { HoldingRow } from '@/hooks/usePortfolio';
+import { type Asset } from '@/lib/mockData';
+import AICopilotSignal from './AICopilotSignal';
 
 const TYPES = ['Ação', 'FII', 'ETF', 'ETF Internacional', 'Cripto', 'Renda Fixa'] as const;
 
@@ -19,9 +21,10 @@ interface Props {
   onSave: (holding: Omit<HoldingRow, 'id'>) => Promise<void>;
   editData?: HoldingRow | null;
   onUpdate?: (id: string, data: Partial<HoldingRow>) => Promise<void>;
+  assets?: Asset[];
 }
 
-export default function HoldingModal({ open, onClose, onSave, editData, onUpdate }: Props) {
+export default function HoldingModal({ open, onClose, onSave, editData, onUpdate, assets = [] }: Props) {
   const [ticker, setTicker] = useState('');
   const [name, setName] = useState('');
   const [type, setType] = useState<string>('Ação');
@@ -310,6 +313,18 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
               />
             </div>
           </div>
+
+          {/* AI Copilot Signal */}
+          {ticker && quantity && avgPrice && !editData && (
+            <AICopilotSignal
+              ticker={ticker}
+              name={name}
+              type={type}
+              quantity={parseFloat(quantity) || 0}
+              avgPrice={parseFloat(avgPrice) || 0}
+              assets={assets}
+            />
+          )}
 
           <button
             type="submit" disabled={loading}

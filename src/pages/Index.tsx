@@ -29,6 +29,7 @@ import SmartContributionPanel from '@/components/dashboard/SmartContributionPane
 import CeilingPricePanel from '@/components/dashboard/CeilingPricePanel';
 import ProfitabilityPanel from '@/components/dashboard/ProfitabilityPanel';
 import BacktestingPanel from '@/components/dashboard/BacktestingPanel';
+import DividendForecastPanel from '@/components/dashboard/DividendForecastPanel';
 import OnboardingOverlay from '@/components/OnboardingOverlay';
 
 import { usePortfolio, type HoldingRow } from '@/hooks/usePortfolio';
@@ -45,7 +46,8 @@ const defaultLayouts: any = {
     { i: 'rebalance', x: 4, y: 11, w: 4, h: 7, minW: 3, minH: 5 },
     { i: 'correlation', x: 8, y: 11, w: 4, h: 7, minW: 3, minH: 5 },
     { i: 'performance', x: 0, y: 18, w: 12, h: 7, minW: 6, minH: 5 },
-    { i: 'dividends', x: 0, y: 25, w: 12, h: 8, minW: 6, minH: 6 },
+    { i: 'dividends', x: 0, y: 25, w: 6, h: 8, minW: 6, minH: 6 },
+    { i: 'dividend-forecast', x: 6, y: 25, w: 6, h: 8, minW: 4, minH: 6 },
     { i: 'holdings', x: 0, y: 33, w: 8, h: 10, minW: 6, minH: 6 },
     { i: 'alerts', x: 8, y: 33, w: 4, h: 5, minW: 3, minH: 4 },
     { i: 'currency', x: 8, y: 38, w: 4, h: 5, minW: 3, minH: 4 },
@@ -68,7 +70,8 @@ const defaultLayouts: any = {
     { i: 'rebalance', x: 5, y: 11, w: 5, h: 7, minW: 3, minH: 5 },
     { i: 'correlation', x: 0, y: 18, w: 10, h: 7, minW: 6, minH: 5 },
     { i: 'performance', x: 0, y: 25, w: 10, h: 7, minW: 6, minH: 5 },
-    { i: 'dividends', x: 0, y: 32, w: 10, h: 8, minW: 6, minH: 6 },
+    { i: 'dividends', x: 0, y: 32, w: 5, h: 8, minW: 5, minH: 6 },
+    { i: 'dividend-forecast', x: 5, y: 32, w: 5, h: 8, minW: 4, minH: 6 },
     { i: 'holdings', x: 0, y: 40, w: 10, h: 10, minW: 6, minH: 6 },
     { i: 'alerts', x: 0, y: 50, w: 5, h: 5, minW: 3, minH: 4 },
     { i: 'currency', x: 5, y: 50, w: 5, h: 5, minW: 3, minH: 4 },
@@ -92,19 +95,20 @@ const defaultLayouts: any = {
     { i: 'correlation', x: 0, y: 33, w: 6, h: 7, minW: 6, minH: 5 },
     { i: 'performance', x: 0, y: 40, w: 6, h: 7, minW: 6, minH: 5 },
     { i: 'dividends', x: 0, y: 47, w: 6, h: 8, minW: 6, minH: 6 },
-    { i: 'holdings', x: 0, y: 55, w: 6, h: 10, minW: 6, minH: 6 },
-    { i: 'alerts', x: 0, y: 65, w: 6, h: 5, minW: 6, minH: 4 },
-    { i: 'currency', x: 0, y: 70, w: 6, h: 5, minW: 6, minH: 4 },
-    { i: 'simulator', x: 0, y: 75, w: 6, h: 9, minW: 6, minH: 6 },
-    { i: 'goals', x: 0, y: 84, w: 6, h: 9, minW: 6, minH: 6 },
-    { i: 'news', x: 0, y: 93, w: 6, h: 7, minW: 6, minH: 5 },
-    { i: 'ai-insights', x: 0, y: 100, w: 6, h: 5, minW: 6, minH: 4 },
-    { i: 'smart-alerts', x: 0, y: 105, w: 6, h: 7, minW: 6, minH: 5 },
-    { i: 'monthly-report', x: 0, y: 112, w: 6, h: 7, minW: 6, minH: 5 },
-    { i: 'smart-contribution', x: 0, y: 119, w: 6, h: 9, minW: 6, minH: 6 },
-    { i: 'ceiling-price', x: 0, y: 128, w: 6, h: 9, minW: 6, minH: 6 },
-    { i: 'profitability', x: 0, y: 137, w: 6, h: 9, minW: 6, minH: 6 },
-    { i: 'backtesting', x: 0, y: 146, w: 6, h: 9, minW: 6, minH: 6 },
+    { i: 'dividend-forecast', x: 0, y: 55, w: 6, h: 8, minW: 6, minH: 6 },
+    { i: 'holdings', x: 0, y: 63, w: 6, h: 10, minW: 6, minH: 6 },
+    { i: 'alerts', x: 0, y: 73, w: 6, h: 5, minW: 6, minH: 4 },
+    { i: 'currency', x: 0, y: 78, w: 6, h: 5, minW: 6, minH: 4 },
+    { i: 'simulator', x: 0, y: 83, w: 6, h: 9, minW: 6, minH: 6 },
+    { i: 'goals', x: 0, y: 92, w: 6, h: 9, minW: 6, minH: 6 },
+    { i: 'news', x: 0, y: 101, w: 6, h: 7, minW: 6, minH: 5 },
+    { i: 'ai-insights', x: 0, y: 108, w: 6, h: 5, minW: 6, minH: 4 },
+    { i: 'smart-alerts', x: 0, y: 113, w: 6, h: 7, minW: 6, minH: 5 },
+    { i: 'monthly-report', x: 0, y: 120, w: 6, h: 7, minW: 6, minH: 5 },
+    { i: 'smart-contribution', x: 0, y: 127, w: 6, h: 9, minW: 6, minH: 6 },
+    { i: 'ceiling-price', x: 0, y: 136, w: 6, h: 9, minW: 6, minH: 6 },
+    { i: 'profitability', x: 0, y: 145, w: 6, h: 9, minW: 6, minH: 6 },
+    { i: 'backtesting', x: 0, y: 154, w: 6, h: 9, minW: 6, minH: 6 },
   ],
 };
 
@@ -278,6 +282,11 @@ const Index = () => {
                   <DividendsPanel assets={assets} />
                 </DashboardPanel>
               </div>
+              <div key="dividend-forecast">
+                <DashboardPanel title="Projeção de Dividendos IA" locked={locked}>
+                  <DividendForecastPanel assets={assets} />
+                </DashboardPanel>
+              </div>
               <div key="holdings">
                 <DashboardPanel title="Carteira" locked={locked}>
                   <HoldingsTable
@@ -367,6 +376,7 @@ const Index = () => {
         onSave={addHolding}
         editData={editingHolding}
         onUpdate={updateHolding}
+        assets={assets}
       />
     </div>
   );
