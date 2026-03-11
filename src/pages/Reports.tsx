@@ -1,12 +1,13 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import {
   FileText, Download, TrendingUp, TrendingDown, DollarSign, PieChart,
-  BarChart3, Calendar, Filter, Loader2, Printer, ArrowUpRight, ArrowDownRight,
+  BarChart3, Calendar, Filter, Loader2, Printer, ArrowUpRight, ArrowDownRight, FileSpreadsheet,
 } from 'lucide-react';
 import { usePortfolio } from '@/hooks/usePortfolio';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { formatCurrency, formatPercent } from '@/lib/mockData';
+import { exportPortfolioCSV, exportTransactionsCSV } from '@/lib/exportUtils';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart as RechartsPie, Pie, Cell, LineChart, Line, CartesianGrid,
