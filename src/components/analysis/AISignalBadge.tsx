@@ -113,7 +113,7 @@ export default function AISignalBadge({ ticker, name, type, candles, holdingInfo
   if (error) {
     return (
       <button
-        onClick={analyze}
+        onClick={() => analyze()}
         className="flex items-center gap-2 px-4 py-3 rounded-xl border border-dashed border-loss/30 bg-loss/5 hover:bg-loss/10 transition-colors"
       >
         <Brain className="h-4 w-4 text-loss" />
