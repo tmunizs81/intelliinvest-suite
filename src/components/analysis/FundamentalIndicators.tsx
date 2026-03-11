@@ -44,7 +44,7 @@ function Stat({ label, value, suffix, signal }: { label: string; value: string |
   );
 }
 
-export default function FundamentalIndicators({ ticker, type }: Props) {
+export default function FundamentalIndicators({ ticker, type, loadDelay = 0 }: Props) {
   const [data, setData] = useState<FundamentalData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
