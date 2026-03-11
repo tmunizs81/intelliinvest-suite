@@ -16,6 +16,7 @@ import AIChartSummary from '@/components/analysis/AIChartSummary';
 import AssetProfilePanel from '@/components/analysis/AssetProfilePanel';
 import MarketNewsPanel from '@/components/analysis/MarketNewsPanel';
 import FiiPropertiesPanel from '@/components/analysis/FiiPropertiesPanel';
+import FiiBuyHoldChecklist from '@/components/analysis/FiiBuyHoldChecklist';
 
 type RangeOption = '1mo' | '3mo' | '6mo' | '1y' | '2y' | '5y' | '10y' | 'max';
 
@@ -193,8 +194,15 @@ export default function Analysis() {
 
           {/* FII Properties List - right after profile */}
           {(assetType === 'FII' || /^[A-Z]{4}11$/i.test(ticker)) && (
-            <div className="mb-4">
+            <div className="mb-4 flex flex-col sm:flex-row gap-3">
               <FiiPropertiesPanel ticker={ticker} />
+            </div>
+          )}
+
+          {/* FII Buy & Hold Checklist */}
+          {(assetType === 'FII' || /^[A-Z]{4}11$/i.test(ticker)) && (
+            <div className="mb-4">
+              <FiiBuyHoldChecklist ticker={ticker} name={assetName || ticker} />
             </div>
           )}
 
