@@ -7,6 +7,7 @@ import 'react-resizable/css/styles.css';
 
 import PortfolioSummary from '@/components/dashboard/PortfolioSummary';
 import PortfolioChart from '@/components/dashboard/PortfolioChart';
+import PortfolioHistoryChart from '@/components/dashboard/PortfolioHistoryChart';
 import AllocationChart from '@/components/dashboard/AllocationChart';
 import PerformanceChart from '@/components/dashboard/PerformanceChart';
 import DividendsPanel from '@/components/dashboard/DividendsPanel';
@@ -35,6 +36,7 @@ import FixedIncomePanel from '@/components/dashboard/FixedIncomePanel';
 import OnboardingOverlay from '@/components/OnboardingOverlay';
 
 import { usePortfolio, type HoldingRow } from '@/hooks/usePortfolio';
+import { usePortfolioSnapshots } from '@/hooks/usePortfolioSnapshots';
 import { Loader2, Lock, Unlock, RotateCcw } from 'lucide-react';
 
 const STORAGE_KEY = 'investai-dashboard-layouts';
