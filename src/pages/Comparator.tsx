@@ -256,8 +256,8 @@ export default function Comparator() {
                           }`}>{asset.indicators.macd?.histogram?.toFixed(3)}</p>
                         </div>
                         <div className="rounded-lg bg-muted/40 p-2">
-                          <p className="text-[10px] text-muted-foreground">SMA 9</p>
-                          <p className="text-sm font-mono font-bold">{asset.indicators.sma9?.toFixed(2)}</p>
+                          <p className="text-[10px] text-muted-foreground">EMA 9</p>
+                          <p className="text-sm font-mono font-bold">{asset.indicators.ema9?.toFixed(2)}</p>
                         </div>
                         <div className="rounded-lg bg-muted/40 p-2">
                           <p className="text-[10px] text-muted-foreground">SMA 20</p>
