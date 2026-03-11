@@ -70,7 +70,7 @@ const Index = () => {
   const [layouts, setLayouts] = useState(loadLayouts);
   const [locked, setLocked] = useState(true);
 
-  const handleLayoutChange = useCallback((_: Layout[], allLayouts: Record<string, Layout[]>) => {
+  const handleLayoutChange = useCallback((_: any, allLayouts: any) => {
     setLayouts(allLayouts);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(allLayouts));
   }, []);
