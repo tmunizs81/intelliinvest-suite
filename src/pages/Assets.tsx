@@ -264,7 +264,16 @@ export default function Assets() {
                         <td className="text-right p-4 font-mono">{asset.quantity}</td>
                         <td className="text-right p-4 font-mono text-muted-foreground">{formatCurrency(asset.avgPrice)}</td>
                         <td className="text-right p-4 font-mono font-medium">
-                          {asset.currentPrice > 0 ? formatCurrency(asset.currentPrice) : '—'}
+                          {asset.currentPrice > 0 ? (
+                            <div>
+                              <span>{formatCurrency(asset.currentPrice)}</span>
+                              {asset.currency && asset.currency !== 'BRL' && (
+                                <p className="text-[10px] text-muted-foreground">
+                                  {formatCurrency(asset.currentPrice / (asset.exchangeRate || 1), asset.currency)}
+                                </p>
+                              )}
+                            </div>
+                          ) : '—'}
                         </td>
                         <td className="text-right p-4">
                           {asset.currentPrice > 0 ? (
