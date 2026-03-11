@@ -2,6 +2,8 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { X, Plus, Loader2, Search } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import type { HoldingRow } from '@/hooks/usePortfolio';
+import { type Asset } from '@/lib/mockData';
+import AICopilotSignal from './AICopilotSignal';
 
 const TYPES = ['Ação', 'FII', 'ETF', 'ETF Internacional', 'Cripto', 'Renda Fixa'] as const;
 
