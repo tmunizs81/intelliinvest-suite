@@ -326,6 +326,18 @@ function UsersTab() {
               <option value="admin">Administrador</option>
             </select>
           </div>
+          <div className="border-t border-border pt-3 mt-1">
+            <p className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1.5">
+              <Bell className="h-3.5 w-3.5" /> Telegram (opcional - resumo diário)
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <input value={newBotToken} onChange={e => setNewBotToken(e.target.value)} placeholder="Bot Token (ex: 123456:ABC...)" type="password" className="rounded-md border border-input bg-background px-3 py-2 text-sm font-mono" />
+              <input value={newChatId} onChange={e => setNewChatId(e.target.value)} placeholder="Chat ID (ex: 123456789)" className="rounded-md border border-input bg-background px-3 py-2 text-sm font-mono" />
+            </div>
+            <p className="text-xs text-muted-foreground mt-1.5">
+              Configure para o usuário receber resumos diários com patrimônio, variação, dividendos e alertas via Telegram.
+            </p>
+          </div>
           <div className="flex gap-2">
             <button onClick={createUser} disabled={creating} className="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium disabled:opacity-50 flex items-center gap-2">
               {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
