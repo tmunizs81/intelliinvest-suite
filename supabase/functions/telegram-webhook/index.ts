@@ -68,7 +68,7 @@ serve(async (req) => {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         } else {
-          await sendMsg("❌ Código inválido ou expirado. Gere um novo código nas configurações do InvestAI.");
+          await sendMsg("❌ Código inválido ou expirado. Gere um novo código nas configurações do T2-Simplynvest.");
           return new Response(JSON.stringify({ ok: true }), {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
