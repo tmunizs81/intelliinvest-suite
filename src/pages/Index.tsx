@@ -237,6 +237,7 @@ function Grid3({ children }: { children: React.ReactNode }) {
 function TabResumo({ assets, lastUpdate, nextUpdate, snapshots, snapshotsLoading, isMobile }: any) {
   return (
     <>
+      <LiveTickerBar assets={assets} />
       <Panel noPadding>
         <PortfolioSummary assets={assets} lastUpdate={lastUpdate} nextUpdate={nextUpdate} />
       </Panel>
