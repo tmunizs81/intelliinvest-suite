@@ -269,7 +269,6 @@ function UsersTab() {
           password: newPassword,
           displayName: newName,
           role: newRole,
-          telegramBotToken: newBotToken || undefined,
           telegramChatId: newChatId || undefined,
         },
       });
