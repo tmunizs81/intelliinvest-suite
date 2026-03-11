@@ -19,7 +19,7 @@ interface Props {
   open: boolean;
   onClose: () => void;
   onSave: (holding: Omit<HoldingRow, 'id'>) => Promise<void>;
-  editData?: HoldingRow | null;
+  editData?: (HoldingRow & { yield_rate?: string | null; indexer_type?: string | null }) | null;
   onUpdate?: (id: string, data: Partial<HoldingRow>) => Promise<void>;
   assets?: Asset[];
 }
@@ -32,6 +32,8 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
   const [avgPrice, setAvgPrice] = useState('');
   const [sector, setSector] = useState('');
   const [broker, setBroker] = useState('');
+  const [yieldRate, setYieldRate] = useState('');
+  const [indexerType, setIndexerType] = useState<string>('Pós-fixado');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -53,6 +55,8 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
       setAvgPrice(editData?.avg_price?.toString() || '');
       setSector(editData?.sector || '');
       setBroker(editData?.broker || '');
+      setYieldRate(editData?.yield_rate || '');
+      setIndexerType(editData?.indexer_type || 'Pós-fixado');
       setError('');
       setSuggestions([]);
       setShowSuggestions(false);
@@ -152,7 +156,7 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
     setLoading(true);
 
     try {
-      const data = {
+      const data: any = {
         ticker: ticker.toUpperCase().trim(),
         name: name.trim(),
         type,
@@ -160,6 +164,8 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
         avg_price: parseFloat(avgPrice),
         sector: sector.trim() || null,
         broker: broker.trim() || null,
+        yield_rate: type === 'Renda Fixa' ? yieldRate.trim() || null : null,
+        indexer_type: type === 'Renda Fixa' ? indexerType : null,
       };
 
       if (!data.ticker || !data.name || isNaN(data.quantity) || isNaN(data.avg_price)) {
@@ -285,6 +291,36 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
           </div>
 
           <BrokerAutocomplete value={broker} onChange={setBroker} />
+
+          {/* Campos de Renda Fixa */}
+          {type === 'Renda Fixa' && (
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground">Indexador *</label>
+                <select
+                  value={indexerType}
+                  onChange={e => setIndexerType(e.target.value)}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                >
+                  <option value="Pré-fixado">Pré-fixado</option>
+                  <option value="Pós-fixado">Pós-fixado</option>
+                  <option value="IPCA+">IPCA+</option>
+                  <option value="CDI">CDI</option>
+                  <option value="CDI+">CDI+</option>
+                  <option value="Selic">Selic</option>
+                </select>
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground">Rentabilidade</label>
+                <input
+                  value={yieldRate}
+                  onChange={e => setYieldRate(e.target.value)}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  placeholder={indexerType === 'Pré-fixado' ? '12.5% a.a.' : indexerType === 'IPCA+' ? 'IPCA + 6.5%' : '110% CDI'}
+                />
+              </div>
+            </div>
+          )}
 
           <div className="space-y-1">
             <label className="text-xs font-medium text-muted-foreground">Nome *</label>
