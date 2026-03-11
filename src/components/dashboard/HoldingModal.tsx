@@ -156,6 +156,7 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
         quantity: parseFloat(quantity),
         avg_price: parseFloat(avgPrice),
         sector: sector.trim() || null,
+        broker: broker.trim() || null,
       };
 
       if (!data.ticker || !data.name || isNaN(data.quantity) || isNaN(data.avg_price)) {
