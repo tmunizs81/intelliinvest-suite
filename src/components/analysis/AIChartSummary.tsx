@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Brain, Loader2, TrendingUp, TrendingDown, Minus, BarChart3 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { type Candle, getLatestIndicators } from '@/lib/technicalIndicators';
+import { enqueueAIRequest } from '@/lib/aiRequestQueue';
 
 const chartCache = new Map<string, { data: any; ts: number }>();
 const CACHE_TTL = 10 * 60 * 1000;
