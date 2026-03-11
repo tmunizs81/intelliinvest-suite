@@ -1,0 +1,1 @@
+ALTER TABLE public.holdings ADD COLUMN IF NOT EXISTS broker text DEFAULT null;
