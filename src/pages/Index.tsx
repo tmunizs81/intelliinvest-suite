@@ -1,8 +1,6 @@
 import { useState, useCallback } from 'react';
 // @ts-ignore
-import { Responsive, WidthProvider } from 'react-grid-layout';
-// @ts-ignore
-import type { Layout } from 'react-grid-layout';
+import { Responsive, WidthProvider } from 'react-grid-layout/dist/legacy.mjs';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
 
