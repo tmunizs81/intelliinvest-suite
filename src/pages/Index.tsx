@@ -228,6 +228,11 @@ const Index = () => {
                   <AIInsightsPanel assets={assets} />
                 </DashboardPanel>
               </div>
+              <div key="currency">
+                <DashboardPanel title="Câmbio" locked={locked}>
+                  <CurrencyDashboard />
+                </DashboardPanel>
+              </div>
             </ResponsiveGrid>
           </div>
         )}
