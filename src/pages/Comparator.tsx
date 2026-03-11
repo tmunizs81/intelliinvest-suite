@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { classifyAssetType } from '@/lib/assetClassification';
 import { Search, Loader2, Plus, X, Brain, TrendingUp, TrendingDown, BarChart3, DollarSign, Trophy, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { usePortfolio } from '@/hooks/usePortfolio';
@@ -101,7 +102,7 @@ export default function Comparator() {
       setAssets(prev => prev.map(a => a.ticker === ticker ? {
         ...a,
         name: histData?.name || ticker,
-        type: fundData?.type || (ticker.match(/\d{2}$/) ? 'FII' : 'Ação'),
+        type: fundData?.type || classifyAssetType(ticker),
         currentPrice: histData?.currentPrice || 0,
         change24h: histData?.previousClose > 0
           ? ((histData.currentPrice - histData.previousClose) / histData.previousClose * 100) : 0,
