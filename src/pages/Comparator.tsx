@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { classifyAssetType } from '@/lib/assetClassification';
 import { Search, Loader2, Plus, X, Brain, TrendingUp, TrendingDown, BarChart3, DollarSign, Trophy, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { usePortfolio } from '@/hooks/usePortfolio';
