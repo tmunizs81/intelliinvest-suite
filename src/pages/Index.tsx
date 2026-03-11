@@ -219,7 +219,7 @@ const Index = () => {
                   <AIInsightsPanel assets={assets} />
                 </DashboardPanel>
               </div>
-            </ResponsiveGridLayout>
+            </Responsive>
           </div>
         )}
       </div>
