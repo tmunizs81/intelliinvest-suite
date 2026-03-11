@@ -141,8 +141,9 @@ export function usePortfolio() {
   const refresh = useCallback(async () => {
     setLoading(true);
     const h = await loadHoldings();
+    await loadCashBalance();
     await fetchQuotes(h);
-  }, [loadHoldings, fetchQuotes]);
+  }, [loadHoldings, loadCashBalance, fetchQuotes]);
 
   // CRUD operations
   const addHolding = useCallback(async (holding: Omit<HoldingRow, 'id'>) => {
