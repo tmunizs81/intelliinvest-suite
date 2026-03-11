@@ -10,7 +10,9 @@ interface FundamentalData {
   dividendYield?: number | null;
   evEbitda?: number | null;
   netMargin?: number | null;
+  grossMargin?: number | null;
   debtToEquity?: number | null;
+  currentRatio?: number | null;
   marketCap?: number | null;
   eps?: number | null;
   revenue?: number | null;
@@ -21,6 +23,7 @@ interface FundamentalData {
   fiftyTwoWeekHigh?: number | null;
   fiftyTwoWeekLow?: number | null;
   avgVolume?: number | null;
+  payout?: number | null;
 }
 
 interface Props {
