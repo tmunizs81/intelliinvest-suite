@@ -199,6 +199,9 @@ function PortfolioSidebar({ assets, open, onToggle }: { assets: Asset[]; open: b
         </button>
       </div>
 
+      {/* Mini Donut Chart */}
+      <MiniAllocationChart assets={assets} total={total} />
+
       <div className="px-4 py-3 border-b border-border space-y-2 shrink-0">
         <div>
           <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Patrimônio</p>
