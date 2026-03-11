@@ -1,10 +1,31 @@
-
-
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
+
+async function callAI(body: any): Promise<Response> {
+  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+  const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
+  if (LOVABLE_API_KEY) {
+    const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (resp.ok || resp.status === 402) return resp;
+    if (resp.status !== 429 && resp.status < 500) return resp;
+    console.warn(`Lovable AI failed (${resp.status}), trying DeepSeek fallback...`);
+    try { await resp.text(); } catch {}
+  }
+  if (!DEEPSEEK_API_KEY) throw new Error("No AI provider available");
+  console.log("Using DeepSeek fallback");
+  return fetch("https://api.deepseek.com/v1/chat/completions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${DEEPSEEK_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ ...body, model: "deepseek-chat" }),
+  });
+}
 
 const userAgents = [
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
@@ -12,13 +33,9 @@ const userAgents = [
 
 async function fetchRssItems(url: string, maxItems = 5): Promise<Array<{ title: string; link: string; description: string }>> {
   try {
-    const resp = await fetch(url, {
-      headers: { "User-Agent": userAgents[0] },
-      signal: AbortSignal.timeout(8000),
-    });
+    const resp = await fetch(url, { headers: { "User-Agent": userAgents[0] }, signal: AbortSignal.timeout(8000) });
     if (!resp.ok) return [];
     const xml = await resp.text();
-    
     const items: Array<{ title: string; link: string; description: string }> = [];
     const itemRegex = /<item>([\s\S]*?)<\/item>/gi;
     let match;
@@ -31,53 +48,30 @@ async function fetchRssItems(url: string, maxItems = 5): Promise<Array<{ title: 
       if (title) items.push({ title, link, description: cleanDesc });
     }
     return items;
-  } catch (err) {
-    console.warn(`RSS fetch failed for ${url}:`, err);
-    return [];
-  }
+  } catch { return []; }
 }
 
-async function fetchGoogleNews(query: string): Promise<Array<{ title: string; link: string; description: string }>> {
-  const encoded = encodeURIComponent(query);
-  return fetchRssItems(`https://news.google.com/rss/search?q=${encoded}&hl=pt-BR&gl=BR&ceid=BR:pt-419`, 5);
+async function fetchGoogleNews(query: string) {
+  return fetchRssItems(`https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=pt-BR&gl=BR&ceid=BR:pt-419`, 5);
 }
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
-
     const { tickers } = await req.json();
-    if (!tickers?.length) {
-      return new Response(JSON.stringify({ error: "tickers required" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    if (!tickers?.length) return new Response(JSON.stringify({ error: "tickers required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
-    // Fetch real news from multiple sources in parallel
     const tickerList = tickers.slice(0, 10);
-    const queries = [
-      `mercado financeiro Brasil investimentos ${new Date().getFullYear()}`,
-      ...tickerList.slice(0, 4).map((t: string) => `${t} ações bolsa brasil`),
-    ];
-
-    const rssFeeds = [
-      "https://www.infomoney.com.br/feed/",
-      "https://valorinveste.globo.com/rss/valor-investe/",
-    ];
+    const queries = [`mercado financeiro Brasil investimentos ${new Date().getFullYear()}`, ...tickerList.slice(0, 4).map((t: string) => `${t} ações bolsa brasil`)];
+    const rssFeeds = ["https://www.infomoney.com.br/feed/", "https://valorinveste.globo.com/rss/valor-investe/"];
 
     const [googleResults, ...rssResults] = await Promise.all([
       Promise.all(queries.map(q => fetchGoogleNews(q))),
       ...rssFeeds.map(url => fetchRssItems(url, 5)),
     ]);
 
-    const allGoogleNews = googleResults.flat();
-    const allRssNews = rssResults.flat();
-    const allNews = [...allGoogleNews, ...allRssNews];
-
-    // Deduplicate by title similarity
+    const allNews = [...googleResults.flat(), ...rssResults.flat()];
     const seen = new Set<string>();
     const uniqueNews = allNews.filter(n => {
       const key = n.title.toLowerCase().substring(0, 40);
@@ -88,60 +82,43 @@ Deno.serve(async (req) => {
 
     const newsContext = uniqueNews.map((n, i) => `[${i + 1}] ${n.title}\n${n.description}\nFonte: ${n.link}`).join("\n\n");
 
-    // Use AI to categorize and filter relevant news
-    const prompt = `Analise estas notícias reais e selecione as 6-8 mais relevantes para um investidor que possui: ${tickers.join(', ')}.
-
-Para cada notícia selecionada, classifique o impacto e categoria. Se a notícia for sobre um ativo da carteira, inclua o ticker.
-
-NOTÍCIAS REAIS:
-${newsContext}
-
-Use a ferramenta para retornar as notícias classificadas. Mantenha os títulos originais das notícias.`;
-
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          { role: "system", content: "Você classifica notícias financeiras reais para investidores brasileiros. Mantenha os títulos das notícias originais. Avalie o impacto real nos ativos do investidor." },
-          { role: "user", content: prompt },
-        ],
-        tools: [{
-          type: "function",
-          function: {
-            name: "generate_news",
-            description: "Return classified real financial news",
-            parameters: {
-              type: "object",
-              properties: {
-                news: {
-                  type: "array",
-                  items: {
-                    type: "object",
-                    properties: {
-                      title: { type: "string" },
-                      summary: { type: "string", description: "Brief summary (max 120 chars)" },
-                      impact: { type: "string", enum: ["positive", "negative", "neutral"] },
-                      related_tickers: { type: "array", items: { type: "string" } },
-                      category: { type: "string", enum: ["macro", "setorial", "empresa", "global", "regulatório"] },
-                      source_url: { type: "string", description: "URL da fonte original" },
-                    },
-                    required: ["title", "summary", "impact", "related_tickers", "category"],
-                    additionalProperties: false,
+    const response = await callAI({
+      model: "google/gemini-2.5-flash",
+      messages: [
+        { role: "system", content: "Você classifica notícias financeiras reais para investidores brasileiros." },
+        { role: "user", content: `Analise estas notícias e selecione as 6-8 mais relevantes para quem possui: ${tickers.join(', ')}.\n\nNOTÍCIAS:\n${newsContext}` },
+      ],
+      tools: [{
+        type: "function",
+        function: {
+          name: "generate_news",
+          description: "Return classified real financial news",
+          parameters: {
+            type: "object",
+            properties: {
+              news: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    title: { type: "string" },
+                    summary: { type: "string" },
+                    impact: { type: "string", enum: ["positive", "negative", "neutral"] },
+                    related_tickers: { type: "array", items: { type: "string" } },
+                    category: { type: "string", enum: ["macro", "setorial", "empresa", "global", "regulatório"] },
+                    source_url: { type: "string" },
                   },
+                  required: ["title", "summary", "impact", "related_tickers", "category"],
+                  additionalProperties: false,
                 },
               },
-              required: ["news"],
-              additionalProperties: false,
             },
+            required: ["news"],
+            additionalProperties: false,
           },
-        }],
-        tool_choice: { type: "function", function: { name: "generate_news" } },
-      }),
+        },
+      }],
+      tool_choice: { type: "function", function: { name: "generate_news" } },
     });
 
     if (!response.ok) {
@@ -154,13 +131,9 @@ Use a ferramenta para retornar as notícias classificadas. Mantenha os títulos 
     const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
     if (!toolCall?.function?.arguments) throw new Error("No structured response");
 
-    return new Response(toolCall.function.arguments, {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(toolCall.function.arguments, { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (err) {
     console.error("ai-news error:", err);
-    return new Response(JSON.stringify({ error: err instanceof Error ? err.message : "Unknown error" }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(JSON.stringify({ error: err instanceof Error ? err.message : "Unknown error" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });

@@ -1,55 +1,74 @@
-
-
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+async function callAI(body: any): Promise<Response> {
+  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+  const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
+  if (LOVABLE_API_KEY) {
+    const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (resp.ok || resp.status === 402) return resp;
+    if (resp.status !== 429 && resp.status < 500) return resp;
+    console.warn(`Lovable AI failed (${resp.status}), trying DeepSeek fallback...`);
+    try { await resp.text(); } catch {}
+  }
+  if (!DEEPSEEK_API_KEY) throw new Error("No AI provider available");
+  console.log("Using DeepSeek fallback");
+  return fetch("https://api.deepseek.com/v1/chat/completions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${DEEPSEEK_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ ...body, model: "deepseek-chat" }),
+  });
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY")!;
     const { assets, year } = await req.json();
 
     const assetsInfo = (assets || []).map((a: any) =>
       `${a.ticker} (${a.name}): Tipo=${a.type}, Qtd=${a.quantity}, PM=R$${a.avgPrice?.toFixed(2)}, Atual=R$${a.currentPrice?.toFixed(2)}`
     ).join('\n');
 
-    const aiResp = await fetch("https://ai-gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${LOVABLE_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          {
-            role: "system",
-            content: `Você é um contador especializado em imposto de renda de investimentos no Brasil. Gere um guia passo-a-passo personalizado para declarar os investimentos abaixo no IRPF ${year}.
+    const response = await callAI({
+      model: "google/gemini-2.5-flash",
+      messages: [
+        {
+          role: "system",
+          content: `Você é um contador especializado em imposto de renda de investimentos no Brasil. Gere um guia passo-a-passo personalizado para declarar os investimentos abaixo no IRPF ${year}.
 
 Inclua:
-1. Quais fichas do programa IRPF usar (Bens e Direitos, Renda Variável, etc.)
-2. Códigos de bens corretos para cada tipo de ativo
-3. Como declarar cada ativo específico com valores
-4. Informações sobre isenções (vendas até R$20k/mês para ações)
+1. Quais fichas do programa IRPF usar
+2. Códigos de bens corretos
+3. Como declarar cada ativo
+4. Isenções (vendas até R$20k/mês para ações)
 5. Day trade vs swing trade
 6. Compensação de prejuízos
 7. FIIs (rendimentos isentos vs ganho de capital)
-8. Cripto (código 89 ou equivalente)
-9. Renda Fixa (informes de rendimento)
-10. ETFs internacionais (código correto, câmbio)
+8. Cripto (código 89)
+9. Renda Fixa
+10. ETFs internacionais
 
-Responda em Markdown formatado e organizado.`,
-          },
-          { role: "user", content: `Gere o guia de declaração IRPF ${year} para esta carteira:\n${assetsInfo}` },
-        ],
-        max_tokens: 2000,
-      }),
+Responda em Markdown formatado.`,
+        },
+        { role: "user", content: `Gere o guia de declaração IRPF ${year} para esta carteira:\n${assetsInfo}` },
+      ],
+      max_tokens: 2000,
     });
 
-    const aiData = await aiResp.json();
+    if (!response.ok) {
+      if (response.status === 429) return new Response(JSON.stringify({ error: "Rate limit." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      if (response.status === 402) return new Response(JSON.stringify({ error: "Créditos insuficientes." }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      throw new Error(`AI error: ${response.status}`);
+    }
+
+    const aiData = await response.json();
     const guide = aiData.choices?.[0]?.message?.content || "Erro ao gerar guia.";
 
     return new Response(JSON.stringify({ guide }), {

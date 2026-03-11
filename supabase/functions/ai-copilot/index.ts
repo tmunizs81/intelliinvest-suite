@@ -1,24 +1,38 @@
-
-
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+async function callAI(body: any): Promise<Response> {
+  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+  const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
+  if (LOVABLE_API_KEY) {
+    const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (resp.ok || resp.status === 402) return resp;
+    if (resp.status !== 429 && resp.status < 500) return resp;
+    console.warn(`Lovable AI failed (${resp.status}), trying DeepSeek fallback...`);
+    try { await resp.text(); } catch {}
+  }
+  if (!DEEPSEEK_API_KEY) throw new Error("No AI provider available");
+  console.log("Using DeepSeek fallback");
+  return fetch("https://api.deepseek.com/v1/chat/completions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${DEEPSEEK_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ ...body, model: "deepseek-chat" }),
+  });
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
-
     const { ticker, name, type, quantity, avgPrice, currentPrice, operation, portfolio } = await req.json();
-    if (!ticker) {
-      return new Response(JSON.stringify({ error: "ticker required" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    if (!ticker) return new Response(JSON.stringify({ error: "ticker required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
     const operationValue = (quantity || 0) * (avgPrice || currentPrice || 0);
     let portfolioContext = "";
@@ -41,43 +55,32 @@ ${portfolioContext}
 
 Avalie: preço vs média, momento do ativo, impacto na diversificação, e dê um veredito.`;
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash-lite",
-        messages: [
-          { role: "system", content: "Você é um copilot de investimentos. Analise operações e dê sinais rápidos: verde (favorável), amarelo (atenção), vermelho (desfavorável). Seja conciso e direto." },
-          { role: "user", content: prompt },
-        ],
-        tools: [{
-          type: "function",
-          function: {
-            name: "operation_signal",
-            description: "Return operation analysis signal",
-            parameters: {
-              type: "object",
-              properties: {
-                signal: { type: "string", enum: ["green", "yellow", "red"] },
-                title: { type: "string", description: "One-line verdict (max 60 chars)" },
-                reasons: {
-                  type: "array",
-                  items: { type: "string", description: "Short reason (max 80 chars)" },
-                  description: "2-4 key reasons",
-                },
-                suggestion: { type: "string", description: "Brief actionable suggestion (max 120 chars)" },
-                confidence: { type: "number", description: "Confidence 1-10" },
-              },
-              required: ["signal", "title", "reasons", "suggestion", "confidence"],
-              additionalProperties: false,
+    const response = await callAI({
+      model: "google/gemini-2.5-flash-lite",
+      messages: [
+        { role: "system", content: "Você é um copilot de investimentos. Analise operações e dê sinais rápidos: verde (favorável), amarelo (atenção), vermelho (desfavorável). Seja conciso e direto." },
+        { role: "user", content: prompt },
+      ],
+      tools: [{
+        type: "function",
+        function: {
+          name: "operation_signal",
+          description: "Return operation analysis signal",
+          parameters: {
+            type: "object",
+            properties: {
+              signal: { type: "string", enum: ["green", "yellow", "red"] },
+              title: { type: "string", description: "One-line verdict (max 60 chars)" },
+              reasons: { type: "array", items: { type: "string" }, description: "2-4 key reasons" },
+              suggestion: { type: "string", description: "Brief actionable suggestion (max 120 chars)" },
+              confidence: { type: "number", description: "Confidence 1-10" },
             },
+            required: ["signal", "title", "reasons", "suggestion", "confidence"],
+            additionalProperties: false,
           },
-        }],
-        tool_choice: { type: "function", function: { name: "operation_signal" } },
-      }),
+        },
+      }],
+      tool_choice: { type: "function", function: { name: "operation_signal" } },
     });
 
     if (!response.ok) {
@@ -90,13 +93,9 @@ Avalie: preço vs média, momento do ativo, impacto na diversificação, e dê u
     const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
     if (!toolCall?.function?.arguments) throw new Error("No structured response");
 
-    return new Response(toolCall.function.arguments, {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(toolCall.function.arguments, { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (err) {
     console.error("ai-copilot error:", err);
-    return new Response(JSON.stringify({ error: err instanceof Error ? err.message : "Unknown error" }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(JSON.stringify({ error: err instanceof Error ? err.message : "Unknown error" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });
