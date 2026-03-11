@@ -34,11 +34,14 @@ export default function HealthScorePanel({ assets }: { assets: Asset[] }) {
   const [data, setData] = useState<HealthData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { canCall, recordCall } = useAIRateLimit();
 
   const generate = useCallback(async () => {
     if (assets.length === 0) return;
+    if (!canCall()) return;
     setLoading(true);
     setError(null);
+    recordCall();
     try {
       const portfolio = assets.map(a => ({
         ticker: a.ticker, type: a.type, quantity: a.quantity,
