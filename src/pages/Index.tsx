@@ -1,6 +1,7 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 // @ts-ignore
-import { Responsive, WidthProvider } from 'react-grid-layout/dist/legacy.mjs';
+import { Responsive as ResponsiveOrig } from 'react-grid-layout';
+const ResponsiveGrid: any = ResponsiveOrig;
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
 
@@ -15,8 +16,6 @@ import AlertsPanel from '@/components/dashboard/AlertsPanel';
 import HoldingModal from '@/components/dashboard/HoldingModal';
 import { usePortfolio, type HoldingRow } from '@/hooks/usePortfolio';
 import { Loader2, Lock, Unlock, RotateCcw } from 'lucide-react';
-
-const ResponsiveGridLayout = WidthProvider(Responsive);
 
 const STORAGE_KEY = 'investai-dashboard-layouts';
 
@@ -67,6 +66,19 @@ const Index = () => {
   const [editingHolding, setEditingHolding] = useState<HoldingRow | null>(null);
   const [layouts, setLayouts] = useState(loadLayouts);
   const [locked, setLocked] = useState(true);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [containerWidth, setContainerWidth] = useState(1200);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        setContainerWidth(entry.contentRect.width);
+      }
+    });
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, []);
 
   const handleLayoutChange = useCallback((_: any, allLayouts: any) => {
     setLayouts(allLayouts);
@@ -146,9 +158,10 @@ const Index = () => {
             <p className="text-muted-foreground">Carregando carteira...</p>
           </div>
         ) : (
-          <div className="pb-12">
-            <ResponsiveGridLayout
+          <div className="pb-12" ref={containerRef}>
+            <ResponsiveGrid
               className="layout"
+              width={containerWidth}
               layouts={layouts}
               breakpoints={{ lg: 1200, md: 800, sm: 0 }}
               cols={{ lg: 12, md: 10, sm: 6 }}
@@ -207,7 +220,7 @@ const Index = () => {
                   <AIInsightsPanel assets={assets} />
                 </DashboardPanel>
               </div>
-            </ResponsiveGridLayout>
+            </ResponsiveGrid>
           </div>
         )}
       </div>
