@@ -105,7 +105,7 @@ Use a ferramenta para retornar as notícias classificadas. Mantenha os títulos 
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: "Você classifica notícias financeiras reais para investidores brasileiros. Mantenha os títulos das notícias originais. Avalie o impacto real nos ativos do investidor." },
           { role: "user", content: prompt },
