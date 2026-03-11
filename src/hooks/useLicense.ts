@@ -12,7 +12,16 @@ export function useLicense() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!user || roleLoading) return;
+    if (!user) {
+      setStatus('none');
+      setLoading(false);
+      return;
+    }
+
+    if (roleLoading) {
+      setLoading(true);
+      return;
+    }
 
     // Admins always have access
     if (isAdmin) {
@@ -22,52 +31,56 @@ export function useLicense() {
     }
 
     const check = async () => {
-      const { data } = await supabase
-        .from('serial_keys')
-        .select('status, expires_at')
-        .eq('used_by', user.id)
-        .in('status', ['used', 'paused', 'frozen'])
-        .limit(1);
+      try {
+        setLoading(true);
 
-      const license = data?.[0];
-
-      if (!license) {
-        // Check if there's a revoked one
-        const { data: revoked } = await supabase
+        const { data } = await supabase
           .from('serial_keys')
-          .select('status')
+          .select('status, expires_at')
           .eq('used_by', user.id)
-          .eq('status', 'revoked')
+          .in('status', ['used', 'paused', 'frozen'])
           .limit(1);
 
-        setStatus(revoked?.[0] ? 'revoked' : 'none');
-        setLoading(false);
-        return;
-      }
+        const license = data?.[0];
 
-      // Check expiration
-      if (license.status === 'used' && license.expires_at) {
-        if (new Date(license.expires_at) < new Date()) {
-          setStatus('expired');
-          setLoading(false);
+        if (!license) {
+          const { data: revoked } = await supabase
+            .from('serial_keys')
+            .select('status')
+            .eq('used_by', user.id)
+            .eq('status', 'revoked')
+            .limit(1);
+
+          setStatus(revoked?.[0] ? 'revoked' : 'none');
           return;
         }
+
+        if (license.status === 'used' && license.expires_at) {
+          if (new Date(license.expires_at) < new Date()) {
+            setStatus('expired');
+            return;
+          }
+        }
+
+        const statusMap: Record<string, LicenseStatus> = {
+          used: 'active',
+          paused: 'paused',
+          frozen: 'frozen',
+        };
+
+        setStatus(statusMap[license.status] || 'active');
+      } catch (error) {
+        console.error('Erro ao verificar licença:', error);
+        setStatus('none');
+      } finally {
+        setLoading(false);
       }
-
-      const statusMap: Record<string, LicenseStatus> = {
-        used: 'active',
-        paused: 'paused',
-        frozen: 'frozen',
-      };
-
-      setStatus(statusMap[license.status] || 'active');
-      setLoading(false);
     };
 
     check();
   }, [user, isAdmin, roleLoading]);
 
-  const isBlocked = status === 'revoked' || status === 'expired' || status === 'none';
+  const isBlocked = !!user && (status === 'revoked' || status === 'expired' || status === 'none');
 
   return { status, loading: loading || roleLoading, isBlocked, isAdmin };
 }
