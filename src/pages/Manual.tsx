@@ -503,13 +503,36 @@ A tela de **Análise Avançada** oferece ferramentas profissionais para análise
    - Recomendação (Compra/Venda/Manter)
    - Preço-alvo estimado
 
+### ✅ Checklist Buy & Hold (FIIs):
+- Disponível apenas para **Fundos Imobiliários** (FIIs)
+- Avalia o FII em **8 critérios** utilizados por investidores de longo prazo:
+  1. FII com mais de 5 anos listado em Bolsa
+  2. Dividend Yield médio dos últimos 5 anos acima de 8%
+  3. Liquidez média diária acima de R$ 700 mil
+  4. Número de cotistas acima de 20 mil
+  5. Patrimônio líquido acima de R$ 1 bilhão
+  6. 5 ou mais imóveis no portfólio
+  7. Vacância física média dos últimos 12 meses abaixo de 10%
+  8. Vacância financeira média dos últimos 12 meses abaixo de 10%
+- **Selo de Aprovação**: Se o FII atender ≥70% dos critérios, recebe selo **✅ APROVADO** (verde)
+- **Selo de Reprovação**: Caso contrário, recebe selo **❌ REPROVADO** (vermelho)
+- Cada critério exibe ícone de aprovado/reprovado e tooltip explicativo
+- Score percentual exibido no badge e no modal detalhado
+- Dados obtidos via Yahoo Finance, StatusInvest e FundsExplorer
+
+### 🔄 Redundância IA (DeepSeek Fallback):
+- Todas as funções de IA possuem **fallback automático** para DeepSeek
+- Se o modelo primário (Gemini) retornar erro 429 ou 5xx, a requisição é reenviada automaticamente ao DeepSeek
+- Garante **alta disponibilidade** das análises mesmo em momentos de sobrecarga
+
 ### Como Usar:
 1. Acesse **Análise Avançada** no menu
 2. Selecione um ativo da carteira (acesso rápido) ou busque pelo ticker
 3. Veja o **Perfil do ativo** e **Lista de imóveis** (FIIs) automaticamente
-4. Clique em **"Analisar notícias de mercado"** para varredura de portais
-5. Alterne entre gráficos **TradingView** e **Customizado**
-6. Consulte indicadores técnicos, fundamentalistas e análise IA nas 3 colunas
+4. Para FIIs, clique no botão **"Checklist Buy & Hold"** para ver a avaliação completa
+5. Clique em **"Analisar notícias de mercado"** para varredura de portais
+6. Alterne entre gráficos **TradingView** e **Customizado**
+7. Consulte indicadores técnicos, fundamentalistas e análise IA nas 3 colunas
     `,
   },
   {
