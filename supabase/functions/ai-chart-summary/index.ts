@@ -17,7 +17,7 @@ REGRAS:
 - Mencione BB, RSI, MACD, médias móveis e volume
 - Identifique confluências entre indicadores`;
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
