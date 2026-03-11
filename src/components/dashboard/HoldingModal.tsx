@@ -295,7 +295,7 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
           <BrokerAutocomplete value={broker} onChange={setBroker} />
 
           {/* Campos de Renda Fixa */}
-          {type === 'Renda Fixa' && (
+          {FIXED_INCOME_TYPES.includes(type) && (
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
                 <label className="text-xs font-medium text-muted-foreground">Indexador *</label>
