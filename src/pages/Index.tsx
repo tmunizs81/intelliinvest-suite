@@ -55,7 +55,7 @@ const defaultLayouts: any = {
   ],
 };
 
-function loadLayouts(): Record<string, Layout[]> {
+function loadLayouts(): any {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) return JSON.parse(saved);
