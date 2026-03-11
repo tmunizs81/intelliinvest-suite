@@ -104,7 +104,7 @@ export default function Analysis() {
     { value: 'max', label: 'Máx' },
   ];
 
-  const assetType = asset?.type || (ticker.match(/\d{2}$/) ? 'FII' : 'Ação');
+  const assetType = asset?.type || classifyAssetType(ticker);
 
   return (
     <div className="min-h-screen bg-background px-4 sm:px-6 lg:px-8 py-6">
