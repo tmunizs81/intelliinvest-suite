@@ -282,8 +282,11 @@ export function usePortfolio() {
       description: `Venda de ${sellQty}x ${holding.ticker} a ${sellPrice.toFixed(2)}`,
     } as any);
 
+    await auditLog('sell', 'holding', holdingId, {
+      ticker: holding.ticker, quantity: sellQty, price: sellPrice, total: sellTotal,
+    });
     await refresh();
-  }, [user, holdings, refresh]);
+  }, [user, holdings, refresh, auditLog]);
 
   // Update cash balance for a specific broker
   const updateCashBalanceBroker = useCallback(async (amount: number, broker: string | null, movementType?: 'deposit' | 'withdraw', movementAmount?: number) => {
