@@ -37,6 +37,7 @@ export default function Assets() {
   const [importError, setImportError] = useState('');
   const [brokerageOpen, setBrokerageOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [cashModalOpen, setCashModalOpen] = useState(false);
 
   const handleSell = (holdingRow: HoldingRow, asset: Asset) => {
     setSellingHolding(holdingRow);
