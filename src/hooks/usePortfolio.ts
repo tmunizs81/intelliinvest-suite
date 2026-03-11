@@ -142,7 +142,8 @@ export function usePortfolio() {
       quantity: holding.quantity,
       avg_price: holding.avg_price,
       sector: holding.sector,
-    });
+      broker: holding.broker || null,
+    } as any);
     if (error) throw error;
 
     // Auto-create buy transaction for tax tracking
