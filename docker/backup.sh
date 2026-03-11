@@ -1,6 +1,6 @@
 #!/bin/bash
 # ══════════════════════════════════════════
-#  InvestAI - Backup Automático
+#  T2-Simplynvest - Backup Automático
 #  Salva configurações e estado do container
 # ══════════════════════════════════════════
 
