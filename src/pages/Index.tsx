@@ -167,6 +167,7 @@ const Index = () => {
   }, [assets, loading, saveSnapshot]);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingHolding, setEditingHolding] = useState<HoldingRow | null>(null);
+  const [mobileTab, setMobileTab] = useState<MobileTab>('resumo');
   const [layouts, setLayouts] = useState(loadLayouts);
   const [locked, setLocked] = useState(true);
   const containerRef = useRef<HTMLDivElement>(null);
