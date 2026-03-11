@@ -3,6 +3,9 @@ import { Loader2, RefreshCw, Building2, TrendingUp, DollarSign, BarChart3 } from
 import { supabase } from '@/integrations/supabase/client';
 import { formatCurrency, formatPercent } from '@/lib/mockData';
 
+const fundCache = new Map<string, { data: any; ts: number }>();
+const CACHE_TTL = 10 * 60 * 1000;
+
 interface FundamentalData {
   pe?: number | null;
   pb?: number | null;
