@@ -56,7 +56,7 @@ serve(async (req) => {
       });
     }
 
-    const { email, password, displayName, role, telegramBotToken, telegramChatId } = await req.json();
+    const { email, password, displayName, role, telegramChatId } = await req.json();
 
     if (!email || !password) {
       return new Response(JSON.stringify({ error: "email and password required" }), {
