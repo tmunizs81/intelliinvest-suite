@@ -63,6 +63,11 @@ export default function MarketNewsPanel({ ticker, name, type }: Props) {
   }
 
   const fetchOpinion = useCallback(async (retries = 3) => {
+    const cached = cache.get(ticker);
+    if (cached && Date.now() - cached.ts < CACHE_TTL) {
+      setOpinion(cached.data);
+      return;
+    }
     setLoading(true);
     setError(null);
     for (let attempt = 0; attempt <= retries; attempt++) {
@@ -79,6 +84,7 @@ export default function MarketNewsPanel({ ticker, name, type }: Props) {
           if ((String(data.error).includes('Rate limit') || String(data.error).includes('429')) && attempt < retries) continue;
           throw new Error(data.error);
         }
+        cache.set(ticker, { data, ts: Date.now() });
         setOpinion(data);
         setLoading(false);
         return;
