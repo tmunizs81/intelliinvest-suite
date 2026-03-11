@@ -22,6 +22,9 @@ O **T2-SimplyNvest** é uma plataforma inteligente de gestão de investimentos q
 - **Histórico patrimonial** real com snapshots diários
 - **Atualização automática** de preços a cada 5 minutos
 - **Comparador de ativos** com veredito IA
+- **Consultor IA** com recomendações personalizadas
+- **Análise de Risco IA** com score de diversificação
+- **Benchmark comparativo** (CDI, IBOV, Dólar)
 
 ### Requisitos do Sistema:
 - Navegador moderno (Chrome, Firefox, Edge, Safari)
@@ -182,6 +185,29 @@ O Dashboard é a tela principal do sistema, oferecendo uma visão completa e per
 - Gestão de títulos de renda fixa
 - CDB, LCI, LCA, Tesouro Direto, Debêntures
 - Controle de vencimento e indexadores
+
+#### 📊 Benchmark Comparativo (CDI/IBOV/Dólar)
+- Gráfico comparativo da sua carteira vs índices do mercado
+- Compare seu desempenho com CDI, Ibovespa e Dólar
+- Períodos: 3M, 6M, 1A, 2A
+- Dados normalizados em % para comparação justa
+- Identifique se sua carteira está batendo os benchmarks
+
+#### 🤖 Consultor IA de Investimentos
+- Recomendações personalizadas de **comprar, manter ou vender**
+- Streaming em tempo real com respostas detalhadas
+- Perguntas rápidas pré-configuradas ou pergunte o que quiser
+- Análise considera alocação, risco, concentração e performance
+- Sugestões de novos ativos para diversificação
+- Disclaimer automático (não constitui recomendação formal)
+
+#### 🛡️ Análise de Risco IA
+- **Score de Risco** (1-10): avaliação geral do perfil de risco
+- **Score de Diversificação** (1-10): qualidade da diversificação
+- **Nível de Concentração**: Baixo, Médio, Alto ou Crítico
+- **Principais Riscos**: lista detalhada com severidade e mitigação
+- **Sugestões práticas** para reduzir riscos
+- Classificação automática: Conservador, Moderado, Arrojado ou Agressivo
 
 ### Personalização do Dashboard
 
@@ -1014,7 +1040,7 @@ export default function Manual() {
 
       {/* Footer - print only */}
       <div className="hidden print:block mt-12 pt-4 border-t text-center text-xs text-muted-foreground">
-        <p>T2-SimplyNvest — Manual do Usuário v2.0</p>
+        <p>T2-SimplyNvest — Manual do Usuário v3.0</p>
         <p>© 2025 T2 Systems. Todos os direitos reservados.</p>
       </div>
     </div>
