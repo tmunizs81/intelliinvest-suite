@@ -55,7 +55,29 @@ function getCellColor(corr: number): string {
 
 export default function CorrelationHeatmap({ assets }: { assets: Asset[] }) {
   const [showAll, setShowAll] = useState(false);
+  const [aiData, setAiData] = useState<AICorrelation | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [showAI, setShowAI] = useState(false);
   const displayAssets = showAll ? assets : assets.slice(0, 8);
+
+  const analyzeWithAI = useCallback(async () => {
+    if (assets.length < 2) return;
+    setAiLoading(true);
+    try {
+      const portfolio = assets.map(a => ({
+        ticker: a.ticker, type: a.type, sector: a.sector,
+        quantity: a.quantity, currentPrice: a.currentPrice, allocation: a.allocation,
+      }));
+      const { data, error } = await supabase.functions.invoke('ai-correlation', { body: { portfolio } });
+      if (error) throw new Error(error.message);
+      if (data.error) throw new Error(data.error);
+      setAiData(data);
+      setShowAI(true);
+    } catch {
+    } finally {
+      setAiLoading(false);
+    }
+  }, [assets]);
 
   const matrix = useMemo(() => {
     return displayAssets.map(a =>
