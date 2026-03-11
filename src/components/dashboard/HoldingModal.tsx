@@ -66,6 +66,8 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
       setBroker(editData?.broker || '');
       setYieldRate(editData?.yield_rate || '');
       setIndexerType(editData?.indexer_type || 'Pós-fixado');
+      setFixedIncomeSubtype(editData?.sector && type === 'Renda Fixa' ? editData.sector : 'CDB');
+      setMaturityDate(editData?.maturity_date ? new Date(editData.maturity_date) : undefined);
       setError('');
       setSuggestions([]);
       setShowSuggestions(false);
