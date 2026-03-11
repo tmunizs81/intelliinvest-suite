@@ -131,7 +131,7 @@ export default function HoldingsTable({ assets, holdings, loading, onAdd, onEdit
                         </div>
                       ) : '—'}
                     </td>
-                    <td className="text-right p-4">
+                    <td className="text-right p-4" onClick={e => e.stopPropagation()}>
                       <div className="flex items-center justify-end gap-1">
                         {holdingRow && (
                           <>
