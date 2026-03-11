@@ -46,6 +46,7 @@ import EventsCalendarPanel from '@/components/dashboard/EventsCalendarPanel';
 import AchievementsPanel from '@/components/dashboard/AchievementsPanel';
 import SessionLogPanel from '@/components/dashboard/SessionLogPanel';
 import FiscalReportPanel from '@/components/dashboard/FiscalReportPanel';
+import LiveTickerBar from '@/components/dashboard/LiveTickerBar';
 
 import { usePortfolio, type HoldingRow } from '@/hooks/usePortfolio';
 import { usePortfolioSnapshots } from '@/hooks/usePortfolioSnapshots';
