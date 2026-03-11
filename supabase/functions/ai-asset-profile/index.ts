@@ -47,7 +47,42 @@ async function fetchPageText(url: string): Promise<string | null> {
   }
 }
 
+// Map of common crypto tickers to CoinGecko IDs
+const CRYPTO_MAP: Record<string, string> = {
+  BTC: "bitcoin", BITCOIN: "bitcoin",
+  ETH: "ethereum", ETHEREUM: "ethereum",
+  BNB: "binancecoin", SOL: "solana",
+  ADA: "cardano", XRP: "ripple",
+  DOT: "polkadot", DOGE: "dogecoin",
+  AVAX: "avalanche-2", MATIC: "matic-network",
+  LINK: "chainlink", UNI: "uniswap",
+  ATOM: "cosmos", LTC: "litecoin",
+  NEAR: "near", APT: "aptos",
+  ARB: "arbitrum", OP: "optimism",
+  USDT: "tether", USDC: "usd-coin",
+  SHIB: "shiba-inu", FIL: "filecoin",
+  ALGO: "algorand", HBAR: "hedera-hashgraph",
+  VET: "vechain", ICP: "internet-computer",
+  AAVE: "aave", GRT: "the-graph",
+  SAND: "the-sandbox", MANA: "decentraland",
+  CRV: "curve-dao-token", MKR: "maker",
+  RENDER: "render-token", FET: "fetch-ai",
+  SUI: "sui", SEI: "sei-network",
+  TIA: "celestia", INJ: "injective-protocol",
+  PEPE: "pepe", WIF: "dogwifcoin",
+};
+
+function isCrypto(ticker: string, type?: string): boolean {
+  if (type === "Cripto" || type === "Crypto") return true;
+  return ticker.toUpperCase() in CRYPTO_MAP;
+}
+
+function getCoinGeckoId(ticker: string): string | null {
+  return CRYPTO_MAP[ticker.toUpperCase()] || null;
+}
+
 function getAssetCategory(ticker: string, type?: string): string {
+  if (type === "Cripto" || type === "Crypto" || isCrypto(ticker, type)) return "crypto";
   if (type === "FII") return "fii";
   if (type === "ETF") return "etf";
   if (type === "BDR") return "bdr";
@@ -56,6 +91,48 @@ function getAssetCategory(ticker: string, type?: string): string {
   if (/^[A-Z]{4}(34|35|39)$/.test(t)) return "bdr";
   if (/^[A-Z]{4}\d{1,2}$/.test(t)) return "stock";
   return "international";
+}
+
+async function fetchCoinGeckoData(coinId: string): Promise<string | null> {
+  try {
+    const resp = await fetch(
+      `https://api.coingecko.com/api/v3/coins/${coinId}?localization=false&tickers=false&community_data=false&developer_data=false`,
+      { signal: AbortSignal.timeout(10000) }
+    );
+    if (!resp.ok) return null;
+    const data = await resp.json();
+
+    const lines = [
+      `Nome: ${data.name} (${data.symbol?.toUpperCase()})`,
+      `Categoria: ${(data.categories || []).join(", ")}`,
+      `Descrição: ${data.description?.pt || data.description?.en || "N/A"}`,
+      `Market Cap Rank: #${data.market_cap_rank || "N/A"}`,
+      `Preço atual (USD): $${data.market_data?.current_price?.usd || "N/A"}`,
+      `Preço atual (BRL): R$${data.market_data?.current_price?.brl || "N/A"}`,
+      `Market Cap (USD): $${data.market_data?.market_cap?.usd?.toLocaleString() || "N/A"}`,
+      `Volume 24h (USD): $${data.market_data?.total_volume?.usd?.toLocaleString() || "N/A"}`,
+      `Variação 24h: ${data.market_data?.price_change_percentage_24h?.toFixed(2) || "N/A"}%`,
+      `Variação 7d: ${data.market_data?.price_change_percentage_7d?.toFixed(2) || "N/A"}%`,
+      `Variação 30d: ${data.market_data?.price_change_percentage_30d?.toFixed(2) || "N/A"}%`,
+      `Variação 1y: ${data.market_data?.price_change_percentage_1y?.toFixed(2) || "N/A"}%`,
+      `ATH (USD): $${data.market_data?.ath?.usd || "N/A"} em ${data.market_data?.ath_date?.usd?.substring(0, 10) || "N/A"}`,
+      `ATL (USD): $${data.market_data?.atl?.usd || "N/A"}`,
+      `Supply Circulante: ${data.market_data?.circulating_supply?.toLocaleString() || "N/A"}`,
+      `Supply Total: ${data.market_data?.total_supply?.toLocaleString() || "N/A"}`,
+      `Supply Máximo: ${data.market_data?.max_supply?.toLocaleString() || "Infinito"}`,
+      `Hash Algorithm: ${data.hashing_algorithm || "N/A"}`,
+      `Genesis Date: ${data.genesis_date || "N/A"}`,
+      `Site: ${data.links?.homepage?.[0] || "N/A"}`,
+      `Blockchain: ${data.links?.blockchain_site?.[0] || "N/A"}`,
+      `Sentimento positivo: ${data.sentiment_votes_up_percentage || "N/A"}%`,
+      `Sentimento negativo: ${data.sentiment_votes_down_percentage || "N/A"}%`,
+    ];
+
+    return lines.join("\n");
+  } catch (err) {
+    console.warn("CoinGecko fetch failed:", err);
+    return null;
+  }
 }
 
 function getScrapingUrls(ticker: string, category: string): string[] {
@@ -75,7 +152,6 @@ function getScrapingUrls(ticker: string, category: string): string[] {
     urls.push(`https://investidor10.com.br/bdrs/${t}/`);
     urls.push(`https://statusinvest.com.br/bdrs/${t}`);
   }
-  // For "international" category (crypto, foreign stocks), no Brazilian scraping sources
 
   return urls;
 }
@@ -100,16 +176,34 @@ serve(async (req) => {
 
     console.log(`Fetching asset profile for ${ticker} (${category}), scraping ${urls.length} sources`);
 
-    // Scrape pages in parallel
-    const pageTexts = await Promise.all(urls.map((url) => fetchPageText(url)));
-    const scrapedContent = pageTexts
-      .filter(Boolean)
-      .map((text, i) => `[Fonte ${i + 1}: ${urls[i]}]\n${text!.substring(0, 7000)}`)
-      .join("\n\n---\n\n");
+    // Fetch data sources in parallel
+    let scrapedContent = "";
+    let coinGeckoContent = "";
+
+    if (category === "crypto") {
+      const coinId = getCoinGeckoId(ticker);
+      if (coinId) {
+        coinGeckoContent = await fetchCoinGeckoData(coinId) || "";
+        console.log(`CoinGecko data fetched for ${coinId}: ${coinGeckoContent ? "success" : "empty"}`);
+      }
+    }
+
+    if (urls.length > 0) {
+      const pageTexts = await Promise.all(urls.map((url) => fetchPageText(url)));
+      scrapedContent = pageTexts
+        .filter(Boolean)
+        .map((text, i) => `[Fonte ${i + 1}: ${urls[i]}]\n${text!.substring(0, 7000)}`)
+        .join("\n\n---\n\n");
+    }
+
+    const dataSection = [
+      coinGeckoContent ? `Dados do CoinGecko (API oficial):\n${coinGeckoContent}` : "",
+      scrapedContent ? `Dados coletados de fontes brasileiras:\n${scrapedContent}` : "",
+    ].filter(Boolean).join("\n\n---\n\n");
 
     const prompt = `Gere um resumo completo e detalhado sobre o ativo ${ticker} (${name || ticker}, tipo: ${type || category}).
 
-${scrapedContent ? `Dados coletados de fontes brasileiras:\n${scrapedContent}\n\n` : ""}
+${dataSection ? `${dataSection}\n\n` : ""}
 
 Use a ferramenta para retornar o resultado estruturado. Preencha TODOS os campos com as informações disponíveis. Se não houver informação, coloque null.
 
@@ -118,8 +212,9 @@ Para o campo "sections", crie seções relevantes conforme o tipo de ativo:
 - Ação: Sobre a Empresa, Segmentos de Negócio, Posição no Mercado, Governança, Riscos e Oportunidades
 - ETF: Estratégia do Fundo, Composição, Metodologia do Índice, Custos, Exposição
 - BDR: Empresa Original, Negócios Principais, Presença Global, Estrutura do BDR
+- Cripto: Sobre o Projeto, Tecnologia e Blockchain, Tokenomics, Ecossistema, Casos de Uso, Dados de Mercado
 
-Para "key_assets", liste os principais ativos/imóveis/subsidiárias/holdings que compõem o fundo ou empresa.`;
+Para "key_assets", liste os principais ativos/imóveis/subsidiárias/holdings que compõem o fundo, empresa ou ecossistema crypto.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
