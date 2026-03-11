@@ -37,6 +37,7 @@ export default function Assets() {
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState('');
   const [brokerageOpen, setBrokerageOpen] = useState(false);
+  const [b3ImportOpen, setB3ImportOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [cashModalOpen, setCashModalOpen] = useState(false);
 
