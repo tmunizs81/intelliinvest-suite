@@ -45,9 +45,14 @@ export default function AIAnalysisPanel({ ticker, name, type, candles, holdingIn
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleAnalyze = async (retries = 3) => {
+  const handleAnalyze = async (retries = 3, skipCache = false) => {
     if (candles.length < 20) {
       setError('Dados históricos insuficientes para análise (mínimo 20 candles)');
+      return;
+    }
+    const cached = analysisCache.get(ticker);
+    if (!skipCache && cached && Date.now() - cached.ts < CACHE_TTL) {
+      setAnalysis(cached.data);
       return;
     }
 
