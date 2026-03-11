@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X, Plus, Loader2 } from 'lucide-react';
 import type { HoldingRow } from '@/hooks/usePortfolio';
 
@@ -13,14 +13,27 @@ interface Props {
 }
 
 export default function HoldingModal({ open, onClose, onSave, editData, onUpdate }: Props) {
-  const [ticker, setTicker] = useState(editData?.ticker || '');
-  const [name, setName] = useState(editData?.name || '');
-  const [type, setType] = useState<string>(editData?.type || 'Ação');
-  const [quantity, setQuantity] = useState(editData?.quantity?.toString() || '');
-  const [avgPrice, setAvgPrice] = useState(editData?.avg_price?.toString() || '');
-  const [sector, setSector] = useState(editData?.sector || '');
+  const [ticker, setTicker] = useState('');
+  const [name, setName] = useState('');
+  const [type, setType] = useState<string>('Ação');
+  const [quantity, setQuantity] = useState('');
+  const [avgPrice, setAvgPrice] = useState('');
+  const [sector, setSector] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Reset form when modal opens or editData changes
+  useEffect(() => {
+    if (open) {
+      setTicker(editData?.ticker || '');
+      setName(editData?.name || '');
+      setType(editData?.type || 'Ação');
+      setQuantity(editData?.quantity?.toString() || '');
+      setAvgPrice(editData?.avg_price?.toString() || '');
+      setSector(editData?.sector || '');
+      setError('');
+    }
+  }, [open, editData]);
 
   if (!open) return null;
 
