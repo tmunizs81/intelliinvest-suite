@@ -97,8 +97,13 @@ export const mockInsights: AIInsight[] = [
   },
 ];
 
-export function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+export function formatCurrency(value: number, currency: string = 'BRL'): string {
+  const currencyMap: Record<string, string> = {
+    BRL: 'BRL', USD: 'USD', EUR: 'EUR', GBP: 'GBP', CHF: 'CHF', JPY: 'JPY',
+  };
+  const cur = currencyMap[currency] || 'BRL';
+  const locale = cur === 'BRL' ? 'pt-BR' : 'en-US';
+  return new Intl.NumberFormat(locale, { style: 'currency', currency: cur }).format(value);
 }
 
 export function formatPercent(value: number): string {
