@@ -71,7 +71,7 @@ export default function PortfolioSummary({ assets, lastUpdate }: Props) {
       <StatCard
         label="Última Atualização"
         value={lastUpdate ? lastUpdate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '--:--'}
-        subValue="Yahoo Finance • 10 min"
+        subValue="Brapi + Yahoo • 2 min"
         icon={Clock}
         positive={null}
       />
