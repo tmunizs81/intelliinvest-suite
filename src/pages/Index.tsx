@@ -363,6 +363,11 @@ const Index = () => {
                   <BacktestingPanel assets={assets} />
                 </DashboardPanel>
               </div>
+              <div key="asset-scoring">
+                <DashboardPanel title="Scoring IA de Ativos" locked={locked}>
+                  <AssetScoringPanel assets={assets} />
+                </DashboardPanel>
+              </div>
             </ResponsiveGrid>
           </div>
         )}
