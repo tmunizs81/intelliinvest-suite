@@ -3,9 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import {
   Plus, Upload, Download, Search, Pencil, Trash2, ArrowUpRight,
   ArrowDownRight, ChevronRight, Loader2, FileSpreadsheet, X, AlertTriangle, FileUp,
+  Wallet, DollarSign,
 } from 'lucide-react';
 import { usePortfolio, type HoldingRow } from '@/hooks/usePortfolio';
 import HoldingModal from '@/components/dashboard/HoldingModal';
+import SellModal from '@/components/dashboard/SellModal';
 import BrokerageImportPanel from '@/components/dashboard/BrokerageImportPanel';
 import { type Asset, formatCurrency, formatPercent } from '@/lib/mockData';
 
@@ -20,9 +22,12 @@ const typeBadgeClass: Record<string, string> = {
 
 export default function Assets() {
   const navigate = useNavigate();
-  const { assets, holdings, loading, refresh, addHolding, updateHolding, deleteHolding } = usePortfolio();
+  const { assets, holdings, cashBalance, loading, refresh, addHolding, updateHolding, deleteHolding, sellHolding } = usePortfolio();
   const [modalOpen, setModalOpen] = useState(false);
   const [editingHolding, setEditingHolding] = useState<HoldingRow | null>(null);
+  const [sellOpen, setSellOpen] = useState(false);
+  const [sellingHolding, setSellingHolding] = useState<HoldingRow | null>(null);
+  const [sellingPrice, setSellingPrice] = useState(0);
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('');
   const [importOpen, setImportOpen] = useState(false);
@@ -31,6 +36,12 @@ export default function Assets() {
   const [importError, setImportError] = useState('');
   const [brokerageOpen, setBrokerageOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleSell = (holdingRow: HoldingRow, asset: Asset) => {
+    setSellingHolding(holdingRow);
+    setSellingPrice(asset.currentPrice);
+    setSellOpen(true);
+  };
 
   const filtered = assets.filter(a => {
     const matchSearch = !search || a.ticker.toLowerCase().includes(search.toLowerCase()) || a.name.toLowerCase().includes(search.toLowerCase());
@@ -121,7 +132,17 @@ export default function Assets() {
             <span className={gain >= 0 ? 'text-gain' : 'text-loss'}>
               {formatCurrency(gain)} ({formatPercent(cost > 0 ? (gain / cost) * 100 : 0)})
             </span>
+            {' '}• <span className="text-primary">Caixa: {formatCurrency(cashBalance)}</span>
           </p>
+        </div>
+
+        {/* Cash balance card */}
+        <div className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-2.5 flex items-center gap-2">
+          <Wallet className="h-4 w-4 text-primary" />
+          <div>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Saldo em Caixa</p>
+            <p className="text-lg font-bold font-mono text-primary">{formatCurrency(cashBalance)}</p>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -310,6 +331,14 @@ export default function Assets() {
                             {holdingRow && (
                               <>
                                 <button
+                                  onClick={() => handleSell(holdingRow, asset)}
+                                  className="h-7 px-2 rounded flex items-center justify-center gap-1 text-[10px] font-semibold text-[hsl(var(--loss-foreground))] bg-[hsl(var(--loss)/0.1)] hover:bg-[hsl(var(--loss)/0.2)] transition-colors"
+                                  title="Vender"
+                                >
+                                  <ArrowDownRight className="h-3 w-3" />
+                                  Vender
+                                </button>
+                                <button
                                   onClick={() => { setEditingHolding(holdingRow); setModalOpen(true); }}
                                   className="h-7 w-7 rounded flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
                                 >
@@ -390,6 +419,13 @@ export default function Assets() {
                     </div>
                     {holdingRow && (
                       <div className="flex items-center justify-end gap-1 mt-2" onClick={e => e.stopPropagation()}>
+                        <button
+                          onClick={() => handleSell(holdingRow, asset)}
+                          className="h-7 px-2 rounded flex items-center gap-1 text-[10px] font-semibold text-[hsl(var(--loss-foreground))] bg-[hsl(var(--loss)/0.1)] hover:bg-[hsl(var(--loss)/0.2)] transition-colors"
+                        >
+                          <ArrowDownRight className="h-3 w-3" />
+                          Vender
+                        </button>
                         <button
                           onClick={() => { setEditingHolding(holdingRow); setModalOpen(true); }}
                           className="h-7 w-7 rounded flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
@@ -496,6 +532,14 @@ export default function Assets() {
         onSave={addHolding}
         editData={editingHolding}
         onUpdate={updateHolding}
+      />
+
+      <SellModal
+        open={sellOpen}
+        holding={sellingHolding}
+        currentPrice={sellingPrice}
+        onClose={() => { setSellOpen(false); setSellingHolding(null); }}
+        onSell={sellHolding}
       />
     </div>
   );
