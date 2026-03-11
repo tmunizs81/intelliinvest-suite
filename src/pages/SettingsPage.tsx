@@ -239,14 +239,17 @@ function UsersTab() {
     const { data: profiles } = await supabase.from('profiles').select('*');
     const { data: roles } = await supabase.from('user_roles').select('*');
     const { data: keys } = await supabase.from('serial_keys').select('*').eq('status', 'used');
+    const { data: tgSettings } = await supabase.from('telegram_settings').select('*');
 
     const merged = (profiles || []).map(p => {
       const userRoles = (roles || []).filter((r: any) => r.user_id === p.user_id);
       const userKey = (keys || []).find((k: any) => k.used_by === p.user_id);
+      const userTg = (tgSettings || []).find((t: any) => t.user_id === p.user_id);
       return {
         ...p,
         roles: userRoles.map((r: any) => r.role),
         license: userKey,
+        telegram: userTg,
       };
     });
 
