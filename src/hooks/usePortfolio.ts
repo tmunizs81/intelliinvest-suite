@@ -201,5 +201,79 @@ export function usePortfolio() {
     await refresh();
   }, [user, refresh]);
 
-  return { assets, holdings, loading, error, lastUpdate, refresh, addHolding, updateHolding, deleteHolding };
+  // Sell holding (partial or full)
+  const sellHolding = useCallback(async (holdingId: string, sellQty: number, sellPrice: number, fees: number = 0) => {
+    if (!user) return;
+    
+    const holding = holdings.find(h => h.id === holdingId);
+    if (!holding) throw new Error('Ativo não encontrado');
+    if (sellQty > holding.quantity) throw new Error('Quantidade insuficiente');
+
+    const sellTotal = sellQty * sellPrice;
+    const netTotal = sellTotal - fees;
+
+    // Record sell transaction
+    await supabase.from('transactions').insert({
+      user_id: user.id,
+      ticker: holding.ticker,
+      name: holding.name,
+      type: holding.type,
+      operation: 'sell',
+      quantity: sellQty,
+      price: sellPrice,
+      total: sellTotal,
+      fees,
+      date: new Date().toISOString().split('T')[0],
+      is_daytrade: false,
+      notes: 'Venda registrada via Meus Ativos',
+    });
+
+    // Update or delete holding
+    const remainingQty = holding.quantity - sellQty;
+    if (remainingQty <= 0) {
+      await supabase.from('holdings').delete().eq('id', holdingId).eq('user_id', user.id);
+    } else {
+      await supabase.from('holdings').update({ quantity: remainingQty } as any).eq('id', holdingId).eq('user_id', user.id);
+    }
+
+    // Update cash balance
+    const { data: existing } = await supabase
+      .from('cash_balance' as any)
+      .select('id, balance')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (existing) {
+      await supabase.from('cash_balance' as any).update({
+        balance: (existing as any).balance + netTotal,
+        updated_at: new Date().toISOString(),
+      } as any).eq('id', (existing as any).id);
+    } else {
+      await supabase.from('cash_balance' as any).insert({
+        user_id: user.id,
+        balance: netTotal,
+      } as any);
+    }
+
+    await refresh();
+  }, [user, holdings, refresh]);
+
+  // Update cash balance manually
+  const updateCashBalance = useCallback(async (amount: number) => {
+    if (!user) return;
+    const { data: existing } = await supabase
+      .from('cash_balance' as any)
+      .select('id')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (existing) {
+      await supabase.from('cash_balance' as any).update({ balance: amount, updated_at: new Date().toISOString() } as any).eq('id', (existing as any).id);
+    } else {
+      await supabase.from('cash_balance' as any).insert({ user_id: user.id, balance: amount } as any);
+    }
+    setCashBalance(amount);
+  }, [user]);
+
+  return { assets, holdings, cashBalance, loading, error, lastUpdate, refresh, addHolding, updateHolding, deleteHolding, sellHolding, updateCashBalance };
 }
