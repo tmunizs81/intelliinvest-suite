@@ -186,6 +186,29 @@ O Dashboard é a tela principal do sistema, oferecendo uma visão completa e per
 - CDB, LCI, LCA, Tesouro Direto, Debêntures
 - Controle de vencimento e indexadores
 
+#### 📊 Benchmark Comparativo (CDI/IBOV/Dólar)
+- Gráfico comparativo da sua carteira vs índices do mercado
+- Compare seu desempenho com CDI, Ibovespa e Dólar
+- Períodos: 3M, 6M, 1A, 2A
+- Dados normalizados em % para comparação justa
+- Identifique se sua carteira está batendo os benchmarks
+
+#### 🤖 Consultor IA de Investimentos
+- Recomendações personalizadas de **comprar, manter ou vender**
+- Streaming em tempo real com respostas detalhadas
+- Perguntas rápidas pré-configuradas ou pergunte o que quiser
+- Análise considera alocação, risco, concentração e performance
+- Sugestões de novos ativos para diversificação
+- Disclaimer automático (não constitui recomendação formal)
+
+#### 🛡️ Análise de Risco IA
+- **Score de Risco** (1-10): avaliação geral do perfil de risco
+- **Score de Diversificação** (1-10): qualidade da diversificação
+- **Nível de Concentração**: Baixo, Médio, Alto ou Crítico
+- **Principais Riscos**: lista detalhada com severidade e mitigação
+- **Sugestões práticas** para reduzir riscos
+- Classificação automática: Conservador, Moderado, Arrojado ou Agressivo
+
 ### Personalização do Dashboard
 
 O Dashboard é **totalmente personalizável**:
