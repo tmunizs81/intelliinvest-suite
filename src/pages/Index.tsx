@@ -159,8 +159,7 @@ const Index = () => {
           </div>
         ) : (
           <div className="pb-12" ref={containerRef}>
-            {/* @ts-ignore - react-grid-layout types mismatch */}
-            <Responsive
+            <ResponsiveGrid
               className="layout"
               width={containerWidth}
               layouts={layouts}
