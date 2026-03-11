@@ -15,7 +15,8 @@ type RangeOption = '1mo' | '3mo' | '6mo' | '1y' | '2y' | '5y' | '10y' | 'max';
 
 export default function Analysis() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const initialTicker = searchParams.get('ticker') || '';
+  const params = useParams<{ ticker?: string }>();
+  const initialTicker = params.ticker || searchParams.get('ticker') || '';
   const { assets, holdings } = usePortfolio();
 
   const [ticker, setTicker] = useState(initialTicker);
