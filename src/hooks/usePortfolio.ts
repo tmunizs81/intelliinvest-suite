@@ -4,7 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { type Asset } from '@/lib/mockData';
 
-const POLL_INTERVAL = 2 * 60 * 1000; // 2 minutes
+const POLL_INTERVAL = 5 * 60 * 1000; // 5 minutes
 
 export interface HoldingRow {
   id: string;
@@ -33,6 +33,7 @@ export function usePortfolio() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
+  const [nextUpdate, setNextUpdate] = useState<Date | null>(null);
 
   // Load cash balance
   const loadCashBalance = useCallback(async () => {
@@ -96,7 +97,7 @@ export function usePortfolio() {
           type: item.type as Asset['type'],
           quantity: item.quantity,
           avgPrice: item.avg_price,
-          currentPrice: currentPriceBRL, // Use BRL price for portfolio calculations
+          currentPrice: currentPriceBRL,
           change24h: quote?.change24h || 0,
           allocation: 0,
           sector: item.sector || undefined,
@@ -113,7 +114,9 @@ export function usePortfolio() {
       }));
 
       setAssets(assetsWithAllocation);
-      setLastUpdate(new Date());
+      const now = new Date();
+      setLastUpdate(now);
+      setNextUpdate(new Date(now.getTime() + POLL_INTERVAL));
       setLoading(false);
     } catch (err) {
       console.error('Portfolio fetch error:', err);
@@ -141,7 +144,7 @@ export function usePortfolio() {
     init();
   }, [user, loadHoldings, loadCashBalance]);
 
-  // Polling
+  // Polling every 5 minutes
   useEffect(() => {
     if (!user || holdings.length === 0) return;
     const interval = setInterval(() => fetchQuotes(), POLL_INTERVAL);
@@ -173,7 +176,6 @@ export function usePortfolio() {
     } as any);
     if (error) throw error;
 
-    // Auto-create buy transaction for tax tracking
     await supabase.from('transactions').insert({
       user_id: user.id,
       ticker: holding.ticker.toUpperCase(),
@@ -222,7 +224,6 @@ export function usePortfolio() {
     await refresh();
   }, [user, refresh, holdings, auditLog]);
 
-  // Sell holding (partial or full)
   const sellHolding = useCallback(async (holdingId: string, sellQty: number, sellPrice: number, fees: number = 0) => {
     if (!user) return;
     
@@ -233,7 +234,6 @@ export function usePortfolio() {
     const sellTotal = sellQty * sellPrice;
     const netTotal = sellTotal - fees;
 
-    // Record sell transaction
     await supabase.from('transactions').insert({
       user_id: user.id,
       ticker: holding.ticker,
@@ -249,7 +249,6 @@ export function usePortfolio() {
       notes: 'Venda registrada via Meus Ativos',
     });
 
-    // Update or delete holding
     const remainingQty = holding.quantity - sellQty;
     if (remainingQty <= 0) {
       await supabase.from('holdings').delete().eq('id', holdingId).eq('user_id', user.id);
@@ -257,7 +256,6 @@ export function usePortfolio() {
       await supabase.from('holdings').update({ quantity: remainingQty } as any).eq('id', holdingId).eq('user_id', user.id);
     }
 
-    // Update cash balance (use holding's broker)
     const holdingBroker = holding.broker || '';
     const { data: existing } = await supabase
       .from('cash_balance' as any)
@@ -279,7 +277,6 @@ export function usePortfolio() {
       } as any);
     }
 
-    // Record cash movement for sell
     await supabase.from('cash_movements' as any).insert({
       user_id: user.id,
       type: 'sell',
@@ -294,7 +291,6 @@ export function usePortfolio() {
     await refresh();
   }, [user, holdings, refresh, auditLog]);
 
-  // Update cash balance for a specific broker
   const updateCashBalanceBroker = useCallback(async (amount: number, broker: string | null, movementType?: 'deposit' | 'withdraw', movementAmount?: number) => {
     if (!user) return;
     const brokerVal = broker || '';
@@ -311,7 +307,6 @@ export function usePortfolio() {
       await supabase.from('cash_balance' as any).insert({ user_id: user.id, balance: amount, broker: broker || null } as any);
     }
 
-    // Record cash movement
     if (movementType && movementAmount) {
       await supabase.from('cash_movements' as any).insert({
         user_id: user.id,
@@ -325,7 +320,6 @@ export function usePortfolio() {
     await loadCashBalance();
   }, [user, loadCashBalance]);
 
-  // Load cash movements
   const loadCashMovements = useCallback(async () => {
     if (!user) return [];
     const { data } = await supabase
@@ -337,5 +331,5 @@ export function usePortfolio() {
     return (data as any[]) || [];
   }, [user]);
 
-  return { assets, holdings, cashBalance, cashBalances, loading, error, lastUpdate, refresh, addHolding, updateHolding, deleteHolding, sellHolding, updateCashBalance: updateCashBalanceBroker, loadCashMovements };
+  return { assets, holdings, cashBalance, cashBalances, loading, error, lastUpdate, nextUpdate, refresh, addHolding, updateHolding, deleteHolding, sellHolding, updateCashBalance: updateCashBalanceBroker, loadCashMovements };
 }

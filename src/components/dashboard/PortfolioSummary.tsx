@@ -1,9 +1,11 @@
-import { TrendingUp, TrendingDown, Wallet, BarChart3, Clock } from 'lucide-react';
+import { TrendingUp, TrendingDown, Wallet, BarChart3, Clock, Timer } from 'lucide-react';
 import { type Asset, formatCurrency, formatPercent } from '@/lib/mockData';
+import { useState, useEffect } from 'react';
 
 interface Props {
   assets: Asset[];
   lastUpdate: Date | null;
+  nextUpdate?: Date | null;
 }
 
 const StatCard = ({ label, value, subValue, icon: Icon, positive }: {
@@ -27,7 +29,32 @@ const StatCard = ({ label, value, subValue, icon: Icon, positive }: {
   </div>
 );
 
-export default function PortfolioSummary({ assets, lastUpdate }: Props) {
+function CountdownTimer({ nextUpdate }: { nextUpdate: Date | null }) {
+  const [remaining, setRemaining] = useState('');
+
+  useEffect(() => {
+    if (!nextUpdate) return;
+    const tick = () => {
+      const diff = Math.max(0, nextUpdate.getTime() - Date.now());
+      const min = Math.floor(diff / 60000);
+      const sec = Math.floor((diff % 60000) / 1000);
+      setRemaining(`${min}:${sec.toString().padStart(2, '0')}`);
+    };
+    tick();
+    const interval = setInterval(tick, 1000);
+    return () => clearInterval(interval);
+  }, [nextUpdate]);
+
+  if (!nextUpdate) return null;
+  return (
+    <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+      <Timer className="h-3 w-3" />
+      Próx: {remaining}
+    </span>
+  );
+}
+
+export default function PortfolioSummary({ assets, lastUpdate, nextUpdate }: Props) {
   const total = assets.reduce((s, a) => s + a.currentPrice * a.quantity, 0);
   const cost = assets.reduce((s, a) => s + a.avgPrice * a.quantity, 0);
   const gain = total - cost;
@@ -68,13 +95,19 @@ export default function PortfolioSummary({ assets, lastUpdate }: Props) {
         positive={gain >= 0}
       />
 
-      <StatCard
-        label="Última Atualização"
-        value={lastUpdate ? lastUpdate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '--:--'}
-        subValue="Brapi + Yahoo • 2 min"
-        icon={Clock}
-        positive={null}
-      />
+      <div className="rounded-lg border border-border bg-card p-5 animate-fade-in">
+        <div className="flex items-center justify-between mb-3">
+          <span className="text-sm text-muted-foreground">Última Atualização</span>
+          <Clock className="h-4 w-4 text-muted-foreground" />
+        </div>
+        <p className="text-2xl font-bold font-mono tracking-tight">
+          {lastUpdate ? lastUpdate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '--:--'}
+        </p>
+        <div className="flex items-center gap-2 mt-1">
+          <p className="text-sm font-mono text-muted-foreground">Auto 5 min</p>
+          <CountdownTimer nextUpdate={nextUpdate || null} />
+        </div>
+      </div>
     </div>
   );
 }

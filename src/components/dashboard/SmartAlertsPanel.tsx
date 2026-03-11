@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { type Asset } from '@/lib/mockData';
+import { useAIRateLimit } from '@/hooks/useAIRateLimit';
 import {
   Zap, Loader2, RefreshCw, AlertTriangle, TrendingDown, Target,
   ShieldAlert, Eye, ArrowUpCircle, ArrowDownCircle, Activity,
@@ -51,11 +52,14 @@ export default function SmartAlertsPanel({ assets }: { assets: Asset[] }) {
   const [summary, setSummary] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { canCall, recordCall } = useAIRateLimit();
 
   const generate = useCallback(async () => {
     if (assets.length === 0) return;
+    if (!canCall()) return;
     setLoading(true);
     setError(null);
+    recordCall();
     try {
       const portfolio = assets.map(a => ({
         ticker: a.ticker, type: a.type, quantity: a.quantity,

@@ -1,12 +1,13 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import {
   FileText, Download, TrendingUp, TrendingDown, DollarSign, PieChart,
-  BarChart3, Calendar, Filter, Loader2, Printer, ArrowUpRight, ArrowDownRight,
+  BarChart3, Calendar, Filter, Loader2, Printer, ArrowUpRight, ArrowDownRight, FileSpreadsheet,
 } from 'lucide-react';
 import { usePortfolio } from '@/hooks/usePortfolio';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { formatCurrency, formatPercent } from '@/lib/mockData';
+import { exportPortfolioCSV, exportTransactionsCSV } from '@/lib/exportUtils';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart as RechartsPie, Pie, Cell, LineChart, Line, CartesianGrid,
@@ -305,7 +306,23 @@ export default function Reports() {
             Análise completa da sua carteira de investimentos
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={() => exportPortfolioCSV(assets)}
+            disabled={assets.length === 0}
+            className="h-9 px-4 rounded-lg border border-border bg-card text-sm font-medium flex items-center gap-2 hover:bg-accent transition-colors disabled:opacity-50"
+          >
+            <FileSpreadsheet className="h-4 w-4" />
+            CSV Carteira
+          </button>
+          <button
+            onClick={() => exportTransactionsCSV(transactions)}
+            disabled={transactions.length === 0}
+            className="h-9 px-4 rounded-lg border border-border bg-card text-sm font-medium flex items-center gap-2 hover:bg-accent transition-colors disabled:opacity-50"
+          >
+            <FileSpreadsheet className="h-4 w-4" />
+            CSV Transações
+          </button>
           <button
             onClick={handleExportPDF}
             className="h-9 px-4 rounded-lg bg-primary text-primary-foreground text-sm font-medium flex items-center gap-2 hover:opacity-90 transition-opacity"

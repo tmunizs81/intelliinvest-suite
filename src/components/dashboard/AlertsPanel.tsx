@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Bell, Plus, Trash2, Pause, Play, RotateCcw, MessageCircle, BellRing, Target, TrendingDown, TrendingUp, ArrowUp, ArrowDown } from 'lucide-react';
+import { Bell, Plus, Trash2, Pause, Play, RotateCcw, MessageCircle, BellRing, Target, TrendingDown, TrendingUp, ArrowUp, ArrowDown, BellDot } from 'lucide-react';
 import { useAlerts, type AlertRow, type AlertStatus } from '@/hooks/useAlerts';
+import { usePushNotifications } from '@/hooks/usePushNotifications';
 import AlertModal from './AlertModal';
 import TelegramSettingsModal from './TelegramSettingsModal';
 import { formatCurrency } from '@/lib/mockData';
@@ -22,6 +23,7 @@ const statusConfig: Record<AlertStatus, { label: string; class: string }> = {
 
 export default function AlertsPanel() {
   const { alerts, telegramSettings, addAlert, deleteAlert, toggleAlert, reactivateAlert, saveTelegramSettings } = useAlerts();
+  const { supported: pushSupported, permission: pushPermission, requestPermission } = usePushNotifications();
   const [alertModalOpen, setAlertModalOpen] = useState(false);
   const [telegramModalOpen, setTelegramModalOpen] = useState(false);
 
@@ -44,6 +46,17 @@ export default function AlertsPanel() {
             </div>
           </div>
           <div className="flex items-center gap-1.5">
+            {pushSupported && (
+              <button
+                onClick={requestPermission}
+                className={`h-8 w-8 rounded-lg border flex items-center justify-center transition-all ${
+                  pushPermission === 'granted' ? 'border-gain/30 text-gain' : 'border-border text-muted-foreground hover:text-foreground'
+                }`}
+                title={pushPermission === 'granted' ? 'Push ativo' : 'Ativar notificações push'}
+              >
+                <BellDot className="h-3.5 w-3.5" />
+              </button>
+            )}
             <button
               onClick={() => setTelegramModalOpen(true)}
               className={`h-8 w-8 rounded-lg border flex items-center justify-center transition-all ${
