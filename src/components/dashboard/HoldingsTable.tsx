@@ -38,7 +38,7 @@ export default function HoldingsTable({ assets, holdings, loading, onAdd, onEdit
         <div>
           <h2 className="text-lg font-semibold">Carteira de Ativos</h2>
           <p className="text-sm text-muted-foreground">
-            {assets.length} ativos • Yahoo Finance
+            {assets.length} ativos • Brapi + Yahoo Finance
             {loading && <Loader2 className="inline ml-2 h-3 w-3 animate-spin" />}
           </p>
         </div>
