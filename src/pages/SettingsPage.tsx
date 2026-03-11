@@ -224,6 +224,264 @@ function ActivateLicenseCard() {
   );
 }
 
+// ─── LICENSE TAB ───
+function LicenseTab() {
+  const { user } = useAuth();
+  const { isAdmin } = useRole();
+  const [license, setLicense] = useState<any>(null);
+  const [allLicenses, setAllLicenses] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+  const loadData = useCallback(async () => {
+    if (!user) return;
+    setLoading(true);
+    if (isAdmin) {
+      const { data: keys } = await supabase
+        .from('serial_keys')
+        .select('*')
+        .in('status', ['used', 'paused', 'frozen'])
+        .order('activated_at', { ascending: false });
+      const { data: profiles } = await supabase.from('profiles').select('*');
+      const merged = (keys || []).map(k => ({
+        ...k,
+        profile: (profiles || []).find((p: any) => p.user_id === k.used_by),
+      }));
+      setAllLicenses(merged);
+    } else {
+      const { data } = await supabase
+        .from('serial_keys')
+        .select('*')
+        .eq('used_by', user.id)
+        .in('status', ['used', 'paused', 'frozen'])
+        .limit(1);
+      setLicense(data?.[0] || null);
+    }
+    setLoading(false);
+  }, [user, isAdmin]);
+
+  useEffect(() => { loadData(); }, [loadData]);
+
+  const updateLicenseStatus = async (keyId: string, newStatus: string) => {
+    const actionName = newStatus === 'paused' ? 'pausar' : newStatus === 'frozen' ? 'congelar' : newStatus === 'revoked' ? 'revogar' : 'reativar';
+    if (!confirm(`Deseja ${actionName} esta licença?`)) return;
+    setActionLoading(keyId);
+    try {
+      const { error } = await supabase.from('serial_keys').update({ status: newStatus }).eq('id', keyId);
+      if (error) throw error;
+      const pastName = newStatus === 'paused' ? 'pausada' : newStatus === 'frozen' ? 'congelada' : newStatus === 'revoked' ? 'revogada' : 'reativada';
+      toast.success(`Licença ${pastName} com sucesso`);
+      await loadData();
+    } catch {
+      toast.error('Erro ao atualizar licença');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const deleteLicense = async (keyId: string) => {
+    if (!confirm('Tem certeza que deseja DELETAR permanentemente esta licença? Esta ação não pode ser desfeita.')) return;
+    setActionLoading(keyId);
+    try {
+      const { error } = await supabase.from('serial_keys').delete().eq('id', keyId);
+      if (error) throw error;
+      toast.success('Licença deletada permanentemente');
+      await loadData();
+    } catch {
+      toast.error('Erro ao deletar licença');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const statusConfig: Record<string, { label: string; badge: string; icon: any; description: string }> = {
+    used: { label: 'Ativa', badge: 'bg-gain/10 text-gain', icon: Check, description: 'Sua licença está ativa e funcionando normalmente.' },
+    paused: { label: 'Pausada', badge: 'bg-amber-500/10 text-amber-400', icon: Pause, description: 'Sua licença foi pausada pelo administrador. Entre em contato para mais informações.' },
+    frozen: { label: 'Congelada', badge: 'bg-blue-500/10 text-blue-400', icon: Snowflake, description: 'Sua licença foi congelada pelo administrador. O acesso pode ser limitado.' },
+    revoked: { label: 'Revogada', badge: 'bg-destructive/10 text-destructive', icon: X, description: 'Sua licença foi revogada. Você não tem acesso ao sistema.' },
+  };
+
+  if (loading) {
+    return <div className="p-8 flex justify-center"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>;
+  }
+
+  // ── User view ──
+  if (!isAdmin) {
+    return (
+      <div className="space-y-4">
+        <div className="rounded-lg border border-border bg-card p-6 space-y-5">
+          <h3 className="font-semibold text-lg flex items-center gap-2">
+            <ShieldCheck className="h-5 w-5 text-primary" /> Minha Licença
+          </h3>
+          {license ? (() => {
+            const cfg = statusConfig[license.status] || statusConfig.used;
+            const StatusIcon = cfg.icon;
+            const expiresAt = license.expires_at ? new Date(license.expires_at) : null;
+            const isExpiringSoon = expiresAt && (expiresAt.getTime() - Date.now()) < 7 * 24 * 60 * 60 * 1000;
+            return (
+              <div className="space-y-4">
+                {license.status !== 'used' && (
+                  <div className={`flex items-center gap-3 p-4 rounded-lg border ${
+                    license.status === 'paused' ? 'border-amber-500/30 bg-amber-500/5' :
+                    license.status === 'frozen' ? 'border-blue-500/30 bg-blue-500/5' :
+                    'border-destructive/30 bg-destructive/5'
+                  }`}>
+                    <AlertTriangle className={`h-5 w-5 shrink-0 ${
+                      license.status === 'paused' ? 'text-amber-400' :
+                      license.status === 'frozen' ? 'text-blue-400' : 'text-destructive'
+                    }`} />
+                    <div>
+                      <p className="text-sm font-medium">{cfg.label}</p>
+                      <p className="text-xs text-muted-foreground">{cfg.description}</p>
+                    </div>
+                  </div>
+                )}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="rounded-lg bg-muted/30 p-4">
+                    <p className="text-xs text-muted-foreground uppercase">Status</p>
+                    <p className="text-sm font-medium mt-1 flex items-center gap-2">
+                      <StatusIcon className="h-4 w-4" />
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${cfg.badge}`}>{cfg.label}</span>
+                    </p>
+                  </div>
+                  <div className="rounded-lg bg-muted/30 p-4">
+                    <p className="text-xs text-muted-foreground uppercase">Plano</p>
+                    <p className="text-sm font-medium mt-1">{license.plan_type === 'annual' ? 'Anual' : 'Mensal'}</p>
+                  </div>
+                  <div className="rounded-lg bg-muted/30 p-4">
+                    <p className="text-xs text-muted-foreground uppercase">Chave</p>
+                    <p className="text-sm font-mono tracking-wider mt-1">{license.key}</p>
+                  </div>
+                  <div className="rounded-lg bg-muted/30 p-4">
+                    <p className="text-xs text-muted-foreground uppercase">Ativada em</p>
+                    <p className="text-sm mt-1">{license.activated_at ? new Date(license.activated_at).toLocaleDateString('pt-BR') : '—'}</p>
+                  </div>
+                  <div className={`rounded-lg p-4 ${isExpiringSoon ? 'bg-amber-500/5 border border-amber-500/20' : 'bg-muted/30'}`}>
+                    <p className="text-xs text-muted-foreground uppercase">Expira em</p>
+                    <p className={`text-sm font-medium mt-1 ${isExpiringSoon ? 'text-amber-400' : ''}`}>
+                      {expiresAt ? expiresAt.toLocaleDateString('pt-BR') : '—'}
+                      {isExpiringSoon && <span className="text-xs ml-2">(expirando em breve!)</span>}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            );
+          })() : (
+            <div className="text-center py-8">
+              <ShieldCheck className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
+              <p className="text-muted-foreground">Nenhuma licença ativa encontrada.</p>
+              <p className="text-xs text-muted-foreground mt-1">Vá para a aba Geral para ativar uma chave de licença.</p>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // ── Admin view ──
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="font-semibold flex items-center gap-2">
+          <ShieldCheck className="h-4 w-4" /> Gerenciar Licenças de Usuários
+        </h3>
+        <p className="text-xs text-muted-foreground">{allLicenses.length} licença(s)</p>
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="rounded-lg bg-card border border-border p-4">
+          <p className="text-xs text-muted-foreground">Ativas</p>
+          <p className="text-xl font-bold font-mono text-gain">{allLicenses.filter(l => l.status === 'used').length}</p>
+        </div>
+        <div className="rounded-lg bg-card border border-border p-4">
+          <p className="text-xs text-muted-foreground">Pausadas</p>
+          <p className="text-xl font-bold font-mono text-amber-400">{allLicenses.filter(l => l.status === 'paused').length}</p>
+        </div>
+        <div className="rounded-lg bg-card border border-border p-4">
+          <p className="text-xs text-muted-foreground">Congeladas</p>
+          <p className="text-xl font-bold font-mono text-blue-400">{allLicenses.filter(l => l.status === 'frozen').length}</p>
+        </div>
+        <div className="rounded-lg bg-card border border-border p-4">
+          <p className="text-xs text-muted-foreground">Total</p>
+          <p className="text-xl font-bold font-mono">{allLicenses.length}</p>
+        </div>
+      </div>
+      <div className="rounded-lg border border-border bg-card overflow-hidden">
+        {allLicenses.length === 0 ? (
+          <div className="p-8 text-center text-sm text-muted-foreground">Nenhuma licença em uso</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border text-muted-foreground">
+                  <th className="text-left p-3 font-medium text-xs">Usuário</th>
+                  <th className="text-left p-3 font-medium text-xs">Chave</th>
+                  <th className="text-left p-3 font-medium text-xs">Plano</th>
+                  <th className="text-left p-3 font-medium text-xs">Status</th>
+                  <th className="text-left p-3 font-medium text-xs">Expira em</th>
+                  <th className="text-right p-3 font-medium text-xs">Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {allLicenses.map(l => {
+                  const cfg = statusConfig[l.status] || statusConfig.used;
+                  const isLoading = actionLoading === l.id;
+                  return (
+                    <tr key={l.id} className="border-b border-border/30 hover:bg-accent/20">
+                      <td className="p-3">
+                        <p className="font-medium text-sm">{l.profile?.display_name || '—'}</p>
+                        <p className="text-[10px] text-muted-foreground font-mono">{l.used_by?.slice(0, 8)}...</p>
+                      </td>
+                      <td className="p-3 font-mono text-xs tracking-wider">{l.key}</td>
+                      <td className="p-3 text-xs">{l.plan_type === 'annual' ? 'Anual' : 'Mensal'}</td>
+                      <td className="p-3">
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${cfg.badge}`}>{cfg.label}</span>
+                      </td>
+                      <td className="p-3 text-xs text-muted-foreground">
+                        {l.expires_at ? new Date(l.expires_at).toLocaleDateString('pt-BR') : '—'}
+                      </td>
+                      <td className="p-3 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          {isLoading ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <>
+                              {l.status === 'used' && (
+                                <>
+                                  <button onClick={() => updateLicenseStatus(l.id, 'paused')} className="h-7 w-7 rounded flex items-center justify-center text-muted-foreground hover:text-amber-400 hover:bg-amber-500/10" title="Pausar">
+                                    <Pause className="h-3.5 w-3.5" />
+                                  </button>
+                                  <button onClick={() => updateLicenseStatus(l.id, 'frozen')} className="h-7 w-7 rounded flex items-center justify-center text-muted-foreground hover:text-blue-400 hover:bg-blue-500/10" title="Congelar">
+                                    <Snowflake className="h-3.5 w-3.5" />
+                                  </button>
+                                </>
+                              )}
+                              {(l.status === 'paused' || l.status === 'frozen') && (
+                                <button onClick={() => updateLicenseStatus(l.id, 'used')} className="h-7 w-7 rounded flex items-center justify-center text-muted-foreground hover:text-gain hover:bg-gain/10" title="Reativar">
+                                  <Play className="h-3.5 w-3.5" />
+                                </button>
+                              )}
+                              <button onClick={() => updateLicenseStatus(l.id, 'revoked')} className="h-7 w-7 rounded flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10" title="Revogar">
+                                <X className="h-3.5 w-3.5" />
+                              </button>
+                              <button onClick={() => deleteLicense(l.id)} className="h-7 w-7 rounded flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10" title="Deletar">
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── USERS TAB (Admin) ───
 function UsersTab() {
   const [users, setUsers] = useState<any[]>([]);
