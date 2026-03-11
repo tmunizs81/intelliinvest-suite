@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   Settings, Users, Key, Shield, Bell, Database, UserPlus,
-  Trash2, Copy, RefreshCw, Loader2, Check, X, Download,
+  Trash2, Copy, RefreshCw, Loader2, Check, X, Download, Upload,
   Send, ChevronDown, ChevronUp, Plus, Crown, User,
-  Pause, Play, Snowflake, AlertTriangle, ShieldCheck,
+  Pause, Play, Snowflake, AlertTriangle, ShieldCheck, Clock, Calendar,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -1220,11 +1220,165 @@ function TelegramTab() {
 function BackupTab() {
   const { user } = useAuth();
   const [exporting, setExporting] = useState(false);
+  const [backups, setBackups] = useState<any[]>([]);
+  const [loadingBackups, setLoadingBackups] = useState(true);
+  const [creatingBackup, setCreatingBackup] = useState(false);
+  const [restoring, setRestoring] = useState<string | null>(null);
+  const [deletingBackup, setDeletingBackup] = useState<string | null>(null);
+
+  const loadBackups = useCallback(async () => {
+    if (!user) return;
+    setLoadingBackups(true);
+    const { data } = await supabase
+      .from('backups')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(30);
+    setBackups(data || []);
+    setLoadingBackups(false);
+  }, [user]);
+
+  useEffect(() => { loadBackups(); }, [loadBackups]);
+
+  const createManualBackup = async () => {
+    if (!user) return;
+    setCreatingBackup(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('daily-backup', {
+        body: { userId: user.id },
+      });
+      if (error) throw error;
+      toast.success('Backup criado com sucesso!');
+      await loadBackups();
+    } catch {
+      toast.error('Erro ao criar backup');
+    } finally {
+      setCreatingBackup(false);
+    }
+  };
+
+  const downloadBackup = async (backup: any) => {
+    try {
+      const { data, error } = await supabase.storage.from('backups').download(backup.file_path);
+      if (error) throw error;
+      const url = URL.createObjectURL(data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `backup-${new Date(backup.created_at).toISOString().split('T')[0]}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success('Backup baixado');
+    } catch {
+      toast.error('Erro ao baixar backup');
+    }
+  };
+
+  const restoreBackup = async (backup: any) => {
+    if (!user) return;
+    if (!confirm('⚠️ ATENÇÃO: A restauração substituirá TODOS os seus dados atuais (carteira, transações, alertas) pelos dados do backup selecionado. Esta ação não pode ser desfeita. Deseja continuar?')) return;
+    setRestoring(backup.id);
+    try {
+      const { data: fileData, error: dlErr } = await supabase.storage.from('backups').download(backup.file_path);
+      if (dlErr) throw dlErr;
+      const text = await fileData.text();
+      const backupData = JSON.parse(text);
+
+      // Delete existing data
+      await Promise.all([
+        supabase.from('holdings').delete().eq('user_id', user.id),
+        supabase.from('transactions').delete().eq('user_id', user.id),
+        supabase.from('alerts').delete().eq('user_id', user.id),
+        supabase.from('ai_messages').delete().eq('user_id', user.id),
+      ]);
+      // Delete conversations after messages
+      await supabase.from('ai_conversations').delete().eq('user_id', user.id);
+
+      // Restore data (strip ids to let DB generate new ones, keep user_id)
+      if (backupData.holdings?.length) {
+        const rows = backupData.holdings.map((h: any) => ({
+          user_id: user.id, ticker: h.ticker, name: h.name, type: h.type,
+          quantity: h.quantity, avg_price: h.avg_price, sector: h.sector,
+        }));
+        const { error } = await supabase.from('holdings').insert(rows);
+        if (error) console.error('Holdings restore error:', error);
+      }
+
+      if (backupData.transactions?.length) {
+        const rows = backupData.transactions.map((t: any) => ({
+          user_id: user.id, ticker: t.ticker, name: t.name, type: t.type,
+          operation: t.operation, quantity: t.quantity, price: t.price,
+          total: t.total, fees: t.fees, date: t.date, notes: t.notes,
+          is_daytrade: t.is_daytrade,
+        }));
+        const { error } = await supabase.from('transactions').insert(rows);
+        if (error) console.error('Transactions restore error:', error);
+      }
+
+      if (backupData.alerts?.length) {
+        const rows = backupData.alerts.map((a: any) => ({
+          user_id: user.id, name: a.name, ticker: a.ticker,
+          alert_type: a.alert_type, target_value: a.target_value,
+          current_value: a.current_value, status: a.status,
+          notify_telegram: a.notify_telegram,
+        }));
+        const { error } = await supabase.from('alerts').insert(rows);
+        if (error) console.error('Alerts restore error:', error);
+      }
+
+      if (backupData.aiConversations?.length) {
+        // Create a mapping from old IDs to new IDs for conversations
+        const convMap: Record<string, string> = {};
+        for (const c of backupData.aiConversations) {
+          const { data: newConv, error } = await supabase.from('ai_conversations').insert({
+            user_id: user.id, title: c.title, analysis_type: c.analysis_type,
+          }).select('id').single();
+          if (newConv) convMap[c.id] = newConv.id;
+          if (error) console.error('Conversation restore error:', error);
+        }
+
+        if (backupData.aiMessages?.length) {
+          const rows = backupData.aiMessages
+            .filter((m: any) => convMap[m.conversation_id])
+            .map((m: any) => ({
+              user_id: user.id, conversation_id: convMap[m.conversation_id],
+              role: m.role, content: m.content,
+            }));
+          if (rows.length) {
+            const { error } = await supabase.from('ai_messages').insert(rows);
+            if (error) console.error('Messages restore error:', error);
+          }
+        }
+      }
+
+      toast.success('Dados restaurados com sucesso! Recarregando...');
+      setTimeout(() => window.location.reload(), 1500);
+    } catch (err) {
+      console.error(err);
+      toast.error('Erro ao restaurar backup');
+    } finally {
+      setRestoring(null);
+    }
+  };
+
+  const deleteBackup = async (backup: any) => {
+    if (!confirm('Deseja excluir este backup permanentemente?')) return;
+    setDeletingBackup(backup.id);
+    try {
+      await supabase.storage.from('backups').remove([backup.file_path]);
+      await supabase.from('backups').delete().eq('id', backup.id);
+      toast.success('Backup excluído');
+      await loadBackups();
+    } catch {
+      toast.error('Erro ao excluir backup');
+    } finally {
+      setDeletingBackup(null);
+    }
+  };
 
   const exportData = async (format: 'json' | 'csv') => {
     if (!user) return;
     setExporting(true);
-
     try {
       const [holdingsRes, transactionsRes, alertsRes, telegramRes, familyRes] = await Promise.all([
         supabase.from('holdings').select('*').eq('user_id', user.id),
@@ -1233,7 +1387,6 @@ function BackupTab() {
         supabase.from('telegram_settings').select('*').eq('user_id', user.id),
         supabase.from('family_members').select('*').eq('owner_id', user.id),
       ]);
-
       const backup = {
         exportDate: new Date().toISOString(),
         user: { email: user.email, id: user.id },
@@ -1243,7 +1396,6 @@ function BackupTab() {
         telegramSettings: telegramRes.data || [],
         familyMembers: familyRes.data || [],
       };
-
       if (format === 'json') {
         const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
@@ -1253,7 +1405,6 @@ function BackupTab() {
         a.click();
         URL.revokeObjectURL(url);
       } else {
-        // Export holdings as CSV
         const headers = ['ticker', 'name', 'type', 'quantity', 'avg_price', 'sector'];
         const rows = (backup.holdings as any[]).map(h => headers.map(k => h[k] ?? '').join(','));
         const csv = [headers.join(','), ...rows].join('\n');
@@ -1265,26 +1416,52 @@ function BackupTab() {
         a.click();
         URL.revokeObjectURL(url);
       }
-
       toast.success(`Backup exportado em ${format.toUpperCase()}`);
-    } catch (err) {
+    } catch {
       toast.error('Erro ao exportar dados');
     } finally {
       setExporting(false);
     }
   };
 
+  const formatBytes = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
   return (
     <div className="space-y-4">
+      {/* Auto backup info */}
+      <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 flex items-start gap-3">
+        <Clock className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+        <div>
+          <p className="text-sm font-medium">Backup Automático Diário</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Um backup completo dos seus dados é criado automaticamente todos os dias às 23:00. 
+            Os últimos 30 backups são mantidos.
+          </p>
+        </div>
+      </div>
+
+      {/* Manual backup + export */}
       <div className="rounded-lg border border-border bg-card p-5 space-y-4">
         <h3 className="font-semibold flex items-center gap-2">
-          <Database className="h-4 w-4" /> Backup Completo
+          <Database className="h-4 w-4" /> Backup e Exportação
         </h3>
-        <p className="text-sm text-muted-foreground">
-          Exporte todos os seus dados: carteira, transações, alertas, configurações e membros familiares.
-        </p>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <button
+            onClick={createManualBackup}
+            disabled={creatingBackup}
+            className="flex items-center justify-center gap-2 p-4 rounded-lg border border-primary/20 bg-primary/5 hover:bg-primary/10 transition-colors"
+          >
+            {creatingBackup ? <Loader2 className="h-5 w-5 animate-spin text-primary" /> : <Upload className="h-5 w-5 text-primary" />}
+            <div className="text-left">
+              <p className="text-sm font-medium">Backup Agora</p>
+              <p className="text-[10px] text-muted-foreground">Criar backup manual</p>
+            </div>
+          </button>
           <button
             onClick={() => exportData('json')}
             disabled={exporting}
@@ -1292,8 +1469,8 @@ function BackupTab() {
           >
             <Download className="h-5 w-5 text-primary" />
             <div className="text-left">
-              <p className="text-sm font-medium">Backup JSON</p>
-              <p className="text-[10px] text-muted-foreground">Todos os dados em formato completo</p>
+              <p className="text-sm font-medium">Exportar JSON</p>
+              <p className="text-[10px] text-muted-foreground">Download local</p>
             </div>
           </button>
           <button
@@ -1308,13 +1485,179 @@ function BackupTab() {
             </div>
           </button>
         </div>
+      </div>
 
-        {exporting && (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" /> Exportando dados...
+      {/* Backup history */}
+      <div className="rounded-lg border border-border bg-card p-5 space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="font-semibold flex items-center gap-2">
+            <Calendar className="h-4 w-4" /> Histórico de Backups
+          </h3>
+          <button onClick={loadBackups} className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
+            <RefreshCw className="h-3 w-3" /> Atualizar
+          </button>
+        </div>
+
+        {loadingBackups ? (
+          <div className="flex justify-center py-8">
+            <Loader2 className="h-5 w-5 animate-spin text-primary" />
+          </div>
+        ) : backups.length === 0 ? (
+          <div className="text-center py-8">
+            <Database className="h-10 w-10 text-muted-foreground/30 mx-auto mb-2" />
+            <p className="text-sm text-muted-foreground">Nenhum backup encontrado.</p>
+            <p className="text-xs text-muted-foreground mt-1">Clique em "Backup Agora" para criar seu primeiro backup.</p>
+          </div>
+        ) : (
+          <div className="space-y-2 max-h-[400px] overflow-y-auto">
+            {backups.map((b) => (
+              <div key={b.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded-lg bg-muted/20 border border-border/50">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 ${
+                    b.backup_type === 'auto' ? 'bg-primary/10 text-primary' : 'bg-accent text-accent-foreground'
+                  }`}>
+                    {b.backup_type === 'auto' ? <Clock className="h-4 w-4" /> : <User className="h-4 w-4" />}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate">
+                      {new Date(b.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground">
+                      {b.backup_type === 'auto' ? 'Automático' : 'Manual'} • {formatBytes(b.size_bytes || 0)}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    onClick={() => downloadBackup(b)}
+                    className="px-2.5 py-1.5 text-xs rounded-md border border-border hover:bg-accent/50 flex items-center gap-1"
+                    title="Baixar"
+                  >
+                    <Download className="h-3 w-3" /> Baixar
+                  </button>
+                  <button
+                    onClick={() => restoreBackup(b)}
+                    disabled={restoring === b.id}
+                    className="px-2.5 py-1.5 text-xs rounded-md bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50 flex items-center gap-1"
+                    title="Restaurar"
+                  >
+                    {restoring === b.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                    Restaurar
+                  </button>
+                  <button
+                    onClick={() => deleteBackup(b)}
+                    disabled={deletingBackup === b.id}
+                    className="px-2 py-1.5 text-xs rounded-md border border-destructive/30 text-destructive hover:bg-destructive/10 disabled:opacity-50"
+                    title="Excluir"
+                  >
+                    {deletingBackup === b.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>
+
+      {/* Restore from file */}
+      <div className="rounded-lg border border-border bg-card p-5 space-y-4">
+        <h3 className="font-semibold flex items-center gap-2">
+          <Upload className="h-4 w-4" /> Restaurar de Arquivo
+        </h3>
+        <p className="text-sm text-muted-foreground">
+          Faça upload de um arquivo JSON de backup exportado anteriormente para restaurar seus dados.
+        </p>
+        <RestoreFromFile />
+      </div>
+    </div>
+  );
+}
+
+function RestoreFromFile() {
+  const { user } = useAuth();
+  const [restoring, setRestoring] = useState(false);
+
+  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+
+    if (!confirm('⚠️ ATENÇÃO: A restauração substituirá TODOS os seus dados atuais. Deseja continuar?')) {
+      e.target.value = '';
+      return;
+    }
+
+    setRestoring(true);
+    try {
+      const text = await file.text();
+      const backupData = JSON.parse(text);
+
+      // Validate it's a valid backup
+      if (!backupData.holdings && !backupData.transactions) {
+        toast.error('Arquivo de backup inválido');
+        return;
+      }
+
+      // Delete existing data
+      await Promise.all([
+        supabase.from('holdings').delete().eq('user_id', user.id),
+        supabase.from('transactions').delete().eq('user_id', user.id),
+        supabase.from('alerts').delete().eq('user_id', user.id),
+      ]);
+
+      if (backupData.holdings?.length) {
+        const rows = backupData.holdings.map((h: any) => ({
+          user_id: user.id, ticker: h.ticker, name: h.name, type: h.type,
+          quantity: h.quantity, avg_price: h.avg_price, sector: h.sector,
+        }));
+        await supabase.from('holdings').insert(rows);
+      }
+
+      if (backupData.transactions?.length) {
+        const rows = backupData.transactions.map((t: any) => ({
+          user_id: user.id, ticker: t.ticker, name: t.name, type: t.type,
+          operation: t.operation, quantity: t.quantity, price: t.price,
+          total: t.total, fees: t.fees, date: t.date, notes: t.notes,
+          is_daytrade: t.is_daytrade,
+        }));
+        await supabase.from('transactions').insert(rows);
+      }
+
+      if (backupData.alerts?.length) {
+        const rows = backupData.alerts.map((a: any) => ({
+          user_id: user.id, name: a.name, ticker: a.ticker,
+          alert_type: a.alert_type, target_value: a.target_value,
+          current_value: a.current_value, status: a.status,
+          notify_telegram: a.notify_telegram,
+        }));
+        await supabase.from('alerts').insert(rows);
+      }
+
+      toast.success('Dados restaurados com sucesso! Recarregando...');
+      setTimeout(() => window.location.reload(), 1500);
+    } catch {
+      toast.error('Erro ao restaurar backup. Verifique se o arquivo é válido.');
+    } finally {
+      setRestoring(false);
+      e.target.value = '';
+    }
+  };
+
+  return (
+    <div>
+      <label className={`flex items-center justify-center gap-2 p-4 rounded-lg border-2 border-dashed border-border hover:border-primary/50 cursor-pointer transition-colors ${restoring ? 'opacity-50 pointer-events-none' : ''}`}>
+        {restoring ? (
+          <>
+            <Loader2 className="h-5 w-5 animate-spin text-primary" />
+            <span className="text-sm text-muted-foreground">Restaurando...</span>
+          </>
+        ) : (
+          <>
+            <Upload className="h-5 w-5 text-muted-foreground" />
+            <span className="text-sm text-muted-foreground">Clique para selecionar arquivo JSON</span>
+          </>
+        )}
+        <input type="file" accept=".json" onChange={handleFile} className="hidden" disabled={restoring} />
+      </label>
     </div>
   );
 }

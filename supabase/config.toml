@@ -44,3 +44,6 @@ verify_jwt = false
 
 [functions.telegram-license-notify]
 verify_jwt = false
+
+[functions.daily-backup]
+verify_jwt = false
