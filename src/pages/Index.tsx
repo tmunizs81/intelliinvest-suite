@@ -4,6 +4,7 @@ import { Responsive as ResponsiveOrig } from 'react-grid-layout';
 const ResponsiveGrid: any = ResponsiveOrig;
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 import PortfolioSummary from '@/components/dashboard/PortfolioSummary';
 import PortfolioChart from '@/components/dashboard/PortfolioChart';
@@ -153,6 +154,7 @@ function loadLayouts(): any {
 }
 
 const Index = () => {
+  const isMobile = useIsMobile();
   const { assets, holdings, loading, error, lastUpdate, nextUpdate, refresh, addHolding, updateHolding, deleteHolding } = usePortfolio();
   const { snapshots, loading: snapshotsLoading, saveSnapshot } = usePortfolioSnapshots();
 
@@ -218,26 +220,30 @@ const Index = () => {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => setLocked(!locked)}
-              className={`h-8 px-3 rounded-lg border text-xs font-medium flex items-center gap-1.5 transition-all ${
-                locked
-                  ? 'border-border bg-card text-muted-foreground hover:text-foreground'
-                  : 'border-primary/30 bg-primary/10 text-primary'
-              }`}
-              title={locked ? 'Desbloquear layout' : 'Bloquear layout'}
-            >
-              {locked ? <Lock className="h-3.5 w-3.5" /> : <Unlock className="h-3.5 w-3.5" />}
-              {locked ? 'Editar Layout' : 'Editando'}
-            </button>
-            {!locked && (
-              <button
-                onClick={resetLayout}
-                className="h-8 px-3 rounded-lg border border-border bg-card text-xs font-medium text-muted-foreground hover:text-foreground flex items-center gap-1.5 transition-all"
-              >
-                <RotateCcw className="h-3.5 w-3.5" />
-                Reset
-              </button>
+            {!isMobile && (
+              <>
+                <button
+                  onClick={() => setLocked(!locked)}
+                  className={`h-8 px-3 rounded-lg border text-xs font-medium flex items-center gap-1.5 transition-all ${
+                    locked
+                      ? 'border-border bg-card text-muted-foreground hover:text-foreground'
+                      : 'border-primary/30 bg-primary/10 text-primary'
+                  }`}
+                  title={locked ? 'Desbloquear layout' : 'Bloquear layout'}
+                >
+                  {locked ? <Lock className="h-3.5 w-3.5" /> : <Unlock className="h-3.5 w-3.5" />}
+                  {locked ? 'Editar Layout' : 'Editando'}
+                </button>
+                {!locked && (
+                  <button
+                    onClick={resetLayout}
+                    className="h-8 px-3 rounded-lg border border-border bg-card text-xs font-medium text-muted-foreground hover:text-foreground flex items-center gap-1.5 transition-all"
+                  >
+                    <RotateCcw className="h-3.5 w-3.5" />
+                    Reset
+                  </button>
+                )}
+              </>
             )}
             <button
               onClick={() => refresh()}
@@ -261,6 +267,47 @@ const Index = () => {
           </div>
         ) : (
           <div className="pb-12" ref={containerRef}>
+            {isMobile ? (
+              <div className="flex flex-col gap-4">
+                <MobilePanel title="" noPadding><PortfolioSummary assets={assets} lastUpdate={lastUpdate} nextUpdate={nextUpdate} /></MobilePanel>
+                <MobilePanel title="Saúde da Carteira"><HealthScorePanel assets={assets} /></MobilePanel>
+                <MobilePanel title="Evolução Patrimonial"><PortfolioChart assets={assets} /></MobilePanel>
+                <MobilePanel title="Histórico Patrimonial (Real)"><PortfolioHistoryChart snapshots={snapshots} loading={snapshotsLoading} /></MobilePanel>
+                <MobilePanel title="Alocação"><AllocationChart assets={assets} /></MobilePanel>
+                <MobilePanel title="Rebalanceamento IA"><RebalancePanel assets={assets} /></MobilePanel>
+                <MobilePanel title="Correlação"><CorrelationHeatmap assets={assets} /></MobilePanel>
+                <MobilePanel title="Performance"><PerformanceChart assets={assets} /></MobilePanel>
+                <MobilePanel title="Dividendos"><DividendsPanel assets={assets} /></MobilePanel>
+                <MobilePanel title="Projeção de Dividendos IA"><DividendForecastPanel assets={assets} /></MobilePanel>
+                <MobilePanel title="Carteira">
+                  <HoldingsTable
+                    assets={assets}
+                    holdings={holdings}
+                    loading={loading}
+                    onAdd={() => { setEditingHolding(null); setModalOpen(true); }}
+                    onEdit={handleEdit}
+                    onDelete={deleteHolding}
+                  />
+                </MobilePanel>
+                <MobilePanel title="Alertas"><AlertsPanel /></MobilePanel>
+                <MobilePanel title="Câmbio"><CurrencyDashboard /></MobilePanel>
+                <MobilePanel title="Simulador E se?"><SimulatorPanel assets={assets} /></MobilePanel>
+                <MobilePanel title="Metas"><GoalsPanel assets={assets} /></MobilePanel>
+                <MobilePanel title="Notícias IA"><NewsPanel assets={assets} /></MobilePanel>
+                <MobilePanel title="IA Insights"><AIInsightsPanel assets={assets} /></MobilePanel>
+                <MobilePanel title="Alertas Inteligentes"><SmartAlertsPanel assets={assets} /></MobilePanel>
+                <MobilePanel title="Relatório Mensal"><MonthlyReportPanel assets={assets} /></MobilePanel>
+                <MobilePanel title="Aporte Inteligente"><SmartContributionPanel assets={assets} /></MobilePanel>
+                <MobilePanel title="Preço Teto (Bazin/Graham)"><CeilingPricePanel assets={assets} /></MobilePanel>
+                <MobilePanel title="Rentabilidade vs Benchmarks"><ProfitabilityPanel assets={assets} /></MobilePanel>
+                <MobilePanel title="Backtesting Histórico"><BacktestingPanel assets={assets} /></MobilePanel>
+                <MobilePanel title="Scoring IA de Ativos"><AssetScoringPanel assets={assets} /></MobilePanel>
+                <MobilePanel title="Resumo Renda Fixa"><FixedIncomePanel assets={assets} /></MobilePanel>
+                <MobilePanel title="Carteira vs Benchmarks (CDI/IBOV/Dólar)"><BenchmarkChart snapshots={snapshots} /></MobilePanel>
+                <MobilePanel title="Consultor IA de Investimentos"><AIAdvisorPanel assets={assets} cashBalance={0} /></MobilePanel>
+                <MobilePanel title="Análise de Risco IA"><AIRiskPanel assets={assets} /></MobilePanel>
+              </div>
+            ) : (
             <ResponsiveGrid
               className="layout"
               width={containerWidth}
@@ -423,6 +470,7 @@ const Index = () => {
                 </DashboardPanel>
               </div>
             </ResponsiveGrid>
+            )}
           </div>
         )}
       </div>
@@ -466,6 +514,23 @@ function DashboardPanel({ children, title, noPadding, locked }: {
         </div>
       )}
       <div className={`flex-1 overflow-auto ${noPadding ? '' : ''}`}>{children}</div>
+    </div>
+  );
+}
+
+function MobilePanel({ children, title, noPadding }: {
+  children: React.ReactNode;
+  title: string;
+  noPadding?: boolean;
+}) {
+  return (
+    <div className="w-full flex flex-col rounded-xl border border-border bg-card overflow-hidden shadow-sm">
+      {title && (
+        <div className="bg-muted/60 border-b border-border px-3 py-2 shrink-0">
+          <span className="text-xs text-muted-foreground uppercase tracking-wider font-medium">{title}</span>
+        </div>
+      )}
+      <div className={`overflow-auto ${noPadding ? '' : ''}`}>{children}</div>
     </div>
   );
 }
