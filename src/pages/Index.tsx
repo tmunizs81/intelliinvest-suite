@@ -41,6 +41,11 @@ import PatternDetectorPanel from '@/components/dashboard/PatternDetectorPanel';
 import IRAssistantPanel from '@/components/dashboard/IRAssistantPanel';
 import IntegrationsPanel from '@/components/dashboard/IntegrationsPanel';
 import KioskMode from '@/components/dashboard/KioskMode';
+import SectorRadarPanel from '@/components/dashboard/SectorRadarPanel';
+import EventsCalendarPanel from '@/components/dashboard/EventsCalendarPanel';
+import AchievementsPanel from '@/components/dashboard/AchievementsPanel';
+import SessionLogPanel from '@/components/dashboard/SessionLogPanel';
+import FiscalReportPanel from '@/components/dashboard/FiscalReportPanel';
 
 import { usePortfolio, type HoldingRow } from '@/hooks/usePortfolio';
 import { usePortfolioSnapshots } from '@/hooks/usePortfolioSnapshots';
