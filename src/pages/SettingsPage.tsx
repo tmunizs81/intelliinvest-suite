@@ -279,7 +279,6 @@ function UsersTab() {
       setNewPassword('');
       setNewName('');
       setNewRole('user');
-      setNewBotToken('');
       setNewChatId('');
       await loadUsers();
     } catch (err) {
