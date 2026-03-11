@@ -841,8 +841,20 @@ Após adicionar os ativos:
   - "Devo vender PETR4?"
 
 ### 📤 Exportação de Dados
-- Relatórios podem ser impressos/exportados em PDF
-- Use Ctrl+P ou o botão "Imprimir" nas telas de relatório
+- **PDF**: Use o botão "Exportar PDF" em Relatórios
+- **CSV Carteira**: Exporta ativos com preço médio, atual e resultado
+- **CSV Transações**: Exporta todas as operações para Excel
+- **Manual**: Imprima este manual via botão "Imprimir / Salvar PDF"
+
+### 🔄 Atualização Automática
+- Preços atualizam automaticamente a cada 5 minutos
+- O countdown aparece no card "Última Atualização" do Dashboard
+- Clique no botão refresh para atualizar manualmente
+
+### ⚡ Rate Limiting IA
+- O sistema protege contra excesso de chamadas à IA
+- Máximo 4 consultas por minuto
+- Aguarde 10 segundos entre consultas consecutivas
 
 ### 🔐 Segurança
 - Sempre faça logout ao usar computadores compartilhados
