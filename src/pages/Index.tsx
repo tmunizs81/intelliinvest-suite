@@ -27,6 +27,9 @@ import SmartAlertsPanel from '@/components/dashboard/SmartAlertsPanel';
 import MonthlyReportPanel from '@/components/dashboard/MonthlyReportPanel';
 import SmartContributionPanel from '@/components/dashboard/SmartContributionPanel';
 import CeilingPricePanel from '@/components/dashboard/CeilingPricePanel';
+import ProfitabilityPanel from '@/components/dashboard/ProfitabilityPanel';
+import BacktestingPanel from '@/components/dashboard/BacktestingPanel';
+import OnboardingOverlay from '@/components/OnboardingOverlay';
 
 import { usePortfolio, type HoldingRow } from '@/hooks/usePortfolio';
 import { Loader2, Lock, Unlock, RotateCcw } from 'lucide-react';
