@@ -80,6 +80,7 @@ export default function HoldingsTable({ assets, holdings, loading, onAdd, onEdit
                 <th className="text-right p-4 font-medium">24h</th>
                 <th className="text-right p-4 font-medium">Total</th>
                 <th className="text-right p-4 font-medium">Lucro</th>
+                <th className="text-center p-4 font-medium">Fonte</th>
                 <th className="text-right p-4 font-medium w-20"></th>
               </tr>
             </thead>
