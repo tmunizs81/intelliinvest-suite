@@ -13,6 +13,7 @@ export interface HoldingRow {
   quantity: number;
   avg_price: number;
   sector: string | null;
+  broker: string | null;
 }
 
 export function usePortfolio() {
