@@ -490,8 +490,10 @@ O módulo de **Relatórios** gera documentos completos sobre sua carteira.
 - 1 Mês, 3 Meses, 6 Meses, 1 Ano, Total
 
 ### Exportação:
-- Clique em **"Exportar PDF"** ou **"Imprimir"** para gerar o relatório
-- Formato otimizado para impressão A4
+- **PDF**: Clique em "Exportar PDF" para gerar relatório formatado para impressão
+- **CSV Carteira**: Exporta todos os ativos com preço médio, atual, resultado e alocação
+- **CSV Transações**: Exporta histórico completo de operações (compras, vendas, taxas)
+- Arquivos CSV compatíveis com Excel (separador ;, codificação UTF-8)
     `,
   },
   {
