@@ -1,10 +1,21 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ArrowDownLeft, ArrowUpRight } from 'lucide-react';
 import { formatCurrency } from '@/lib/mockData';
+
+const BROKERS = [
+  'XP Investimentos', 'Clear Corretora', 'Rico Investimentos', 'BTG Pactual',
+  'Itaú Corretora', 'Bradesco Corretora', 'Banco do Brasil Investimentos',
+  'NuInvest (Easynvest)', 'Inter Invest', 'Ágora Investimentos', 'Genial Investimentos',
+  'Modal Mais', 'Guide Investimentos', 'Órama', 'Toro Investimentos',
+  'C6 Invest', 'Warren', 'Mercado Bitcoin', 'Binance', 'Foxbit',
+  'Terra Investimentos', 'Safra Corretora', 'Santander Corretora',
+  'Avenue Securities', 'Nomad', 'Stake', 'Passfolio',
+  'Interactive Brokers', 'Charles Schwab', 'TD Ameritrade',
+];
 
 interface CashBalanceModalProps {
   open: boolean;
@@ -13,9 +24,52 @@ interface CashBalanceModalProps {
   onConfirm: (newBalance: number) => Promise<void>;
 }
 
+function BrokerAutocomplete({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  const filtered = value.trim()
+    ? BROKERS.filter(b => b.toLowerCase().includes(value.toLowerCase()))
+    : BROKERS;
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  return (
+    <div ref={ref} className="relative">
+      <Input
+        value={value}
+        onChange={(e) => { onChange(e.target.value); setOpen(true); }}
+        onFocus={() => setOpen(true)}
+        placeholder="Digite o nome da corretora"
+      />
+      {open && filtered.length > 0 && (
+        <div className="absolute z-50 mt-1 w-full max-h-40 overflow-y-auto rounded-md border border-border bg-popover shadow-md">
+          {filtered.map((b) => (
+            <button
+              key={b}
+              type="button"
+              className="w-full text-left px-3 py-1.5 text-sm hover:bg-accent transition-colors"
+              onClick={() => { onChange(b); setOpen(false); }}
+            >
+              {b}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function CashBalanceModal({ open, onClose, currentBalance, onConfirm }: CashBalanceModalProps) {
   const [mode, setMode] = useState<'deposit' | 'withdraw'>('deposit');
   const [amount, setAmount] = useState('');
+  const [broker, setBroker] = useState('');
   const [saving, setSaving] = useState(false);
 
   const numAmount = parseFloat(amount) || 0;
@@ -28,6 +82,7 @@ export default function CashBalanceModal({ open, onClose, currentBalance, onConf
     try {
       await onConfirm(newBalance);
       setAmount('');
+      setBroker('');
       onClose();
     } finally {
       setSaving(false);
@@ -35,7 +90,7 @@ export default function CashBalanceModal({ open, onClose, currentBalance, onConf
   };
 
   const handleOpenChange = (v: boolean) => {
-    if (!v) { setAmount(''); onClose(); }
+    if (!v) { setAmount(''); setBroker(''); onClose(); }
   };
 
   return (
@@ -91,6 +146,13 @@ export default function CashBalanceModal({ open, onClose, currentBalance, onConf
           )}
         </div>
 
+        {mode === 'deposit' && (
+          <div className="space-y-2">
+            <Label>Corretora</Label>
+            <BrokerAutocomplete value={broker} onChange={setBroker} />
+          </div>
+        )}
+
         {numAmount > 0 && (
           <div className="rounded-lg border border-border bg-muted/30 p-3 text-sm space-y-1">
             <div className="flex justify-between">
@@ -103,6 +165,12 @@ export default function CashBalanceModal({ open, onClose, currentBalance, onConf
                 {mode === 'deposit' ? '+' : '-'}{formatCurrency(numAmount)}
               </span>
             </div>
+            {mode === 'deposit' && broker && (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Corretora</span>
+                <span>{broker}</span>
+              </div>
+            )}
             <div className="border-t border-border pt-1 flex justify-between font-medium">
               <span>Novo saldo</span>
               <span className="font-mono text-primary">{formatCurrency(newBalance)}</span>
