@@ -50,3 +50,21 @@ verify_jwt = false
 
 [functions.ticker-search]
 verify_jwt = false
+
+[functions.portfolio-chat]
+verify_jwt = false
+
+[functions.portfolio-health]
+verify_jwt = false
+
+[functions.portfolio-rebalance]
+verify_jwt = false
+
+[functions.portfolio-simulator]
+verify_jwt = false
+
+[functions.ai-news]
+verify_jwt = false
+
+[functions.investment-goals]
+verify_jwt = false
