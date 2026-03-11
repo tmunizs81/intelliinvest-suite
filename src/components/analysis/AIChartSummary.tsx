@@ -17,9 +17,10 @@ interface Props {
   name: string;
   type: string;
   candles: Candle[];
+  loadDelay?: number;
 }
 
-export default function AIChartSummary({ ticker, name, type, candles }: Props) {
+export default function AIChartSummary({ ticker, name, type, candles, loadDelay = 0 }: Props) {
   const [summary, setSummary] = useState<ChartSummary | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
