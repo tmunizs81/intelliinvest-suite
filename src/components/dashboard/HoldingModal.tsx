@@ -5,7 +5,9 @@ import type { HoldingRow } from '@/hooks/usePortfolio';
 import { type Asset } from '@/lib/mockData';
 import AICopilotSignal from './AICopilotSignal';
 
-const TYPES = ['Ação', 'FII', 'ETF', 'ETF Internacional', 'Cripto', 'Renda Fixa'] as const;
+const TYPES = ['Ação', 'FII', 'ETF', 'ETF Internacional', 'Cripto', 'Renda Fixa', 'LCI', 'LCA', 'Tesouro Selic'] as const;
+
+const FIXED_INCOME_TYPES = ['Renda Fixa', 'LCI', 'LCA', 'Tesouro Selic'];
 
 interface SearchResult {
   symbol: string;
@@ -164,8 +166,8 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
         avg_price: parseFloat(avgPrice),
         sector: sector.trim() || null,
         broker: broker.trim() || null,
-        yield_rate: type === 'Renda Fixa' ? yieldRate.trim() || null : null,
-        indexer_type: type === 'Renda Fixa' ? indexerType : null,
+        yield_rate: FIXED_INCOME_TYPES.includes(type) ? yieldRate.trim() || null : null,
+        indexer_type: FIXED_INCOME_TYPES.includes(type) ? indexerType : null,
       };
 
       if (!data.ticker || !data.name || isNaN(data.quantity) || isNaN(data.avg_price)) {
@@ -293,7 +295,7 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
           <BrokerAutocomplete value={broker} onChange={setBroker} />
 
           {/* Campos de Renda Fixa */}
-          {type === 'Renda Fixa' && (
+          {FIXED_INCOME_TYPES.includes(type) && (
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
                 <label className="text-xs font-medium text-muted-foreground">Indexador *</label>
