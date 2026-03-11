@@ -1,13 +1,18 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { X, Plus, Loader2, Search } from 'lucide-react';
+import { X, Plus, Loader2, Search, CalendarIcon } from 'lucide-react';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import type { HoldingRow } from '@/hooks/usePortfolio';
 import { type Asset } from '@/lib/mockData';
 import AICopilotSignal from './AICopilotSignal';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { cn } from '@/lib/utils';
 
-const TYPES = ['Ação', 'FII', 'ETF', 'ETF Internacional', 'Cripto', 'Renda Fixa', 'LCI', 'LCA', 'Tesouro Selic'] as const;
+const TYPES = ['Ação', 'FII', 'ETF', 'ETF Internacional', 'Cripto', 'Renda Fixa'] as const;
 
-const FIXED_INCOME_TYPES = ['Renda Fixa', 'LCI', 'LCA', 'Tesouro Selic'];
+const FIXED_INCOME_SUBTYPES = ['CDB', 'LCI', 'LCA', 'Tesouro Selic', 'Tesouro IPCA+', 'Tesouro Pré', 'Debênture', 'CRA', 'CRI', 'LC', 'Outro'] as const;
 
 interface SearchResult {
   symbol: string;
