@@ -111,7 +111,15 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
   }, []);
 
   const handleTickerChange = (value: string) => {
-    setTicker(value.toUpperCase());
+    const upper = value.toUpperCase();
+    setTicker(upper);
+    // Auto-classify type as user types
+    if (upper.length >= 2) {
+      const detected = classifyAssetType(upper);
+      if (detected === 'Cripto') setType('Cripto');
+      else if (detected === 'FII') setType('FII');
+      else if (detected === 'ETF') setType('ETF');
+    }
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => searchTickers(value), 300);
   };
