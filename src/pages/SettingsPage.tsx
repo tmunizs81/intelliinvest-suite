@@ -1090,7 +1090,7 @@ function TelegramTab() {
   if (loading) return <div className="flex justify-center p-8"><Loader2 className="h-5 w-5 animate-spin" /></div>;
 
   const isLinked = !!chatId;
-  const botUsername = 'InvestAI_Bot'; // adjust to your bot's username
+  const botUsername = 'SimplyNvest_Bot'; // adjust to your bot's username
 
   return (
     <div className="space-y-4">
@@ -1401,7 +1401,7 @@ function BackupTab() {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `investai-backup-${new Date().toISOString().split('T')[0]}.json`;
+        a.download = `simplynvest-backup-${new Date().toISOString().split('T')[0]}.json`;
         a.click();
         URL.revokeObjectURL(url);
       } else {
@@ -1412,7 +1412,7 @@ function BackupTab() {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `investai-holdings-${new Date().toISOString().split('T')[0]}.csv`;
+        a.download = `simplynvest-holdings-${new Date().toISOString().split('T')[0]}.csv`;
         a.click();
         URL.revokeObjectURL(url);
       }

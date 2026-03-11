@@ -14,7 +14,7 @@ if ! docker compose version &> /dev/null 2>&1; then
     COMPOSE_CMD="docker-compose"
 fi
 
-echo -e "${YELLOW}Parando e removendo T2-Simplynvest...${NC}"
+echo -e "${YELLOW}Parando e removendo SimplyNvest...${NC}"
 
 cd "$SCRIPT_DIR"
 
@@ -22,9 +22,9 @@ cd "$SCRIPT_DIR"
 $COMPOSE_CMD down --rmi all --volumes 2>/dev/null || true
 
 # Remover rede (se sobrou)
-docker network rm investai-net 2>/dev/null || true
+docker network rm simplynvest-net 2>/dev/null || true
 
 # Remover imagens órfãs do build
 docker image prune -f --filter "label=com.docker.compose.project=docker" 2>/dev/null || true
 
-echo -e "${GREEN}✅ T2-Simplynvest removido com sucesso. Nenhum outro serviço foi afetado.${NC}"
+echo -e "${GREEN}✅ SimplyNvest removido com sucesso. Nenhum outro serviço foi afetado.${NC}"

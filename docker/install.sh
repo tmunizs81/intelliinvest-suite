@@ -136,7 +136,7 @@ APP_PORT=${APP_PORT:-3080}
 
 # ── 4. Parar container anterior (se existir) ──
 log_step "4/7" "Verificando instalação anterior..."
-if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -q "^investai-app$"; then
+if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -q "^simplynvest-app$"; then
     log_warn "Container anterior encontrado. Parando..."
     cd "$SCRIPT_DIR" && $COMPOSE_CMD --env-file "$ENV_FILE" down 2>/dev/null || true
     log_ok "Container anterior removido"
@@ -176,17 +176,17 @@ if [ $RETRY -eq $MAX_RETRIES ]; then
     echo ""
     echo -e "${YELLOW}  ── Diagnóstico ──${NC}"
     echo -e "  Container status:"
-    docker ps -a --filter "name=investai-app" --format "  {{.Status}}" 2>/dev/null
+    docker ps -a --filter "name=simplynvest-app" --format "  {{.Status}}" 2>/dev/null
     echo ""
     echo -e "  Últimos logs:"
-    docker logs investai-app --tail 30 2>&1 | sed 's/^/  /'
+    docker logs simplynvest-app --tail 30 2>&1 | sed 's/^/  /'
     echo ""
-    echo -e "${YELLOW}  Tente: docker logs investai-app${NC}"
+    echo -e "${YELLOW}  Tente: docker logs simplynvest-app${NC}"
     exit 1
 fi
 
 # Verificar container health
-CONTAINER_STATUS=$(docker inspect --format='{{.State.Status}}' investai-app 2>/dev/null || echo "unknown")
+CONTAINER_STATUS=$(docker inspect --format='{{.State.Status}}' simplynvest-app 2>/dev/null || echo "unknown")
 if [ "$CONTAINER_STATUS" != "running" ]; then
     log_warn "Container status: $CONTAINER_STATUS (esperado: running)"
 fi
@@ -203,9 +203,9 @@ echo -e "  🌐 Acesse: ${GREEN}http://${SERVER_IP}:${APP_PORT}${NC}"
 echo -e "  🌐 Local:  ${GREEN}http://localhost:${APP_PORT}${NC}"
 echo ""
 echo -e "  📋 Comandos úteis:"
-echo -e "  ${YELLOW}docker logs investai-app -f${NC}           → Ver logs em tempo real"
-echo -e "  ${YELLOW}docker restart investai-app${NC}           → Reiniciar"
-echo -e "  ${YELLOW}docker stats investai-app${NC}             → Uso de CPU/RAM"
+echo -e "  ${YELLOW}docker logs simplynvest-app -f${NC}           → Ver logs em tempo real"
+echo -e "  ${YELLOW}docker restart simplynvest-app${NC}           → Reiniciar"
+echo -e "  ${YELLOW}docker stats simplynvest-app${NC}             → Uso de CPU/RAM"
 echo -e "  ${YELLOW}cd docker && $COMPOSE_CMD down${NC}        → Parar"
 echo -e "  ${YELLOW}cd docker && $COMPOSE_CMD up -d${NC}       → Iniciar"
 echo -e "  ${YELLOW}cd docker && bash install.sh${NC}          → Reinstalar"
