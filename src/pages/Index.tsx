@@ -1,6 +1,6 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 // @ts-ignore
-import { Responsive, WidthProvider } from 'react-grid-layout/dist/legacy.mjs';
+import { Responsive, useContainerWidth } from 'react-grid-layout';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
 
@@ -15,8 +15,6 @@ import AlertsPanel from '@/components/dashboard/AlertsPanel';
 import HoldingModal from '@/components/dashboard/HoldingModal';
 import { usePortfolio, type HoldingRow } from '@/hooks/usePortfolio';
 import { Loader2, Lock, Unlock, RotateCcw } from 'lucide-react';
-
-const ResponsiveGridLayout = WidthProvider(Responsive);
 
 const STORAGE_KEY = 'investai-dashboard-layouts';
 
