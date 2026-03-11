@@ -121,6 +121,7 @@ export function usePortfolio() {
     
     const init = async () => {
       const h = await loadHoldings();
+      await loadCashBalance();
       if (h.length > 0) {
         await fetchQuotes(h);
       } else {
@@ -128,7 +129,7 @@ export function usePortfolio() {
       }
     };
     init();
-  }, [user, loadHoldings]);
+  }, [user, loadHoldings, loadCashBalance]);
 
   // Polling
   useEffect(() => {
