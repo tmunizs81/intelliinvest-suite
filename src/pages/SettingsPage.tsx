@@ -361,6 +361,7 @@ function UsersTab() {
                 <th className="text-left p-3 font-medium text-xs">Nome</th>
                 <th className="text-left p-3 font-medium text-xs">Perfil</th>
                 <th className="text-left p-3 font-medium text-xs">Licença</th>
+                <th className="text-left p-3 font-medium text-xs">Telegram</th>
                 <th className="text-left p-3 font-medium text-xs">Membro desde</th>
                 <th className="text-right p-3 font-medium text-xs">Ações</th>
               </tr>
@@ -387,6 +388,15 @@ function UsersTab() {
                       </span>
                     ) : (
                       <span className="text-xs text-muted-foreground">Sem licença</span>
+                    )}
+                  </td>
+                  <td className="p-3">
+                    {u.telegram?.enabled ? (
+                      <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-gain/10 text-gain flex items-center gap-1 w-fit">
+                        <Bell className="h-3 w-3" /> Ativo
+                      </span>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">Desativado</span>
                     )}
                   </td>
                   <td className="p-3 text-xs text-muted-foreground">
