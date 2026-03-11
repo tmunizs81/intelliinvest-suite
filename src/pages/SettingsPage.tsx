@@ -1090,7 +1090,7 @@ function TelegramTab() {
   if (loading) return <div className="flex justify-center p-8"><Loader2 className="h-5 w-5 animate-spin" /></div>;
 
   const isLinked = !!chatId;
-  const botUsername = 'InvestAI_Bot'; // adjust to your bot's username
+  const botUsername = 'SimplyNvest_Bot'; // adjust to your bot's username
 
   return (
     <div className="space-y-4">
