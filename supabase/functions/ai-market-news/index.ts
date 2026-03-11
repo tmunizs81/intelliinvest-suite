@@ -33,6 +33,27 @@ async function fetchGoogleNews(query: string, max = 6) {
   return fetchRssItems(`https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=pt-BR&gl=BR&ceid=BR:pt-419`, max);
 }
 
+function buildFallbackOpinion(ticker: string, name: string | undefined, type: string | undefined, uniqueNews: Array<{ title: string; link: string; desc: string; source: string }>) {
+  const fallbackNews = uniqueNews.slice(0, 5).map((n) => ({
+    title: n.title,
+    impact: "neutral" as const,
+    summary: n.desc || "Notícia coletada sem resumo detalhado.",
+    source: n.source || n.link,
+  }));
+
+  return {
+    sentiment: "neutral",
+    sentiment_label: "Neutro",
+    executive_summary: `No momento há limitação temporária de análise avançada para ${ticker}. Exibindo leitura neutra baseada nas notícias coletadas em tempo real.`,
+    market_position: `Para ${ticker} (${name || ticker}, tipo ${type || "Ação"}), a leitura atual é neutra por indisponibilidade momentânea da camada de IA. Considere os títulos de notícias abaixo e tente atualizar em instantes para uma análise aprofundada.`,
+    positive_catalysts: ["Monitoramento contínuo de notícias habilitado", "Dados de manchetes ainda disponíveis"],
+    negative_catalysts: ["Limite temporário de requisições de IA", "Análise qualitativa avançada indisponível neste momento"],
+    relevant_news: fallbackNews,
+    conclusion: "Recomendação neutra temporária: aguarde alguns instantes e atualize para obter a opinião completa com IA.",
+    confidence: 35,
+  };
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -135,13 +156,30 @@ Com base nessas notícias reais e no seu conhecimento do mercado, use a ferramen
     });
 
     if (!response.ok) {
-      if (response.status === 429) return new Response(JSON.stringify({ error: "Rate limit." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      throw new Error(`AI error: ${response.status}`);
+      if (response.status === 429) {
+        const fallback = buildFallbackOpinion(ticker, name, type, unique);
+        return new Response(JSON.stringify(fallback), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const fallback = buildFallbackOpinion(ticker, name, type, unique);
+      return new Response(JSON.stringify(fallback), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const data = await response.json();
     const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
-    if (!toolCall?.function?.arguments) throw new Error("No structured response");
+    if (!toolCall?.function?.arguments) {
+      const fallback = buildFallbackOpinion(ticker, name, type, unique);
+      return new Response(JSON.stringify(fallback), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     return new Response(toolCall.function.arguments, { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (err) {
