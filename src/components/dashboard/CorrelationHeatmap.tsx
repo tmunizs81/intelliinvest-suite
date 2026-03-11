@@ -162,7 +162,64 @@ export default function CorrelationHeatmap({ assets }: { assets: Asset[] }) {
           </div>
           <span className="text-[9px] text-muted-foreground">Alta</span>
         </div>
+
+        {/* AI Analysis Button */}
+        <div className="mt-3 border-t border-border pt-3">
+          {!showAI ? (
+            <button onClick={analyzeWithAI} disabled={aiLoading || assets.length < 2}
+              className="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg border border-dashed border-primary/30 text-primary text-[11px] font-medium hover:bg-primary/5 transition-all disabled:opacity-50">
+              {aiLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+              {aiLoading ? 'Analisando riscos ocultos...' : 'Análise IA de Riscos Ocultos'}
+            </button>
+          ) : aiData && (
+            <div className="space-y-2 animate-fade-in">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium flex items-center gap-1">
+                  <Sparkles className="h-3 w-3 text-primary" /> Análise IA
+                </span>
+                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
+                  aiData.risk_score >= 7 ? 'bg-loss/10 text-loss' : aiData.risk_score >= 4 ? 'bg-warning/10 text-warning-foreground' : 'bg-gain/10 text-gain'
+                }`}>
+                  Risco: {aiData.risk_score}/10
+                </span>
+              </div>
+              <p className="text-[11px] text-muted-foreground">{aiData.summary}</p>
+
+              {aiData.hidden_risks.length > 0 && (
+                <div className="space-y-1">
+                  {aiData.hidden_risks.slice(0, 3).map((r, i) => (
+                    <div key={i} className={`flex items-start gap-1.5 text-[10px] p-1.5 rounded ${
+                      r.severity === 'high' ? 'bg-loss/5' : r.severity === 'medium' ? 'bg-warning/5' : 'bg-muted/30'
+                    }`}>
+                      <AlertTriangle className={`h-3 w-3 mt-0.5 shrink-0 ${
+                        r.severity === 'high' ? 'text-loss' : 'text-warning-foreground'
+                      }`} />
+                      <div>
+                        <p className="font-medium">{r.risk}</p>
+                        <p className="text-muted-foreground">{r.affected_tickers.join(', ')}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {aiData.diversification_suggestions.length > 0 && (
+                <div className="space-y-0.5">
+                  {aiData.diversification_suggestions.slice(0, 2).map((s, i) => (
+                    <p key={i} className="text-[10px] text-muted-foreground flex items-start gap-1">
+                      <Lightbulb className="h-3 w-3 text-primary shrink-0 mt-0.5" /> {s}
+                    </p>
+                  ))}
+                </div>
+              )}
+              <button onClick={() => setShowAI(false)} className="text-[9px] text-muted-foreground hover:text-foreground">
+                Fechar análise
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
 }
+
