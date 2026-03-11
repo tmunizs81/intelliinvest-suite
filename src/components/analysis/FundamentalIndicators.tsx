@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Loader2, RefreshCw, Building2, TrendingUp, DollarSign, BarChart3 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { formatCurrency, formatPercent } from '@/lib/mockData';
+import { enqueueAIRequest } from '@/lib/aiRequestQueue';
 
 const fundCache = new Map<string, { data: any; ts: number }>();
 const CACHE_TTL = 10 * 60 * 1000;
@@ -89,11 +90,10 @@ export default function FundamentalIndicators({ ticker, type, loadDelay = 0 }: P
   }, [ticker, type]);
 
   useEffect(() => {
-    if (loadDelay > 0) {
-      const timer = setTimeout(() => fetchFundamentals(), loadDelay);
-      return () => clearTimeout(timer);
-    }
-    fetchFundamentals();
+    const timer = setTimeout(() => {
+      enqueueAIRequest(() => fetchFundamentals());
+    }, loadDelay > 0 ? loadDelay : 0);
+    return () => clearTimeout(timer);
   }, [fetchFundamentals, loadDelay]);
 
   const fmt = (v?: number | null, decimals = 2) => v != null ? v.toFixed(decimals) : null;

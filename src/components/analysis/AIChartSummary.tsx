@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Brain, Loader2, TrendingUp, TrendingDown, Minus, BarChart3 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { type Candle, getLatestIndicators } from '@/lib/technicalIndicators';
+import { enqueueAIRequest } from '@/lib/aiRequestQueue';
 
 const chartCache = new Map<string, { data: any; ts: number }>();
 const CACHE_TTL = 10 * 60 * 1000;
@@ -81,11 +82,10 @@ export default function AIChartSummary({ ticker, name, type, candles, loadDelay 
 
   useEffect(() => {
     if (ticker && ticker !== lastTicker && candles.length >= 20 && !loading) {
-      if (loadDelay > 0) {
-        const timer = setTimeout(() => analyze(), loadDelay);
-        return () => clearTimeout(timer);
-      }
-      analyze();
+      const timer = setTimeout(() => {
+        enqueueAIRequest(() => analyze());
+      }, loadDelay > 0 ? loadDelay : 0);
+      return () => clearTimeout(timer);
     }
   }, [ticker, candles.length, loadDelay]);
 
