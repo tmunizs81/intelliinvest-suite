@@ -13,6 +13,7 @@ import Analysis from "./pages/Analysis";
 import AITrader from "./pages/AITrader";
 import Taxes from "./pages/Taxes";
 import Dividends from "./pages/Dividends";
+import Reports from "./pages/Reports";
 import SettingsPage from "./pages/SettingsPage";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
