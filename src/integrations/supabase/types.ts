@@ -121,6 +121,36 @@ export type Database = {
         }
         Relationships: []
       }
+      backups: {
+        Row: {
+          backup_type: string
+          created_at: string
+          file_path: string
+          id: string
+          size_bytes: number | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          backup_type?: string
+          created_at?: string
+          file_path: string
+          id?: string
+          size_bytes?: number | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          backup_type?: string
+          created_at?: string
+          file_path?: string
+          id?: string
+          size_bytes?: number | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       family_members: {
         Row: {
           created_at: string
