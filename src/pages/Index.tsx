@@ -412,6 +412,8 @@ function TabMais({ assets, isMobile, snapshots, snapshotsLoading }: any) {
           <Panel title="Metas"><GoalsPanel assets={assets} /></Panel>
           <Panel title="Aporte Inteligente"><SmartContributionPanel assets={assets} /></Panel>
           <Panel title="Relatório Mensal"><MonthlyReportPanel assets={assets} /></Panel>
+          <Panel title="Relatório Fiscal"><FiscalReportPanel assets={assets} /></Panel>
+          <Panel title="Sessões Ativas"><SessionLogPanel /></Panel>
           <Panel title="Integrações"><IntegrationsPanel assets={assets} /></Panel>
         </>
       ) : (
@@ -423,6 +425,10 @@ function TabMais({ assets, isMobile, snapshots, snapshotsLoading }: any) {
           <Grid2>
             <Panel title="Aporte Inteligente"><SmartContributionPanel assets={assets} /></Panel>
             <Panel title="Relatório Mensal"><MonthlyReportPanel assets={assets} /></Panel>
+          </Grid2>
+          <Grid2>
+            <Panel title="📄 Relatório Fiscal (PDF/CSV)"><FiscalReportPanel assets={assets} /></Panel>
+            <Panel title="🔐 Sessões Ativas"><SessionLogPanel /></Panel>
           </Grid2>
           <Panel title="🔗 Integrações (Sheets, Notion, Webhook)"><IntegrationsPanel assets={assets} /></Panel>
         </>
