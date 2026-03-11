@@ -18,7 +18,7 @@ REGRAS:
 - Faça cálculos precisos baseados nos dados fornecidos
 - Nunca invente dados que não foram fornecidos`;
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
