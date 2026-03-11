@@ -88,13 +88,12 @@ serve(async (req) => {
       });
     }
 
-    // Save telegram settings if provided
-    if (userData.user && (telegramBotToken || telegramChatId)) {
+    // Save telegram settings if chat ID provided
+    if (userData.user && telegramChatId) {
       await adminClient.from("telegram_settings").insert({
         user_id: userData.user.id,
-        bot_token: telegramBotToken || null,
-        chat_id: telegramChatId || null,
-        enabled: !!(telegramBotToken && telegramChatId),
+        chat_id: telegramChatId,
+        enabled: true,
       });
     }
 
