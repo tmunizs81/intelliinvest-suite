@@ -26,6 +26,7 @@ export function usePortfolio() {
   const { user } = useAuth();
   const [assets, setAssets] = useState<Asset[]>([]);
   const [holdings, setHoldings] = useState<HoldingRow[]>([]);
+  const [cashBalances, setCashBalances] = useState<CashBalanceRow[]>([]);
   const [cashBalance, setCashBalance] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
