@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { type Asset } from '@/lib/mockData';
 
-const POLL_INTERVAL = 10 * 60 * 1000;
+const POLL_INTERVAL = 2 * 60 * 1000; // 2 minutes
 
 export interface HoldingRow {
   id: string;
