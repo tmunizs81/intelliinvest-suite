@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { type Asset } from '@/lib/mockData';
+import { useAIRateLimit } from '@/hooks/useAIRateLimit';
 import {
   Zap, Loader2, RefreshCw, AlertTriangle, TrendingDown, Target,
   ShieldAlert, Eye, ArrowUpCircle, ArrowDownCircle, Activity,
