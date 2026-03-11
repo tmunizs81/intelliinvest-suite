@@ -301,10 +301,6 @@ export default function Analysis() {
             </div>
           </div>
 
-          {/* Asset Profile Summary */}
-          <div className="mt-6">
-            <AssetProfilePanel ticker={ticker} name={assetName || ticker} type={assetType} />
-          </div>
 
           {/* Position info */}
           {asset && profitInfo && (
