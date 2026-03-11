@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { type Asset } from '@/lib/mockData';
+import { classifyAssetType } from '@/lib/assetClassification';
 
 const POLL_INTERVAL = 5 * 60 * 1000; // 5 minutes
 
@@ -94,7 +95,7 @@ export function usePortfolio() {
         return {
           ticker: item.ticker,
           name: item.name,
-          type: item.type as Asset['type'],
+          type: classifyAssetType(item.ticker, item.type) as Asset['type'],
           quantity: item.quantity,
           avgPrice: item.avg_price,
           currentPrice: currentPriceBRL,
