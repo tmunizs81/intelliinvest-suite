@@ -94,6 +94,8 @@ const defaultLayouts: any = {
     { i: 'ai-insights', x: 0, y: 100, w: 6, h: 5, minW: 6, minH: 4 },
     { i: 'smart-alerts', x: 0, y: 105, w: 6, h: 7, minW: 6, minH: 5 },
     { i: 'monthly-report', x: 0, y: 112, w: 6, h: 7, minW: 6, minH: 5 },
+    { i: 'smart-contribution', x: 0, y: 119, w: 6, h: 9, minW: 6, minH: 6 },
+    { i: 'ceiling-price', x: 0, y: 128, w: 6, h: 9, minW: 6, minH: 6 },
   ],
 };
 
