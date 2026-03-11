@@ -15,7 +15,15 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN")!;
     const adminClient = createClient(supabaseUrl, supabaseServiceKey);
+
+    if (!botToken) {
+      return new Response(JSON.stringify({ error: "Bot token not configured" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     // Get all users with telegram enabled
     const { data: telegramUsers } = await adminClient
