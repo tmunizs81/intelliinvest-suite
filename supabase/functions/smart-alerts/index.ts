@@ -51,7 +51,7 @@ Use a ferramenta para retornar alertas estruturados.`;
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: "Você é um sistema de alertas inteligentes para investidores brasileiros. Detecte padrões e anomalias na carteira e gere alertas proativos acionáveis. Seja preciso e use dados concretos." },
           { role: "user", content: prompt },

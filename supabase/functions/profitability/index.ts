@@ -43,7 +43,7 @@ Use valores realistas dos benchmarks para o período solicitado. Retorne resulta
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: "Você é um analista de performance de investimentos brasileiro. Calcule rentabilidade e compare com benchmarks de forma precisa usando dados históricos reais." },
           { role: "user", content: prompt },

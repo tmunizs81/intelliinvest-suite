@@ -40,7 +40,7 @@ Calcule o impacto estimado no patrimônio e em cada ativo. Use a ferramenta para
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: "Você é um simulador financeiro. Calcule impactos de cenários na carteira do investidor brasileiro de forma realista e educativa." },
           { role: "user", content: prompt },

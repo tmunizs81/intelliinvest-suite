@@ -41,7 +41,7 @@ Sugira quais ativos comprar e quanto aportar em cada um para aproximar a carteir
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: "Você é um consultor financeiro especialista em aportes mensais e DCA (Dollar Cost Averaging) no mercado brasileiro. Sugira alocação prática do aporte mensal." },
           { role: "user", content: prompt },

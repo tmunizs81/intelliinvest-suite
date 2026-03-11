@@ -45,7 +45,7 @@ Use a ferramenta generate_health_score para retornar o resultado estruturado.`;
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: "Você é um analista de risco especializado em carteiras de investimento brasileiras. Avalie a saúde da carteira de forma objetiva." },
           { role: "user", content: prompt },
