@@ -59,21 +59,33 @@ export default function MarketNewsPanel({ ticker, name, type }: Props) {
     setShowNews(true);
   }
 
-  const fetchOpinion = useCallback(async () => {
+  const fetchOpinion = useCallback(async (retries = 3) => {
     setLoading(true);
     setError(null);
-    try {
-      const { data, error: fnError } = await supabase.functions.invoke('ai-market-news', {
-        body: { ticker, name, type },
-      });
-      if (fnError) throw new Error(fnError.message);
-      if (data.error) throw new Error(data.error);
-      setOpinion(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro');
-    } finally {
-      setLoading(false);
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        if (attempt > 0) await new Promise(r => setTimeout(r, 2000 * attempt));
+        const { data, error: fnError } = await supabase.functions.invoke('ai-market-news', {
+          body: { ticker, name, type },
+        });
+        if (fnError) {
+          if (fnError.message?.includes('429') && attempt < retries) continue;
+          throw new Error(fnError.message);
+        }
+        if (data?.error) {
+          if ((String(data.error).includes('Rate limit') || String(data.error).includes('429')) && attempt < retries) continue;
+          throw new Error(data.error);
+        }
+        setOpinion(data);
+        setLoading(false);
+        return;
+      } catch (err) {
+        if (attempt === retries) {
+          setError(err instanceof Error ? err.message : 'Erro');
+        }
+      }
     }
+    setLoading(false);
   }, [ticker, name, type]);
 
   const cfg = opinion ? sentimentConfig[opinion.sentiment] : null;
