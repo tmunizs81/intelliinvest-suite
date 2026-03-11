@@ -142,9 +142,12 @@ function getScrapingUrls(ticker: string, category: string): string[] {
   if (category === "fii") {
     urls.push(`https://investidor10.com.br/fiis/${t}/`);
     urls.push(`https://statusinvest.com.br/fundos-imobiliarios/${t}`);
+    urls.push(`https://www.fundsexplorer.com.br/funds/${t}`);
+    urls.push(`https://fiis.com.br/${t}/`);
   } else if (category === "stock") {
     urls.push(`https://investidor10.com.br/acoes/${t}/`);
     urls.push(`https://statusinvest.com.br/acoes/${t}`);
+    urls.push(`https://www.google.com/finance/quote/${ticker.toUpperCase()}:BVMF`);
   } else if (category === "etf") {
     urls.push(`https://investidor10.com.br/etfs/${t}/`);
     urls.push(`https://statusinvest.com.br/etfs/${t}`);

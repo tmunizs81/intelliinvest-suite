@@ -74,7 +74,13 @@ serve(async (req) => {
     const rssFeeds = [
       "https://www.infomoney.com.br/feed/",
       "https://valorinveste.globo.com/rss/valor-investe/",
+      "https://braziljournal.com/feed/",
     ];
+
+    // Google Finance news page for the ticker
+    const googleFinanceNewsUrl = /^[A-Z]{4}\d{1,2}$/i.test(ticker)
+      ? `https://www.google.com/finance/quote/${ticker.toUpperCase()}:BVMF`
+      : null;
 
     const [googleResults, ...rssResults] = await Promise.all([
       Promise.all(queries.map(q => fetchGoogleNews(q, 6))),
