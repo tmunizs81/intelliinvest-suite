@@ -230,6 +230,8 @@ function UsersTab() {
   const [newPassword, setNewPassword] = useState('');
   const [newName, setNewName] = useState('');
   const [newRole, setNewRole] = useState<'admin' | 'user'>('user');
+  const [newBotToken, setNewBotToken] = useState('');
+  const [newChatId, setNewChatId] = useState('');
   const [creating, setCreating] = useState(false);
 
   const loadUsers = useCallback(async () => {
@@ -237,14 +239,17 @@ function UsersTab() {
     const { data: profiles } = await supabase.from('profiles').select('*');
     const { data: roles } = await supabase.from('user_roles').select('*');
     const { data: keys } = await supabase.from('serial_keys').select('*').eq('status', 'used');
+    const { data: tgSettings } = await supabase.from('telegram_settings').select('*');
 
     const merged = (profiles || []).map(p => {
       const userRoles = (roles || []).filter((r: any) => r.user_id === p.user_id);
       const userKey = (keys || []).find((k: any) => k.used_by === p.user_id);
+      const userTg = (tgSettings || []).find((t: any) => t.user_id === p.user_id);
       return {
         ...p,
         roles: userRoles.map((r: any) => r.role),
         license: userKey,
+        telegram: userTg,
       };
     });
 
@@ -260,7 +265,14 @@ function UsersTab() {
     try {
       // Create user via edge function (admin-create-user)
       const { data, error } = await supabase.functions.invoke('admin-create-user', {
-        body: { email: newEmail, password: newPassword, displayName: newName, role: newRole },
+        body: {
+          email: newEmail,
+          password: newPassword,
+          displayName: newName,
+          role: newRole,
+          telegramBotToken: newBotToken || undefined,
+          telegramChatId: newChatId || undefined,
+        },
       });
       if (error) throw error;
       toast.success(`Usuário ${newEmail} criado com sucesso`);
@@ -269,6 +281,8 @@ function UsersTab() {
       setNewPassword('');
       setNewName('');
       setNewRole('user');
+      setNewBotToken('');
+      setNewChatId('');
       await loadUsers();
     } catch (err) {
       toast.error('Erro ao criar usuário. Verifique os dados.');
@@ -315,6 +329,18 @@ function UsersTab() {
               <option value="admin">Administrador</option>
             </select>
           </div>
+          <div className="border-t border-border pt-3 mt-1">
+            <p className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1.5">
+              <Bell className="h-3.5 w-3.5" /> Telegram (opcional - resumo diário)
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <input value={newBotToken} onChange={e => setNewBotToken(e.target.value)} placeholder="Bot Token (ex: 123456:ABC...)" type="password" className="rounded-md border border-input bg-background px-3 py-2 text-sm font-mono" />
+              <input value={newChatId} onChange={e => setNewChatId(e.target.value)} placeholder="Chat ID (ex: 123456789)" className="rounded-md border border-input bg-background px-3 py-2 text-sm font-mono" />
+            </div>
+            <p className="text-xs text-muted-foreground mt-1.5">
+              Configure para o usuário receber resumos diários com patrimônio, variação, dividendos e alertas via Telegram.
+            </p>
+          </div>
           <div className="flex gap-2">
             <button onClick={createUser} disabled={creating} className="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium disabled:opacity-50 flex items-center gap-2">
               {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
@@ -335,6 +361,7 @@ function UsersTab() {
                 <th className="text-left p-3 font-medium text-xs">Nome</th>
                 <th className="text-left p-3 font-medium text-xs">Perfil</th>
                 <th className="text-left p-3 font-medium text-xs">Licença</th>
+                <th className="text-left p-3 font-medium text-xs">Telegram</th>
                 <th className="text-left p-3 font-medium text-xs">Membro desde</th>
                 <th className="text-right p-3 font-medium text-xs">Ações</th>
               </tr>
@@ -361,6 +388,15 @@ function UsersTab() {
                       </span>
                     ) : (
                       <span className="text-xs text-muted-foreground">Sem licença</span>
+                    )}
+                  </td>
+                  <td className="p-3">
+                    {u.telegram?.enabled ? (
+                      <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-gain/10 text-gain flex items-center gap-1 w-fit">
+                        <Bell className="h-3 w-3" /> Ativo
+                      </span>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">Desativado</span>
                     )}
                   </td>
                   <td className="p-3 text-xs text-muted-foreground">

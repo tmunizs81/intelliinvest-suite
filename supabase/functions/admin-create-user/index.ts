@@ -56,7 +56,7 @@ serve(async (req) => {
       });
     }
 
-    const { email, password, displayName, role } = await req.json();
+    const { email, password, displayName, role, telegramBotToken, telegramChatId } = await req.json();
 
     if (!email || !password) {
       return new Response(JSON.stringify({ error: "email and password required" }), {
@@ -85,6 +85,16 @@ serve(async (req) => {
       await adminClient.from("user_roles").insert({
         user_id: userData.user.id,
         role: "admin",
+      });
+    }
+
+    // Save telegram settings if provided
+    if (userData.user && (telegramBotToken || telegramChatId)) {
+      await adminClient.from("telegram_settings").insert({
+        user_id: userData.user.id,
+        bot_token: telegramBotToken || null,
+        chat_id: telegramChatId || null,
+        enabled: !!(telegramBotToken && telegramChatId),
       });
     }
 
