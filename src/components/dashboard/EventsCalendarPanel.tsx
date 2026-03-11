@@ -30,8 +30,8 @@ export default function EventsCalendarPanel({ assets }: { assets: Asset[] }) {
         }
       }
       // Maturity dates for fixed income
-      if (a.type === 'Renda Fixa' && a.maturityDate) {
-        const md = new Date(a.maturityDate);
+      if (a.type === 'Renda Fixa' && (a as any).maturityDate) {
+        const md = new Date((a as any).maturityDate);
         evts.push({ date: md, type: 'maturity', label: 'Vencimento', ticker: a.ticker });
       }
       // Simulate quarterly earnings
