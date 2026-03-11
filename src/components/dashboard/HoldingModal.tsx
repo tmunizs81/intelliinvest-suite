@@ -292,6 +292,36 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
 
           <BrokerAutocomplete value={broker} onChange={setBroker} />
 
+          {/* Campos de Renda Fixa */}
+          {type === 'Renda Fixa' && (
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground">Indexador *</label>
+                <select
+                  value={indexerType}
+                  onChange={e => setIndexerType(e.target.value)}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                >
+                  <option value="Pré-fixado">Pré-fixado</option>
+                  <option value="Pós-fixado">Pós-fixado</option>
+                  <option value="IPCA+">IPCA+</option>
+                  <option value="CDI">CDI</option>
+                  <option value="CDI+">CDI+</option>
+                  <option value="Selic">Selic</option>
+                </select>
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground">Rentabilidade</label>
+                <input
+                  value={yieldRate}
+                  onChange={e => setYieldRate(e.target.value)}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  placeholder={indexerType === 'Pré-fixado' ? '12.5% a.a.' : indexerType === 'IPCA+' ? 'IPCA + 6.5%' : '110% CDI'}
+                />
+              </div>
+            </div>
+          )}
+
           <div className="space-y-1">
             <label className="text-xs font-medium text-muted-foreground">Nome *</label>
             <input
