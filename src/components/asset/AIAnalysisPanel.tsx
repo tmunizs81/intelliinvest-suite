@@ -4,6 +4,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { type Candle, getLatestIndicators } from '@/lib/technicalIndicators';
 import { formatCurrency } from '@/lib/mockData';
 
+const analysisCache = new Map<string, { data: any; ts: number }>();
+const CACHE_TTL = 10 * 60 * 1000;
+
 interface AIAnalysis {
   trend: 'alta' | 'baixa' | 'lateral';
   recommendation: string;
