@@ -192,6 +192,13 @@ O Dashboard é **totalmente personalizável**:
 3. **Travar layout**: Clique no ícone de cadeado (🔒) para impedir movimentações acidentais
 4. **Resetar layout**: Clique no ícone de reset (↩️) para voltar ao layout padrão
 
+### Atualização Automática de Preços
+
+- Os preços são atualizados automaticamente a cada **5 minutos**
+- Um countdown exibe o tempo restante para a próxima atualização
+- Clique no botão de refresh para atualizar manualmente a qualquer momento
+- Fontes: Yahoo Finance, CoinGecko (cripto), AwesomeAPI (câmbio)
+
 > 💡 O layout é salvo automaticamente no navegador. Cada usuário tem seu layout personalizado.
     `,
   },
