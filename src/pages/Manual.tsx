@@ -852,7 +852,7 @@ Após adicionar os ativos:
   },
   {
     id: 'support',
-    title: '19. Suporte e Contato',
+    title: '20. Suporte e Contato',
     content: `
 ## Suporte Técnico
 
