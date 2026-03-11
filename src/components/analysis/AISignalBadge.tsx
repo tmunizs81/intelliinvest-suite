@@ -4,6 +4,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { type Candle, getLatestIndicators } from '@/lib/technicalIndicators';
 import { formatCurrency } from '@/lib/mockData';
 
+const signalCache = new Map<string, { data: any; ts: number }>();
+const CACHE_TTL = 10 * 60 * 1000;
+
 interface SignalData {
   trend: 'alta' | 'baixa' | 'lateral';
   recommendation: string;
@@ -43,8 +46,14 @@ export default function AISignalBadge({ ticker, name, type, candles, loadDelay =
   const [error, setError] = useState<string | null>(null);
   const [lastTicker, setLastTicker] = useState('');
 
-  const analyze = useCallback(async (retries = 3) => {
+  const analyze = useCallback(async (retries = 3, skipCache = false) => {
     if (candles.length < 20) return;
+    const cached = signalCache.get(ticker);
+    if (!skipCache && cached && Date.now() - cached.ts < CACHE_TTL) {
+      setSignal(cached.data);
+      setLastTicker(ticker);
+      return;
+    }
     setLoading(true);
     setError(null);
 
@@ -75,6 +84,7 @@ export default function AISignalBadge({ ticker, name, type, candles, loadDelay =
           if ((String(data.error).includes('Rate limit') || String(data.error).includes('429')) && attempt < retries) continue;
           throw new Error(data.error);
         }
+        signalCache.set(ticker, { data, ts: Date.now() });
         setSignal(data);
         setLastTicker(ticker);
         setLoading(false);
@@ -170,7 +180,7 @@ export default function AISignalBadge({ ticker, name, type, candles, loadDelay =
         </div>
 
         <button
-          onClick={() => analyze()}
+          onClick={() => analyze(3, true)}
           disabled={loading}
           className="h-8 w-8 rounded-lg border border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all"
           title="Reanalisar"

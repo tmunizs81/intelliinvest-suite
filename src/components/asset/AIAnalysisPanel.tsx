@@ -4,6 +4,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { type Candle, getLatestIndicators } from '@/lib/technicalIndicators';
 import { formatCurrency } from '@/lib/mockData';
 
+const analysisCache = new Map<string, { data: any; ts: number }>();
+const CACHE_TTL = 10 * 60 * 1000;
+
 interface AIAnalysis {
   trend: 'alta' | 'baixa' | 'lateral';
   recommendation: string;
@@ -42,9 +45,14 @@ export default function AIAnalysisPanel({ ticker, name, type, candles, holdingIn
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleAnalyze = async (retries = 3) => {
+  const handleAnalyze = async (retries = 3, skipCache = false) => {
     if (candles.length < 20) {
       setError('Dados históricos insuficientes para análise (mínimo 20 candles)');
+      return;
+    }
+    const cached = analysisCache.get(ticker);
+    if (!skipCache && cached && Date.now() - cached.ts < CACHE_TTL) {
+      setAnalysis(cached.data);
       return;
     }
 
@@ -78,6 +86,7 @@ export default function AIAnalysisPanel({ ticker, name, type, candles, holdingIn
           if ((String(data.error).includes('Rate limit') || String(data.error).includes('429')) && attempt < retries) continue;
           throw new Error(data.error);
         }
+        analysisCache.set(ticker, { data, ts: Date.now() });
         setAnalysis(data);
         setLoading(false);
         return;
@@ -103,7 +112,7 @@ export default function AIAnalysisPanel({ ticker, name, type, candles, holdingIn
           <h2 className="text-sm font-semibold">Análise IA</h2>
         </div>
         <button
-          onClick={() => handleAnalyze()}
+          onClick={() => handleAnalyze(3, true)}
           disabled={loading}
           className="h-8 px-3 rounded-lg bg-primary text-primary-foreground text-xs font-medium flex items-center gap-1.5 hover:opacity-90 transition-opacity disabled:opacity-50"
         >

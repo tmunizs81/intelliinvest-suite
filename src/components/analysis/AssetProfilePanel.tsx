@@ -6,6 +6,9 @@ import {
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 
+const profileCache = new Map<string, { data: any; ts: number }>();
+const CACHE_TTL = 10 * 60 * 1000;
+
 interface AssetProfile {
   description: string;
   administrator?: string | null;
@@ -46,7 +49,15 @@ export default function AssetProfilePanel({ ticker, name, type }: Props) {
     setShowAllAssets(false);
   }
 
-  const fetchProfile = useCallback(async (retries = 3) => {
+  const fetchProfile = useCallback(async (retries = 3, skipCache = false) => {
+    const cached = profileCache.get(ticker);
+    if (!skipCache && cached && Date.now() - cached.ts < CACHE_TTL) {
+      setProfile(cached.data);
+      if (cached.data.sections) {
+        setExpandedSections(new Set(cached.data.sections.map((_: any, i: number) => i)));
+      }
+      return;
+    }
     setLoading(true);
     setError(null);
     for (let attempt = 0; attempt <= retries; attempt++) {
@@ -65,6 +76,7 @@ export default function AssetProfilePanel({ ticker, name, type }: Props) {
           if ((data.error.includes('Rate limit') || data.error.includes('429')) && attempt < retries) continue;
           throw new Error(data.error);
         }
+        profileCache.set(ticker, { data, ts: Date.now() });
         setProfile(data);
         if (data.sections) {
           setExpandedSections(new Set(data.sections.map((_: any, i: number) => i)));
@@ -118,7 +130,7 @@ export default function AssetProfilePanel({ ticker, name, type }: Props) {
           </div>
         </div>
         <button
-          onClick={() => fetchProfile()}
+          onClick={() => fetchProfile(3, true)}
           disabled={loading}
           className="h-7 w-7 rounded-lg border border-border flex items-center justify-center text-muted-foreground hover:text-foreground transition-all disabled:opacity-50"
         >

@@ -3,6 +3,9 @@ import { Loader2, RefreshCw, Building2, TrendingUp, DollarSign, BarChart3 } from
 import { supabase } from '@/integrations/supabase/client';
 import { formatCurrency, formatPercent } from '@/lib/mockData';
 
+const fundCache = new Map<string, { data: any; ts: number }>();
+const CACHE_TTL = 10 * 60 * 1000;
+
 interface FundamentalData {
   pe?: number | null;
   pb?: number | null;
@@ -49,7 +52,12 @@ export default function FundamentalIndicators({ ticker, type, loadDelay = 0 }: P
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchFundamentals = useCallback(async (retries = 2) => {
+  const fetchFundamentals = useCallback(async (retries = 2, skipCache = false) => {
+    const cached = fundCache.get(ticker);
+    if (!skipCache && cached && Date.now() - cached.ts < CACHE_TTL) {
+      setData(cached.data);
+      return;
+    }
     setLoading(true);
     setError(null);
     for (let attempt = 0; attempt <= retries; attempt++) {
@@ -66,6 +74,7 @@ export default function FundamentalIndicators({ ticker, type, loadDelay = 0 }: P
           if ((String(resp.error).includes('Rate limit') || String(resp.error).includes('429') || String(resp.error).includes('404')) && attempt < retries) continue;
           throw new Error(resp.error);
         }
+        fundCache.set(ticker, { data: resp, ts: Date.now() });
         setData(resp);
         setLoading(false);
         return;
@@ -105,7 +114,7 @@ export default function FundamentalIndicators({ ticker, type, loadDelay = 0 }: P
           <h2 className="text-sm font-semibold">{isFII ? 'Indicadores FII' : 'Indicadores Fundamentalistas'}</h2>
         </div>
         <button
-          onClick={() => fetchFundamentals()}
+          onClick={() => fetchFundamentals(2, true)}
           disabled={loading}
           className="h-7 w-7 rounded-lg border border-border flex items-center justify-center text-muted-foreground hover:text-foreground transition-all"
         >

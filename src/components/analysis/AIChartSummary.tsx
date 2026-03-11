@@ -3,6 +3,9 @@ import { Brain, Loader2, TrendingUp, TrendingDown, Minus, BarChart3 } from 'luci
 import { supabase } from '@/integrations/supabase/client';
 import { type Candle, getLatestIndicators } from '@/lib/technicalIndicators';
 
+const chartCache = new Map<string, { data: any; ts: number }>();
+const CACHE_TTL = 10 * 60 * 1000;
+
 interface ChartSummary {
   overview: string;
   trend_strength: 'forte' | 'moderada' | 'fraca';
@@ -26,8 +29,14 @@ export default function AIChartSummary({ ticker, name, type, candles, loadDelay 
   const [error, setError] = useState<string | null>(null);
   const [lastTicker, setLastTicker] = useState('');
 
-  const analyze = useCallback(async (retries = 3) => {
+  const analyze = useCallback(async (retries = 3, skipCache = false) => {
     if (candles.length < 20) return;
+    const cached = chartCache.get(ticker);
+    if (!skipCache && cached && Date.now() - cached.ts < CACHE_TTL) {
+      setSummary(cached.data);
+      setLastTicker(ticker);
+      return;
+    }
     setLoading(true);
     setError(null);
 
@@ -55,6 +64,7 @@ export default function AIChartSummary({ ticker, name, type, candles, loadDelay 
           if ((String(data.error).includes('Rate limit') || String(data.error).includes('429')) && attempt < retries) continue;
           throw new Error(data.error);
         }
+        chartCache.set(ticker, { data, ts: Date.now() });
         setSummary(data);
         setLastTicker(ticker);
         setLoading(false);
@@ -93,7 +103,7 @@ export default function AIChartSummary({ ticker, name, type, candles, loadDelay 
           <h3 className="text-sm font-semibold">Resumo IA do Gráfico</h3>
         </div>
         <button
-          onClick={() => analyze()}
+          onClick={() => analyze(3, true)}
           disabled={loading}
           className="h-7 px-3 rounded-lg bg-primary/10 text-primary text-xs font-medium flex items-center gap-1.5 hover:bg-primary/20 transition-all disabled:opacity-50"
         >
