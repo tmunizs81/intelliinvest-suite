@@ -49,6 +49,7 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
       setQuantity(editData?.quantity?.toString() || '');
       setAvgPrice(editData?.avg_price?.toString() || '');
       setSector(editData?.sector || '');
+      setBroker(editData?.broker || '');
       setError('');
       setSuggestions([]);
       setShowSuggestions(false);
