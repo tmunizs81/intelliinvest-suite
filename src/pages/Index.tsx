@@ -12,6 +12,7 @@ import PerformanceChart from '@/components/dashboard/PerformanceChart';
 import DividendsPanel from '@/components/dashboard/DividendsPanel';
 import HoldingsTable from '@/components/dashboard/HoldingsTable';
 import AIInsightsPanel from '@/components/dashboard/AIInsightsPanel';
+import CurrencyDashboard from '@/components/dashboard/CurrencyDashboard';
 import AlertsPanel from '@/components/dashboard/AlertsPanel';
 import LicenseAlert from '@/components/dashboard/LicenseAlert';
 import HoldingModal from '@/components/dashboard/HoldingModal';
