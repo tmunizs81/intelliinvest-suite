@@ -79,11 +79,11 @@ export default function FiiPropertiesPanel({ ticker }: Props) {
 
   // State distribution for chart
   const stateDistribution = data ? (() => {
-    const map = new Map<string, number>();
+    const map: Record<string, number> = {};
     data.properties.forEach(p => {
-      map.set(p.state, (map.get(p.state) || 0) + 1);
+      map[p.state] = (map[p.state] || 0) + 1;
     });
-    return Array.from(map.entries())
+    return Object.entries(map)
       .map(([state, count]) => ({ state, count }))
       .sort((a, b) => b.count - a.count);
   })() : [];
