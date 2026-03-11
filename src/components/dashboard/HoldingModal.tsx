@@ -1,8 +1,17 @@
-import { useState, useEffect } from 'react';
-import { X, Plus, Loader2 } from 'lucide-react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { X, Plus, Loader2, Search } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 import type { HoldingRow } from '@/hooks/usePortfolio';
 
-const TYPES = ['Ação', 'FII', 'ETF', 'Cripto', 'Renda Fixa'] as const;
+const TYPES = ['Ação', 'FII', 'ETF', 'ETF Internacional', 'Cripto', 'Renda Fixa'] as const;
+
+interface SearchResult {
+  symbol: string;
+  name: string;
+  type: string;
+  exchange: string;
+  exchangeDisplay: string;
+}
 
 interface Props {
   open: boolean;
@@ -22,7 +31,15 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Reset form when modal opens or editData changes
+  // Autocomplete state
+  const [suggestions, setSuggestions] = useState<SearchResult[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [selectedIndex, setSelectedIndex] = useState(-1);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const suggestionsRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     if (open) {
       setTicker(editData?.ticker || '');
@@ -32,8 +49,95 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
       setAvgPrice(editData?.avg_price?.toString() || '');
       setSector(editData?.sector || '');
       setError('');
+      setSuggestions([]);
+      setShowSuggestions(false);
     }
   }, [open, editData]);
+
+  // Close suggestions on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (suggestionsRef.current && !suggestionsRef.current.contains(e.target as Node) &&
+          inputRef.current && !inputRef.current.contains(e.target as Node)) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const searchTickers = useCallback(async (query: string) => {
+    if (query.length < 1) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+    setSearching(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('ticker-search', {
+        body: { query },
+      });
+      if (!error && data?.results) {
+        setSuggestions(data.results);
+        setShowSuggestions(data.results.length > 0);
+        setSelectedIndex(-1);
+      }
+    } catch {
+      // silent
+    } finally {
+      setSearching(false);
+    }
+  }, []);
+
+  const handleTickerChange = (value: string) => {
+    setTicker(value.toUpperCase());
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => searchTickers(value), 300);
+  };
+
+  const selectSuggestion = (s: SearchResult) => {
+    setTicker(s.symbol);
+    setName(s.name);
+    // Auto-detect type
+    const irishExchanges = ['ISE', 'LSE', 'AMS', 'MIL', 'FRA', 'ETR', 'PAR', 'SWX'];
+    const usExchanges = ['NMS', 'NYQ', 'NGM', 'ASE'];
+    if (s.type === 'ETF' && irishExchanges.includes(s.exchange)) {
+      setType('ETF Internacional');
+    } else if (s.type === 'ETF') {
+      setType('ETF');
+    } else if (s.type === 'Cripto') {
+      setType('Cripto');
+    } else if (s.exchange === 'SAO' || s.exchange === 'BSP') {
+      // Brazilian
+      if (s.symbol.match(/\d{2}$/)) setType('FII');
+      else setType('Ação');
+    } else if (usExchanges.includes(s.exchange) || irishExchanges.includes(s.exchange)) {
+      setType('Ação');
+    } else {
+      setType(s.type || 'Ação');
+    }
+    // Auto-set sector from exchange
+    if (irishExchanges.includes(s.exchange)) {
+      setSector('ETF Internacional');
+    }
+    setShowSuggestions(false);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (!showSuggestions || suggestions.length === 0) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setSelectedIndex(prev => Math.min(prev + 1, suggestions.length - 1));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setSelectedIndex(prev => Math.max(prev - 1, 0));
+    } else if (e.key === 'Enter' && selectedIndex >= 0) {
+      e.preventDefault();
+      selectSuggestion(suggestions[selectedIndex]);
+    } else if (e.key === 'Escape') {
+      setShowSuggestions(false);
+    }
+  };
 
   if (!open) return null;
 
@@ -71,9 +175,21 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
     }
   };
 
+  const exchangeBadge = (exchange: string) => {
+    const colors: Record<string, string> = {
+      B3: 'bg-primary/10 text-primary',
+      'Euronext Dublin': 'bg-emerald-500/10 text-emerald-400',
+      London: 'bg-blue-500/10 text-blue-400',
+      NASDAQ: 'bg-violet-500/10 text-violet-400',
+      NYSE: 'bg-amber-500/10 text-amber-400',
+      XETRA: 'bg-rose-500/10 text-rose-400',
+    };
+    return colors[exchange] || 'bg-muted text-muted-foreground';
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4">
-      <div className="w-full max-w-md rounded-lg border border-border bg-card shadow-xl animate-fade-in">
+      <div className="w-full max-w-md rounded-lg border border-border bg-card shadow-xl animate-fade-in max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-5 border-b border-border">
           <h2 className="text-lg font-semibold">{editData ? 'Editar Ativo' : 'Adicionar Ativo'}</h2>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
@@ -83,18 +199,66 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
 
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
           {error && (
-            <div className="rounded-md bg-loss/10 border border-loss/20 p-3 text-sm text-loss-foreground">{error}</div>
+            <div className="rounded-md bg-destructive/10 border border-destructive/20 p-3 text-sm text-destructive">{error}</div>
           )}
 
-          <div className="grid grid-cols-2 gap-4">
+          {/* Ticker with autocomplete */}
+          <div className="relative">
             <div className="space-y-1">
               <label className="text-xs font-medium text-muted-foreground">Ticker *</label>
-              <input
-                value={ticker} onChange={e => setTicker(e.target.value)} required
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                placeholder="PETR4"
-              />
+              <div className="relative">
+                <input
+                  ref={inputRef}
+                  value={ticker}
+                  onChange={e => handleTickerChange(e.target.value)}
+                  onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
+                  onKeyDown={handleKeyDown}
+                  required
+                  autoComplete="off"
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-ring pr-8"
+                  placeholder="Digite o ticker (ex: CSPX, PETR4, AAPL)"
+                />
+                {searching && (
+                  <Loader2 className="absolute right-2.5 top-2.5 h-4 w-4 animate-spin text-muted-foreground" />
+                )}
+                {!searching && ticker.length > 0 && (
+                  <Search className="absolute right-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                )}
+              </div>
             </div>
+
+            {/* Suggestions dropdown */}
+            {showSuggestions && suggestions.length > 0 && (
+              <div
+                ref={suggestionsRef}
+                className="absolute z-50 mt-1 w-full rounded-md border border-border bg-popover shadow-lg max-h-60 overflow-y-auto"
+              >
+                {suggestions.map((s, i) => (
+                  <button
+                    key={`${s.symbol}-${s.exchange}-${i}`}
+                    type="button"
+                    onClick={() => selectSuggestion(s)}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-accent/50 transition-colors border-b border-border/30 last:border-0 ${
+                      i === selectedIndex ? 'bg-accent/50' : ''
+                    }`}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-mono font-semibold text-foreground">{s.symbol}</span>
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${exchangeBadge(s.exchangeDisplay)}`}>
+                          {s.exchangeDisplay}
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground truncate mt-0.5">{s.name}</p>
+                    </div>
+                    <span className="text-[10px] text-muted-foreground shrink-0">{s.type}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
               <label className="text-xs font-medium text-muted-foreground">Tipo *</label>
               <select
@@ -104,6 +268,14 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
                 {TYPES.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
             </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">Setor</label>
+              <input
+                value={sector} onChange={e => setSector(e.target.value)}
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                placeholder="Tecnologia, Saúde..."
+              />
+            </div>
           </div>
 
           <div className="space-y-1">
@@ -111,7 +283,7 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
             <input
               value={name} onChange={e => setName(e.target.value)} required
               className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-              placeholder="Petrobras PN"
+              placeholder="Nome do ativo (preenchido automaticamente)"
             />
           </div>
 
@@ -125,22 +297,13 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
               />
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-medium text-muted-foreground">Preço Médio (R$) *</label>
+              <label className="text-xs font-medium text-muted-foreground">Preço Médio *</label>
               <input
                 type="number" step="0.01" min="0" value={avgPrice} onChange={e => setAvgPrice(e.target.value)} required
                 className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                 placeholder="28.50"
               />
             </div>
-          </div>
-
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-muted-foreground">Setor</label>
-            <input
-              value={sector} onChange={e => setSector(e.target.value)}
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-              placeholder="Petróleo, Bancos, Cripto..."
-            />
           </div>
 
           <button

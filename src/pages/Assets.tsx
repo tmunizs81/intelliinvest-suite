@@ -12,6 +12,7 @@ const typeBadgeClass: Record<string, string> = {
   'Ação': 'bg-primary/10 text-primary',
   'FII': 'bg-[hsl(270,70%,60%)]/10 text-[hsl(270,70%,85%)]',
   'ETF': 'bg-[hsl(38,92%,50%)]/10 text-[hsl(38,92%,80%)]',
+  'ETF Internacional': 'bg-emerald-500/10 text-emerald-400',
   'Cripto': 'bg-[hsl(160,84%,39%)]/10 text-[hsl(160,84%,80%)]',
   'Renda Fixa': 'bg-secondary text-secondary-foreground',
 };

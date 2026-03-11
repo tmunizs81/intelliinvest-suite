@@ -74,7 +74,7 @@ async function fetchBrapiQuote(ticker: string): Promise<QuoteResult | null> {
 
 // ─── Source 2: Yahoo Finance (global fallback) ───
 function mapToYahooTicker(ticker: string): string {
-  const mappings: Record<string, string> = {
+  const cryptoMappings: Record<string, string> = {
     BTC: "BTC-USD",
     ETH: "ETH-USD",
     SOL: "SOL-USD",
@@ -89,8 +89,28 @@ function mapToYahooTicker(ticker: string): string {
     LINK: "LINK-USD",
     UNI: "UNI-USD",
   };
-  if (mappings[ticker]) return mappings[ticker];
+  if (cryptoMappings[ticker]) return cryptoMappings[ticker];
+
+  // Irish/European ETFs on London Stock Exchange (common ones)
+  const irishEtfs: Record<string, string> = {
+    CSPX: "CSPX.L", IWDA: "IWDA.L", EIMI: "EIMI.L", SWDA: "SWDA.L",
+    VWRA: "VWRA.L", VWRL: "VWRL.L", VUAA: "VUAA.L", VUSA: "VUSA.L",
+    ISAC: "ISAC.L", IEMA: "IEMA.L", EMIM: "EMIM.L", IUIT: "IUIT.L",
+    IUAA: "IUAA.L", IDTL: "IDTL.L", AGBP: "AGBP.L", IGLN: "IGLN.L",
+    SGLN: "SGLN.L", PHAU: "PHAU.L", IBTM: "IBTM.L", LQDE: "LQDE.L",
+    SXRV: "SXRV.DE", SXR8: "SXR8.DE", EUNL: "EUNL.DE", IS3N: "IS3N.DE",
+    VGWL: "VGWL.DE", VWCE: "VWCE.DE", VAGF: "VAGF.L", VERX: "VERX.L",
+    MEUD: "MEUD.L", VJPN: "VJPN.L", VAPX: "VAPX.L",
+  };
+  if (irishEtfs[ticker]) return irishEtfs[ticker];
+
+  // If ticker contains a dot (e.g. CSPX.L, SXR8.DE), use as-is
+  if (ticker.includes(".")) return ticker;
+
+  // B3 Brazilian stocks pattern (4 letters + 1-2 digits)
   if (/^[A-Z]{4}\d{1,2}$/.test(ticker)) return `${ticker}.SA`;
+
+  // Default: try as-is (US stocks like AAPL, MSFT)
   return ticker;
 }
 
