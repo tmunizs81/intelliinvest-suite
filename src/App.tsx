@@ -22,6 +22,7 @@ import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 import FamilyPortfolio from "./pages/FamilyPortfolio";
 import Manual from "./pages/Manual";
+import Comparator from "./pages/Comparator";
 import PWAInstallPrompt from "./components/PWAInstallPrompt";
 import { Loader2 } from "lucide-react";
 
