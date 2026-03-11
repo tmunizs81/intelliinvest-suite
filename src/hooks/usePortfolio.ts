@@ -266,6 +266,15 @@ export function usePortfolio() {
       } as any);
     }
 
+    // Record cash movement for sell
+    await supabase.from('cash_movements' as any).insert({
+      user_id: user.id,
+      type: 'sell',
+      amount: netTotal,
+      broker: holding.broker || null,
+      description: `Venda de ${sellQty}x ${holding.ticker} a ${sellPrice.toFixed(2)}`,
+    } as any);
+
     await refresh();
   }, [user, holdings, refresh]);
 
