@@ -186,7 +186,7 @@ if [ $RETRY -eq $MAX_RETRIES ]; then
 fi
 
 # Verificar container health
-CONTAINER_STATUS=$(docker inspect --format='{{.State.Status}}' investai-app 2>/dev/null || echo "unknown")
+CONTAINER_STATUS=$(docker inspect --format='{{.State.Status}}' simplynvest-app 2>/dev/null || echo "unknown")
 if [ "$CONTAINER_STATUS" != "running" ]; then
     log_warn "Container status: $CONTAINER_STATUS (esperado: running)"
 fi
