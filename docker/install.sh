@@ -163,7 +163,7 @@ RETRY=0
 while [ $RETRY -lt $MAX_RETRIES ]; do
     HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:${APP_PORT}" 2>/dev/null || echo "000")
     if [ "$HTTP_CODE" = "200" ]; then
-        log_ok "InvestAI respondendo com HTTP 200!"
+        log_ok "T2-Simplynvest respondendo com HTTP 200!"
         break
     fi
     RETRY=$((RETRY + 1))
