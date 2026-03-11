@@ -125,7 +125,7 @@ export default function Sidebar() {
         {/* Footer */}
         <div className="border-t border-border p-3 space-y-2">
           {(!collapsed || mobileOpen) && (
-            <div className="flex items-center gap-2 px-2 py-1 text-xs text-muted-foreground truncate">
+            <div className="flex items-center gap-2 px-2 py-1 text-xs text-muted-foreground min-w-0 overflow-visible">
               <User className="h-3.5 w-3.5 shrink-0" />
               <span className="truncate">{user?.email}</span>
               <div className="ml-auto">
