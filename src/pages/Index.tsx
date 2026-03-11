@@ -4,6 +4,7 @@ import PortfolioSummary from '@/components/dashboard/PortfolioSummary';
 import PortfolioChart from '@/components/dashboard/PortfolioChart';
 import AllocationChart from '@/components/dashboard/AllocationChart';
 import PerformanceChart from '@/components/dashboard/PerformanceChart';
+import DividendsPanel from '@/components/dashboard/DividendsPanel';
 import HoldingsTable from '@/components/dashboard/HoldingsTable';
 import AIInsightsPanel from '@/components/dashboard/AIInsightsPanel';
 import AlertsPanel from '@/components/dashboard/AlertsPanel';
