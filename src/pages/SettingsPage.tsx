@@ -705,21 +705,21 @@ function FamilyTab() {
 // ─── TELEGRAM TAB ───
 function TelegramTab() {
   const { user } = useAuth();
+  const { isAdmin } = useRole();
   const [settings, setSettings] = useState<any>(null);
-  const [botToken, setBotToken] = useState('');
   const [chatId, setChatId] = useState('');
   const [enabled, setEnabled] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
   const [settingWebhook, setSettingWebhook] = useState(false);
+
   useEffect(() => {
     if (!user) return;
     supabase.from('telegram_settings').select('*').eq('user_id', user.id).single()
       .then(({ data }) => {
         if (data) {
           setSettings(data);
-          setBotToken(data.bot_token || '');
           setChatId(data.chat_id || '');
           setEnabled(data.enabled || false);
         }
@@ -733,14 +733,12 @@ function TelegramTab() {
     try {
       if (settings) {
         await supabase.from('telegram_settings').update({
-          bot_token: botToken,
           chat_id: chatId,
           enabled,
         }).eq('id', settings.id);
       } else {
         await supabase.from('telegram_settings').insert({
           user_id: user.id,
-          bot_token: botToken,
           chat_id: chatId,
           enabled,
         });
@@ -754,49 +752,30 @@ function TelegramTab() {
   };
 
   const testConnection = async () => {
-    if (!botToken || !chatId) {
-      toast.error('Preencha token e chat ID');
+    if (!chatId) {
+      toast.error('Preencha seu Chat ID');
       return;
     }
     setTesting(true);
     try {
-      const resp = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          chat_id: chatId,
-          text: '✅ *InvestAI* conectado com sucesso!\n\nVocê receberá notificações diárias sobre seus investimentos.',
-          parse_mode: 'Markdown',
-        }),
+      const { data, error } = await supabase.functions.invoke('telegram-test', {
+        body: { chatId },
       });
-      if (resp.ok) {
-        toast.success('Mensagem de teste enviada!');
-      } else {
-        toast.error('Falha ao enviar. Verifique token e chat ID.');
-      }
+      if (error) throw error;
+      toast.success('Mensagem de teste enviada!');
     } catch {
-      toast.error('Erro de conexão');
+      toast.error('Falha ao enviar. Verifique seu Chat ID.');
     } finally {
       setTesting(false);
     }
   };
 
   const setupWebhook = async () => {
-    if (!botToken) return;
     setSettingWebhook(true);
     try {
-      const webhookUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/telegram-webhook`;
-      const resp = await fetch(`https://api.telegram.org/bot${botToken}/setWebhook`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: webhookUrl }),
-      });
-      const data = await resp.json();
-      if (data.ok) {
-        toast.success('Webhook ativado! O bot agora responde a comandos como /senha');
-      } else {
-        toast.error(`Erro: ${data.description}`);
-      }
+      const { data, error } = await supabase.functions.invoke('telegram-setup-webhook');
+      if (error) throw error;
+      toast.success('Webhook ativado! O bot agora responde a comandos como /senha');
     } catch {
       toast.error('Erro ao configurar webhook');
     } finally {
@@ -816,26 +795,25 @@ function TelegramTab() {
           Receba notificações diárias sobre seus investimentos, dividendos, alertas e recomendações de compra/venda.
         </p>
 
+        <div className="rounded-lg bg-muted/30 border border-border p-4 space-y-2">
+          <p className="text-xs font-medium text-foreground">Como obter seu Chat ID:</p>
+          <ol className="list-decimal list-inside text-xs text-muted-foreground space-y-1">
+            <li>Abra o Telegram e busque o bot <span className="font-mono text-primary">@InvestAI_Bot</span></li>
+            <li>Envie <span className="font-mono">/start</span> para o bot</li>
+            <li>Busque <span className="font-mono text-primary">@userinfobot</span> no Telegram</li>
+            <li>Envie qualquer mensagem para ele e copie seu <b>Chat ID</b></li>
+          </ol>
+        </div>
+
         <div className="space-y-3">
           <div>
-            <label className="text-xs font-medium text-foreground">Bot Token</label>
-            <input
-              value={botToken}
-              onChange={e => setBotToken(e.target.value)}
-              placeholder="123456:ABC-DEF..."
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono mt-1"
-            />
-            <p className="text-[10px] text-muted-foreground mt-1">Crie um bot no @BotFather do Telegram e cole o token aqui</p>
-          </div>
-          <div>
-            <label className="text-xs font-medium text-foreground">Chat ID</label>
+            <label className="text-xs font-medium text-foreground">Seu Chat ID</label>
             <input
               value={chatId}
               onChange={e => setChatId(e.target.value)}
-              placeholder="-1001234567890"
+              placeholder="123456789"
               className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono mt-1"
             />
-            <p className="text-[10px] text-muted-foreground mt-1">Use @userinfobot para descobrir seu Chat ID</p>
           </div>
 
           <div className="flex items-center gap-3">
@@ -857,36 +835,32 @@ function TelegramTab() {
             <li>💰 Alertas de pagamento de dividendos e proventos</li>
             <li>📈 Indicações de compra e venda baseadas em análise técnica</li>
             <li>⚠️ Alertas de preço atingidos</li>
-            <li>📋 Relatório semanal de performance</li>
           </ul>
         </div>
 
         <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 space-y-2">
-          <p className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-            🔐 Comandos do Bot
-          </p>
-          <p className="text-xs text-muted-foreground">
-            Após configurar, o usuário pode enviar comandos ao bot no Telegram:
-          </p>
+          <p className="text-xs font-semibold text-foreground">🔐 Comandos disponíveis no Bot</p>
           <ul className="text-xs text-muted-foreground space-y-1 font-mono">
             <li><span className="text-primary">/senha</span> — Receber link para alterar a senha</li>
             <li><span className="text-primary">/ajuda</span> — Ver comandos disponíveis</li>
           </ul>
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <button onClick={save} disabled={saving} className="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium disabled:opacity-50 flex items-center gap-2">
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
             Salvar
           </button>
-          <button onClick={testConnection} disabled={testing} className="px-4 py-2 rounded-md border border-border text-sm font-medium flex items-center gap-2 hover:bg-accent/50">
+          <button onClick={testConnection} disabled={testing || !chatId} className="px-4 py-2 rounded-md border border-border text-sm font-medium flex items-center gap-2 hover:bg-accent/50 disabled:opacity-50">
             {testing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             Testar Conexão
           </button>
-          <button onClick={setupWebhook} disabled={settingWebhook || !botToken} className="px-4 py-2 rounded-md border border-border text-sm font-medium flex items-center gap-2 hover:bg-accent/50 disabled:opacity-50">
-            {settingWebhook ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-            Ativar Webhook
-          </button>
+          {isAdmin && (
+            <button onClick={setupWebhook} disabled={settingWebhook} className="px-4 py-2 rounded-md border border-border text-sm font-medium flex items-center gap-2 hover:bg-accent/50 disabled:opacity-50">
+              {settingWebhook ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+              Ativar Webhook
+            </button>
+          )}
         </div>
       </div>
     </div>
