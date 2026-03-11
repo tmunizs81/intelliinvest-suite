@@ -8,6 +8,7 @@ export interface Asset {
   change24h: number;
   allocation: number;
   sector?: string;
+  source?: string;
 }
 
 export interface PortfolioSnapshot {

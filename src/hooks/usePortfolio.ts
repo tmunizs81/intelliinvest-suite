@@ -74,6 +74,7 @@ export function usePortfolio() {
           change24h: quote?.change24h || 0,
           allocation: 0,
           sector: item.sector || undefined,
+          source: quote?.source || undefined,
         };
       });
 
