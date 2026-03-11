@@ -306,6 +306,21 @@ const Index = () => {
                   <AIInsightsPanel assets={assets} />
                 </DashboardPanel>
               </div>
+              <div key="smart-alerts">
+                <DashboardPanel title="Alertas Inteligentes" locked={locked}>
+                  <SmartAlertsPanel assets={assets} />
+                </DashboardPanel>
+              </div>
+              <div key="monthly-report">
+                <DashboardPanel title="Relatório Mensal" locked={locked}>
+                  <MonthlyReportPanel assets={assets} />
+                </DashboardPanel>
+              </div>
+              <div key="brokerage-import">
+                <DashboardPanel title="Importar Nota" locked={locked}>
+                  <BrokerageImportPanel />
+                </DashboardPanel>
+              </div>
             </ResponsiveGrid>
           </div>
         )}
