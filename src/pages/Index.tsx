@@ -13,6 +13,7 @@ import DividendsPanel from '@/components/dashboard/DividendsPanel';
 import HoldingsTable from '@/components/dashboard/HoldingsTable';
 import AIInsightsPanel from '@/components/dashboard/AIInsightsPanel';
 import AlertsPanel from '@/components/dashboard/AlertsPanel';
+import LicenseAlert from '@/components/dashboard/LicenseAlert';
 import HoldingModal from '@/components/dashboard/HoldingModal';
 import { usePortfolio, type HoldingRow } from '@/hooks/usePortfolio';
 import { Loader2, Lock, Unlock, RotateCcw } from 'lucide-react';
@@ -102,8 +103,11 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="px-4 sm:px-6 lg:px-8">
-        {/* Header */}
+      <div className="px-4 sm:px-6 lg:px-8 space-y-4">
+        {/* License Alert */}
+        <div className="pt-4">
+          <LicenseAlert />
+        </div>
         <div className="flex items-center justify-between py-5">
           <div>
             <p className="text-sm text-muted-foreground">
