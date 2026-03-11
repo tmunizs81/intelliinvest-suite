@@ -21,6 +21,7 @@ interface Props {
   onSave: (holding: Omit<HoldingRow, 'id'>) => Promise<void>;
   editData?: HoldingRow | null;
   onUpdate?: (id: string, data: Partial<HoldingRow>) => Promise<void>;
+  assets?: Asset[];
 }
 
 export default function HoldingModal({ open, onClose, onSave, editData, onUpdate }: Props) {
