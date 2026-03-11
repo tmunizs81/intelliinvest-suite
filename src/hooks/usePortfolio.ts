@@ -209,10 +209,12 @@ export function usePortfolio() {
 
   const deleteHolding = useCallback(async (id: string) => {
     if (!user) return;
+    const holding = holdings.find(h => h.id === id);
     const { error } = await supabase.from('holdings').delete().eq('id', id).eq('user_id', user.id);
     if (error) throw error;
+    await auditLog('delete', 'holding', id, { ticker: holding?.ticker });
     await refresh();
-  }, [user, refresh]);
+  }, [user, refresh, holdings, auditLog]);
 
   // Sell holding (partial or full)
   const sellHolding = useCallback(async (holdingId: string, sellQty: number, sellPrice: number, fees: number = 0) => {
