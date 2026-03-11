@@ -1,0 +1,1 @@
+ALTER TABLE public.holdings ADD COLUMN maturity_date date;
