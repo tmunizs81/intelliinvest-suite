@@ -52,7 +52,8 @@ const defaultLayouts: any = {
     { i: 'dividends', x: 0, y: 26, w: 6, h: 9, minW: 6, minH: 6 },
     { i: 'holdings', x: 0, y: 35, w: 6, h: 10, minW: 6, minH: 6 },
     { i: 'alerts', x: 0, y: 45, w: 6, h: 5, minW: 6, minH: 4 },
-    { i: 'ai-insights', x: 0, y: 50, w: 6, h: 5, minW: 6, minH: 4 },
+    { i: 'currency', x: 0, y: 50, w: 6, h: 5, minW: 6, minH: 4 },
+    { i: 'ai-insights', x: 0, y: 55, w: 6, h: 5, minW: 6, minH: 4 },
   ],
 };
 
