@@ -27,6 +27,13 @@ interface FundamentalResult {
   payout: number | null;
   currentRatio: number | null;
   grossMargin: number | null;
+  // New fields from extra sources
+  vacancy: number | null;
+  lastDividend: number | null;
+  pvpa: number | null;
+  patrimony: number | null;
+  cotistas: number | null;
+  sources: string[];
 }
 
 const EMPTY_RESULT: FundamentalResult = {
@@ -35,6 +42,8 @@ const EMPTY_RESULT: FundamentalResult = {
   revenue: null, ebitda: null, freeCashFlow: null, bookValue: null,
   beta: null, fiftyTwoWeekHigh: null, fiftyTwoWeekLow: null, avgVolume: null,
   payout: null, currentRatio: null, grossMargin: null,
+  vacancy: null, lastDividend: null, pvpa: null, patrimony: null, cotistas: null,
+  sources: [],
 };
 
 function mapToYahooTicker(ticker: string): string {
@@ -100,6 +109,7 @@ async function fetchHtml(url: string): Promise<string | null> {
         "Accept": "text/html,application/xhtml+xml",
         "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
       },
+      signal: AbortSignal.timeout(10000),
     });
     if (!resp.ok) return null;
     return await resp.text();
@@ -240,7 +250,7 @@ function parseInvestidor10Stock(text: string): Partial<FundamentalResult> | null
   return Object.values(result).some(v => v != null) ? result : null;
 }
 
-// ─── StatusInvest/Investidor10 scraping for FIIs (existing) ───
+// ─── StatusInvest/Investidor10 scraping for FIIs ───
 function parseInvestidor10Fii(text: string, ticker: string): Partial<FundamentalResult> | null {
   const upperTicker = ticker.toUpperCase();
   const currentPrice = parseFirst(text, new RegExp(`${upperTicker}\\s+Cotação\\s+R\\$\\s*([\\d.,]+)`, "i"));
@@ -263,7 +273,62 @@ function parseStatusInvestFii(text: string): Partial<FundamentalResult> | null {
   const pb = parseFirst(text, /P\/?VP\s*([\d.,]+)\s*Valor de mercado/i) ?? (currentPrice != null && bookValue != null && bookValue > 0 ? currentPrice / bookValue : null);
   const marketCapFromText = parseMoneyMagnitude(text.match(/Valor de mercado\s*R\$\s*([\d.,]+(?:\s*[KMB])?)/i)?.[0] ?? null);
   const marketCap = marketCapFromText ?? (patrimony != null && pb != null ? patrimony * pb : null);
-  const result: Partial<FundamentalResult> = { pb, dividendYield, bookValue, marketCap, fiftyTwoWeekHigh: high52, fiftyTwoWeekLow: low52 };
+  const vacancy = parseFirst(text, /Vac[aâ]ncia\s*([\d.,]+)\s*%/i);
+  const lastDividend = parseFirst(text, /[Úú]ltimo rendimento\s*R\$\s*([\d.,]+)/i);
+  const cotistas = parseFirst(text, /Cotistas\s*([\d.,]+)/i);
+  const result: Partial<FundamentalResult> = {
+    pb, dividendYield, bookValue, marketCap,
+    fiftyTwoWeekHigh: high52, fiftyTwoWeekLow: low52,
+    vacancy, lastDividend, patrimony, cotistas,
+  };
+  return Object.values(result).some(v => v != null) ? result : null;
+}
+
+// ─── FundsExplorer scraping for FIIs ───
+function parseFundsExplorer(text: string): Partial<FundamentalResult> | null {
+  const dividendYield = parseFirst(text, /Dividend Yield\s*([\d.,]+)\s*%/i);
+  const pb = parseFirst(text, /P\/?VP\s*([\d.,]+)/i);
+  const vacancy = parseFirst(text, /Vac[aâ]ncia\s*F[ií]sica\s*([\d.,]+)\s*%/i) ?? parseFirst(text, /Vac[aâ]ncia\s*([\d.,]+)\s*%/i);
+  const lastDividend = parseFirst(text, /[Úú]ltimo Rendimento\s*R\$\s*([\d.,]+)/i);
+  const patrimony = parseMoneyMagnitude(text.match(/Patrim[oô]nio L[ií]quido\s*R\$\s*([\d.,]+(?:\s*[KMB])?)/i)?.[0] ?? null);
+  const cotistas = parseFirst(text, /N[úu]mero de Cotistas\s*([\d.,]+)/i);
+  const bookValue = parseFirst(text, /Valor Patrimonial\s*R\$\s*([\d.,]+)/i);
+  const marketCap = parseMoneyMagnitude(text.match(/Valor de Mercado\s*R\$\s*([\d.,]+(?:\s*[KMB])?)/i)?.[0] ?? null);
+
+  const result: Partial<FundamentalResult> = {
+    dividendYield, pb, vacancy, lastDividend, patrimony, cotistas, bookValue, marketCap,
+  };
+  return Object.values(result).some(v => v != null) ? result : null;
+}
+
+// ─── FIIs.com.br scraping for FIIs ───
+function parseFiisCombr(text: string): Partial<FundamentalResult> | null {
+  const dividendYield = parseFirst(text, /Dividend Yield\s*(?:\(12[Mm]\))?\s*([\d.,]+)\s*%/i);
+  const pb = parseFirst(text, /P\/?VP\s*([\d.,]+)/i);
+  const lastDividend = parseFirst(text, /[Úú]ltimo Rendimento\s*R\$\s*([\d.,]+)/i) ?? parseFirst(text, /Rendimento\s*R\$\s*([\d.,]+)/i);
+  const vacancy = parseFirst(text, /Vac[aâ]ncia\s*([\d.,]+)\s*%/i);
+  const patrimony = parseMoneyMagnitude(text.match(/Patrim[oô]nio\s*R\$\s*([\d.,]+(?:\s*[KMB])?)/i)?.[0] ?? null);
+
+  const result: Partial<FundamentalResult> = { dividendYield, pb, lastDividend, vacancy, patrimony };
+  return Object.values(result).some(v => v != null) ? result : null;
+}
+
+// ─── Google Finance scraping ───
+function parseGoogleFinance(text: string): Partial<FundamentalResult> | null {
+  const pe = parseFirst(text, /P\/E ratio\s*([\d.,]+)/i) ?? parseFirst(text, /Rela[çc][aã]o P\/?L\s*([\d.,]+)/i);
+  const dividendYield = parseFirst(text, /Dividend yield\s*([\d.,]+)\s*%/i);
+  const marketCap = parseMoneyMagnitude(text.match(/Market cap\s*R\$\s*([\d.,]+(?:\s*[KMBT])?)/i)?.[0] ?? null)
+    ?? parseMoneyMagnitude(text.match(/Cap\.\s*de mercado\s*R\$\s*([\d.,]+(?:\s*[KMBT])?)/i)?.[0] ?? null);
+  const high52 = parseFirst(text, /52[\s-]*wk high\s*R?\$?\s*([\d.,]+)/i) ?? parseFirst(text, /M[aá]x\.\s*52\s*sem\s*R?\$?\s*([\d.,]+)/i);
+  const low52 = parseFirst(text, /52[\s-]*wk low\s*R?\$?\s*([\d.,]+)/i) ?? parseFirst(text, /M[ií]n\.\s*52\s*sem\s*R?\$?\s*([\d.,]+)/i);
+  const avgVolume = parseFirst(text, /Avg\.?\s*Volume\s*([\d.,]+)/i) ?? parseFirst(text, /Vol\.?\s*m[eé]dio\s*([\d.,]+)/i);
+  const beta = parseFirst(text, /Beta\s*([\d.,]+)/i);
+  const eps = parseFirst(text, /EPS\s*\(?TTM\)?\s*R?\$?\s*([\d.,]+)/i);
+
+  const result: Partial<FundamentalResult> = {
+    pe, dividendYield, marketCap, fiftyTwoWeekHigh: high52, fiftyTwoWeekLow: low52,
+    avgVolume, beta, eps,
+  };
   return Object.values(result).some(v => v != null) ? result : null;
 }
 
@@ -272,6 +337,7 @@ function mergeData(...sources: Array<Partial<FundamentalResult> | null>): Fundam
   for (const source of sources) {
     if (!source) continue;
     for (const [key, value] of Object.entries(source)) {
+      if (key === 'sources') continue;
       const typedKey = key as keyof FundamentalResult;
       if (result[typedKey] == null && value != null) {
         result[typedKey] = value as never;
@@ -292,6 +358,11 @@ function getAssetCategory(ticker: string, type?: string): 'fii' | 'stock' | 'etf
   return 'other';
 }
 
+function getGoogleFinanceTicker(ticker: string, category: string): string {
+  if (category === 'other') return ticker;
+  return `${ticker}:BVMF`;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -310,6 +381,7 @@ serve(async (req) => {
     console.log(`Fetching fundamentals for ${ticker} → ${yahooTicker} (category: ${category})`);
 
     const auth = await getCrumbAndCookie();
+    const t = ticker.toLowerCase();
 
     // Build parallel fetch promises based on asset type
     const fetches: Promise<any>[] = [
@@ -317,54 +389,90 @@ serve(async (req) => {
       tryYahooChart(yahooTicker),
     ];
 
+    // Google Finance for all Brazilian assets
+    if (isBrazilian) {
+      const gfTicker = getGoogleFinanceTicker(ticker.toUpperCase(), category);
+      fetches.push(fetchHtml(`https://www.google.com/finance/quote/${gfTicker}`));
+    } else {
+      fetches.push(Promise.resolve(null));
+    }
+
     if (category === 'fii') {
-      fetches.push(fetchHtml(`https://investidor10.com.br/fiis/${ticker.toLowerCase()}/`));
-      fetches.push(fetchHtml(`https://statusinvest.com.br/fundos-imobiliarios/${ticker.toLowerCase()}`));
-      fetches.push(Promise.resolve(null)); // placeholder for stock statusinvest
-      fetches.push(Promise.resolve(null)); // placeholder for stock investidor10
+      fetches.push(fetchHtml(`https://investidor10.com.br/fiis/${t}/`));
+      fetches.push(fetchHtml(`https://statusinvest.com.br/fundos-imobiliarios/${t}`));
+      fetches.push(fetchHtml(`https://www.fundsexplorer.com.br/funds/${t}`));
+      fetches.push(fetchHtml(`https://fiis.com.br/${t}/`));
+      fetches.push(Promise.resolve(null)); // stock statusinvest
+      fetches.push(Promise.resolve(null)); // stock investidor10
     } else if (category === 'stock' && isBrazilian) {
       fetches.push(Promise.resolve(null)); // fii investidor10
       fetches.push(Promise.resolve(null)); // fii statusinvest
-      fetches.push(fetchHtml(`https://statusinvest.com.br/acoes/${ticker.toLowerCase()}`));
-      fetches.push(fetchHtml(`https://investidor10.com.br/acoes/${ticker.toLowerCase()}/`));
+      fetches.push(Promise.resolve(null)); // fundsexplorer
+      fetches.push(Promise.resolve(null)); // fiis.com.br
+      fetches.push(fetchHtml(`https://statusinvest.com.br/acoes/${t}`));
+      fetches.push(fetchHtml(`https://investidor10.com.br/acoes/${t}/`));
     } else if (category === 'etf' && isBrazilian) {
       fetches.push(Promise.resolve(null));
       fetches.push(Promise.resolve(null));
-      fetches.push(fetchHtml(`https://statusinvest.com.br/etfs/${ticker.toLowerCase()}`));
+      fetches.push(Promise.resolve(null));
+      fetches.push(Promise.resolve(null));
+      fetches.push(fetchHtml(`https://statusinvest.com.br/etfs/${t}`));
       fetches.push(Promise.resolve(null));
     } else if (category === 'bdr' && isBrazilian) {
       fetches.push(Promise.resolve(null));
       fetches.push(Promise.resolve(null));
-      fetches.push(fetchHtml(`https://statusinvest.com.br/bdrs/${ticker.toLowerCase()}`));
+      fetches.push(Promise.resolve(null));
+      fetches.push(Promise.resolve(null));
+      fetches.push(fetchHtml(`https://statusinvest.com.br/bdrs/${t}`));
       fetches.push(Promise.resolve(null));
     } else {
-      fetches.push(Promise.resolve(null), Promise.resolve(null), Promise.resolve(null), Promise.resolve(null));
+      fetches.push(Promise.resolve(null), Promise.resolve(null), Promise.resolve(null), Promise.resolve(null), Promise.resolve(null), Promise.resolve(null));
     }
 
-    const [yahooV10, yahooChart, fiiInvestidorHtml, fiiStatusInvestHtml, stockStatusInvestHtml, stockInvestidor10Html] = await Promise.all(fetches);
+    const [yahooV10, yahooChart, googleFinanceHtml, fiiInvestidorHtml, fiiStatusInvestHtml, fundsExplorerHtml, fiisComBrHtml, stockStatusInvestHtml, stockInvestidor10Html] = await Promise.all(fetches);
+
+    // Track which sources returned data
+    const activeSources: string[] = [];
 
     // Parse results
     let brazilianParsed1: Partial<FundamentalResult> | null = null;
     let brazilianParsed2: Partial<FundamentalResult> | null = null;
+    let fundsExplorerParsed: Partial<FundamentalResult> | null = null;
+    let fiisComBrParsed: Partial<FundamentalResult> | null = null;
+    let googleFinanceParsed: Partial<FundamentalResult> | null = null;
+
+    if (yahooV10) activeSources.push("Yahoo Finance V10");
+    if (yahooChart) activeSources.push("Yahoo Chart");
+
+    if (googleFinanceHtml) {
+      googleFinanceParsed = parseGoogleFinance(stripHtmlToText(googleFinanceHtml));
+      if (googleFinanceParsed) activeSources.push("Google Finance");
+    }
 
     if (category === 'fii') {
       brazilianParsed1 = fiiStatusInvestHtml ? parseStatusInvestFii(stripHtmlToText(fiiStatusInvestHtml)) : null;
       brazilianParsed2 = fiiInvestidorHtml ? parseInvestidor10Fii(stripHtmlToText(fiiInvestidorHtml), ticker) : null;
+      fundsExplorerParsed = fundsExplorerHtml ? parseFundsExplorer(stripHtmlToText(fundsExplorerHtml)) : null;
+      fiisComBrParsed = fiisComBrHtml ? parseFiisCombr(stripHtmlToText(fiisComBrHtml)) : null;
+      if (brazilianParsed1) activeSources.push("StatusInvest");
+      if (brazilianParsed2) activeSources.push("Investidor10");
+      if (fundsExplorerParsed) activeSources.push("FundsExplorer");
+      if (fiisComBrParsed) activeSources.push("FIIs.com.br");
     } else if (isBrazilian) {
       brazilianParsed1 = stockStatusInvestHtml ? parseStatusInvestStock(stripHtmlToText(stockStatusInvestHtml)) : null;
       brazilianParsed2 = stockInvestidor10Html ? parseInvestidor10Stock(stripHtmlToText(stockInvestidor10Html)) : null;
+      if (brazilianParsed1) activeSources.push("StatusInvest");
+      if (brazilianParsed2) activeSources.push("Investidor10");
     }
 
     // For Brazilian assets, prioritize local sources; for international, Yahoo only
     const result = isBrazilian
-      ? mergeData(brazilianParsed1, brazilianParsed2, yahooV10, yahooChart)
-      : mergeData(yahooV10, yahooChart);
+      ? mergeData(brazilianParsed1, brazilianParsed2, fundsExplorerParsed, fiisComBrParsed, googleFinanceParsed, yahooV10, yahooChart)
+      : mergeData(yahooV10, yahooChart, googleFinanceParsed);
 
-    console.log(`Sources for ${ticker}:`, JSON.stringify({
-      yahooV10: !!yahooV10, yahooChart: !!yahooChart,
-      brazilianParsed1: !!brazilianParsed1, brazilianParsed2: !!brazilianParsed2,
-      category,
-    }));
+    result.sources = activeSources;
+
+    console.log(`Sources for ${ticker}: ${activeSources.join(", ")}`);
 
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
