@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { type Asset } from '@/lib/mockData';
-import { Newspaper, Loader2, RefreshCw, TrendingUp, TrendingDown, Minus, Globe, Building, Landmark, Scale as ScaleIcon } from 'lucide-react';
+import { Newspaper, Loader2, RefreshCw, TrendingUp, TrendingDown, Minus, Globe, Building, Landmark, Scale as ScaleIcon, ExternalLink } from 'lucide-react';
 
 interface NewsItem {
   title: string;
@@ -9,6 +9,7 @@ interface NewsItem {
   impact: 'positive' | 'negative' | 'neutral';
   related_tickers: string[];
   category: string;
+  source_url?: string;
 }
 
 const impactColors = {
@@ -65,8 +66,8 @@ export default function NewsPanel({ assets }: { assets: Asset[] }) {
             <Newspaper className="h-3.5 w-3.5 text-secondary-foreground" />
           </div>
           <div>
-            <h3 className="text-sm font-semibold">Feed de Notícias IA</h3>
-            <p className="text-[10px] text-muted-foreground">Filtrado para sua carteira</p>
+            <h3 className="text-sm font-semibold">Feed de Notícias</h3>
+            <p className="text-[10px] text-muted-foreground">Fontes reais: Google News, InfoMoney, Valor</p>
           </div>
         </div>
         <button onClick={generate} disabled={loading || assets.length === 0}
@@ -80,14 +81,14 @@ export default function NewsPanel({ assets }: { assets: Asset[] }) {
           <button onClick={generate} disabled={assets.length === 0}
             className="w-full py-6 flex flex-col items-center gap-2 text-muted-foreground hover:text-foreground transition-all">
             <Newspaper className="h-8 w-8" />
-            <span className="text-xs">Gerar notícias relevantes</span>
+            <span className="text-xs">Buscar notícias reais da sua carteira</span>
           </button>
         )}
 
         {loading && (
           <div className="flex flex-col items-center py-6 gap-2">
             <Loader2 className="h-6 w-6 animate-spin text-primary" />
-            <p className="text-xs text-muted-foreground">Buscando notícias...</p>
+            <p className="text-xs text-muted-foreground">Buscando notícias reais...</p>
           </div>
         )}
 
@@ -110,6 +111,12 @@ export default function NewsPanel({ assets }: { assets: Asset[] }) {
                     {item.related_tickers.map(t => (
                       <span key={t} className="text-[9px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-mono">{t}</span>
                     ))}
+                    {item.source_url && (
+                      <a href={item.source_url} target="_blank" rel="noopener noreferrer"
+                        className="text-[9px] px-1.5 py-0.5 rounded bg-muted text-primary flex items-center gap-1 hover:underline">
+                        <ExternalLink className="h-2.5 w-2.5" /> Fonte
+                      </a>
+                    )}
                   </div>
                 </div>
               </div>
