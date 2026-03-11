@@ -1,5 +1,5 @@
 import { Moon, Sun, Palette } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 
 const themes = [
   { id: 'emerald', label: 'Esmeralda', primary: '160 84%', accent: '160' },
@@ -38,6 +38,7 @@ export default function ThemeToggle() {
   const [isDark, setIsDark] = useState(true);
   const [showPalette, setShowPalette] = useState(false);
   const [activeTheme, setActiveTheme] = useState<ThemeId>('emerald');
+  const paletteRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const saved = localStorage.getItem('theme');
@@ -52,6 +53,17 @@ export default function ThemeToggle() {
       applyTheme(savedTheme);
     }
   }, []);
+
+  useEffect(() => {
+    if (!showPalette) return;
+    const handler = (e: MouseEvent) => {
+      if (paletteRef.current && !paletteRef.current.contains(e.target as Node)) {
+        setShowPalette(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showPalette]);
 
   const toggleDark = () => {
     const next = !isDark;
@@ -82,7 +94,7 @@ export default function ThemeToggle() {
   };
 
   return (
-    <div className="relative flex items-center gap-1">
+    <div className="relative flex items-center gap-1" ref={paletteRef}>
       <button
         onClick={toggleDark}
         className="h-8 w-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-all"
@@ -91,14 +103,14 @@ export default function ThemeToggle() {
         {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
       </button>
       <button
-        onClick={() => setShowPalette(!showPalette)}
+        onClick={(e) => { e.stopPropagation(); setShowPalette(prev => !prev); }}
         className="h-8 w-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-all"
         title="Escolher tema"
       >
         <Palette className="h-4 w-4" />
       </button>
       {showPalette && (
-        <div className="absolute top-full right-0 mt-2 bg-card border border-border rounded-xl shadow-lg p-3 z-50 w-44 animate-fade-in">
+        <div className="absolute bottom-full left-0 mb-2 bg-card border border-border rounded-xl shadow-lg p-3 z-[9999] w-44 animate-fade-in">
           <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-2">Paleta de Cores</p>
           <div className="space-y-1">
             {themes.map(t => (
