@@ -966,7 +966,7 @@ export default function Manual() {
         <img src="/pwa-icon-192.png" alt="T2" className="h-16 w-16 mx-auto mb-4 rounded-xl" />
         <h1 className="text-3xl font-bold mb-2">T2-SimplyNvest</h1>
         <h2 className="text-xl text-muted-foreground mb-1">Manual do Usuário</h2>
-        <p className="text-sm text-muted-foreground">Versão 1.0 — Guia Completo de Funcionalidades</p>
+        <p className="text-sm text-muted-foreground">Versão 2.0 — Guia Completo de Funcionalidades</p>
       </div>
 
       {/* Table of Contents - print only */}
