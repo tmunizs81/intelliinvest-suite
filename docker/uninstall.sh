@@ -14,7 +14,7 @@ if ! docker compose version &> /dev/null 2>&1; then
     COMPOSE_CMD="docker-compose"
 fi
 
-echo -e "${YELLOW}Parando e removendo InvestAI...${NC}"
+echo -e "${YELLOW}Parando e removendo T2-Simplynvest...${NC}"
 
 cd "$SCRIPT_DIR"
 
