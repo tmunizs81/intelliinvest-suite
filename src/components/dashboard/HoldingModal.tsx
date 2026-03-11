@@ -314,6 +314,18 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
             </div>
           </div>
 
+          {/* AI Copilot Signal */}
+          {ticker && quantity && avgPrice && !editData && (
+            <AICopilotSignal
+              ticker={ticker}
+              name={name}
+              type={type}
+              quantity={parseFloat(quantity) || 0}
+              avgPrice={parseFloat(avgPrice) || 0}
+              assets={assets}
+            />
+          )}
+
           <button
             type="submit" disabled={loading}
             className="w-full rounded-md bg-primary py-2.5 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2"
