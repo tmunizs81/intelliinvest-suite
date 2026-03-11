@@ -5,6 +5,7 @@ import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import type { HoldingRow } from '@/hooks/usePortfolio';
 import { type Asset } from '@/lib/mockData';
+import { classifyAssetType } from '@/lib/assetClassification';
 import AICopilotSignal from './AICopilotSignal';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
