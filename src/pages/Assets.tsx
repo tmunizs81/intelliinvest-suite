@@ -331,6 +331,14 @@ export default function Assets() {
                             {holdingRow && (
                               <>
                                 <button
+                                  onClick={() => handleSell(holdingRow, asset)}
+                                  className="h-7 px-2 rounded flex items-center justify-center gap-1 text-[10px] font-semibold text-[hsl(var(--loss-foreground))] bg-[hsl(var(--loss)/0.1)] hover:bg-[hsl(var(--loss)/0.2)] transition-colors"
+                                  title="Vender"
+                                >
+                                  <ArrowDownRight className="h-3 w-3" />
+                                  Vender
+                                </button>
+                                <button
                                   onClick={() => { setEditingHolding(holdingRow); setModalOpen(true); }}
                                   className="h-7 w-7 rounded flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
                                 >
