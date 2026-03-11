@@ -194,8 +194,15 @@ export default function Analysis() {
 
           {/* FII Properties List - right after profile */}
           {(assetType === 'FII' || /^[A-Z]{4}11$/i.test(ticker)) && (
-            <div className="mb-4">
+            <div className="mb-4 flex flex-col sm:flex-row gap-3">
               <FiiPropertiesPanel ticker={ticker} />
+            </div>
+          )}
+
+          {/* FII Buy & Hold Checklist */}
+          {(assetType === 'FII' || /^[A-Z]{4}11$/i.test(ticker)) && (
+            <div className="mb-4">
+              <FiiBuyHoldChecklist ticker={ticker} name={assetName || ticker} />
             </div>
           )}
 
