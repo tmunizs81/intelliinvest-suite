@@ -1,66 +1,85 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 import { type Asset } from '@/lib/mockData';
 
-const POLL_INTERVAL = 10 * 60 * 1000; // 10 minutes
+const POLL_INTERVAL = 10 * 60 * 1000;
 
-// Holdings the user owns (static for now - will come from DB later)
-export const userHoldings: Omit<Asset, 'currentPrice' | 'change24h'>[] = [
-  { ticker: 'PETR4', name: 'Petrobras PN', type: 'Ação', quantity: 500, avgPrice: 28.50, allocation: 0, sector: 'Petróleo' },
-  { ticker: 'VALE3', name: 'Vale ON', type: 'Ação', quantity: 300, avgPrice: 62.30, allocation: 0, sector: 'Mineração' },
-  { ticker: 'ITUB4', name: 'Itaú Unibanco PN', type: 'Ação', quantity: 400, avgPrice: 25.10, allocation: 0, sector: 'Bancos' },
-  { ticker: 'HGLG11', name: 'CSHG Logística', type: 'FII', quantity: 80, avgPrice: 158.00, allocation: 0, sector: 'Logística' },
-  { ticker: 'XPML11', name: 'XP Malls', type: 'FII', quantity: 120, avgPrice: 95.50, allocation: 0, sector: 'Shopping' },
-  { ticker: 'BTC', name: 'Bitcoin', type: 'Cripto', quantity: 0.15, avgPrice: 180000, allocation: 0, sector: 'Cripto' },
-  { ticker: 'IVVB11', name: 'iShares S&P 500', type: 'ETF', quantity: 200, avgPrice: 280.00, allocation: 0, sector: 'Internacional' },
-  { ticker: 'WEGE3', name: 'WEG ON', type: 'Ação', quantity: 150, avgPrice: 35.20, allocation: 0, sector: 'Indústria' },
-  { ticker: 'BBAS3', name: 'Banco do Brasil ON', type: 'Ação', quantity: 250, avgPrice: 42.00, allocation: 0, sector: 'Bancos' },
-];
-
-interface QuoteData {
-  currentPrice: number;
-  change24h: number;
-  previousClose: number;
+export interface HoldingRow {
+  id: string;
+  ticker: string;
   name: string;
-  error?: string;
+  type: string;
+  quantity: number;
+  avg_price: number;
+  sector: string | null;
 }
 
 export function usePortfolio() {
+  const { user } = useAuth();
   const [assets, setAssets] = useState<Asset[]>([]);
+  const [holdings, setHoldings] = useState<HoldingRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
-  const intervalRef = useRef<ReturnType<typeof setInterval>>();
 
-  const fetchQuotes = useCallback(async () => {
+  // Load holdings from DB
+  const loadHoldings = useCallback(async () => {
+    if (!user) return [];
+    const { data, error } = await supabase
+      .from('holdings')
+      .select('*')
+      .eq('user_id', user.id);
+    if (error) {
+      console.error('Error loading holdings:', error);
+      return [];
+    }
+    setHoldings(data || []);
+    return data || [];
+  }, [user]);
+
+  // Fetch quotes from Yahoo Finance
+  const fetchQuotes = useCallback(async (holdingsData?: HoldingRow[]) => {
+    const h = holdingsData || holdings;
+    if (h.length === 0) {
+      setAssets([]);
+      setLoading(false);
+      return;
+    }
+
     try {
       setError(null);
-      const tickers = userHoldings.map((h) => h.ticker);
-
+      const tickers = h.map((item) => item.ticker);
       const { data, error: fnError } = await supabase.functions.invoke('yahoo-finance', {
         body: { tickers },
       });
 
-      if (fnError) {
-        throw new Error(fnError.message || 'Failed to fetch quotes');
-      }
+      if (fnError) throw new Error(fnError.message || 'Failed to fetch quotes');
 
-      const quotes: Record<string, QuoteData> = data.quotes;
-
-      // Calculate total portfolio value for allocation
+      const quotes = data.quotes || {};
       let totalValue = 0;
-      const enriched = userHoldings.map((h) => {
-        const quote = quotes[h.ticker];
+
+      const enriched = h.map((item) => {
+        const quote = quotes[item.ticker];
         const currentPrice = quote?.currentPrice || 0;
-        const value = currentPrice * h.quantity;
+        const value = currentPrice * item.quantity;
         totalValue += value;
-        return { ...h, currentPrice, change24h: quote?.change24h || 0, value };
+        return {
+          ticker: item.ticker,
+          name: item.name,
+          type: item.type as Asset['type'],
+          quantity: item.quantity,
+          avgPrice: item.avg_price,
+          currentPrice,
+          change24h: quote?.change24h || 0,
+          allocation: 0,
+          sector: item.sector || undefined,
+        };
       });
 
-      // Set allocation percentages
       const assetsWithAllocation: Asset[] = enriched.map((a) => ({
         ...a,
-        allocation: totalValue > 0 ? Math.round((a.value / totalValue) * 1000) / 10 : 0,
+        allocation: totalValue > 0 ? Math.round(((a.currentPrice * a.quantity) / totalValue) * 1000) / 10 : 0,
       }));
 
       setAssets(assetsWithAllocation);
@@ -71,20 +90,75 @@ export function usePortfolio() {
       setError(err instanceof Error ? err.message : 'Erro ao buscar cotações');
       setLoading(false);
     }
-  }, []);
+  }, [holdings]);
 
+  // Initial load
   useEffect(() => {
-    fetchQuotes();
-    intervalRef.current = setInterval(fetchQuotes, POLL_INTERVAL);
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+    
+    const init = async () => {
+      const h = await loadHoldings();
+      if (h.length > 0) {
+        await fetchQuotes(h);
+      } else {
+        setLoading(false);
+      }
     };
-  }, [fetchQuotes]);
+    init();
+  }, [user, loadHoldings]);
 
-  const refresh = useCallback(() => {
+  // Polling
+  useEffect(() => {
+    if (!user || holdings.length === 0) return;
+    const interval = setInterval(() => fetchQuotes(), POLL_INTERVAL);
+    return () => clearInterval(interval);
+  }, [user, holdings, fetchQuotes]);
+
+  const refresh = useCallback(async () => {
     setLoading(true);
-    return fetchQuotes();
-  }, [fetchQuotes]);
+    const h = await loadHoldings();
+    await fetchQuotes(h);
+  }, [loadHoldings, fetchQuotes]);
 
-  return { assets, loading, error, lastUpdate, refresh };
+  // CRUD operations
+  const addHolding = useCallback(async (holding: Omit<HoldingRow, 'id'>) => {
+    if (!user) return;
+    const { error } = await supabase.from('holdings').insert({
+      user_id: user.id,
+      ticker: holding.ticker.toUpperCase(),
+      name: holding.name,
+      type: holding.type,
+      quantity: holding.quantity,
+      avg_price: holding.avg_price,
+      sector: holding.sector,
+    });
+    if (error) throw error;
+    await refresh();
+  }, [user, refresh]);
+
+  const updateHolding = useCallback(async (id: string, updates: Partial<HoldingRow>) => {
+    if (!user) return;
+    const { error } = await supabase.from('holdings').update({
+      ...(updates.ticker && { ticker: updates.ticker.toUpperCase() }),
+      ...(updates.name && { name: updates.name }),
+      ...(updates.type && { type: updates.type }),
+      ...(updates.quantity !== undefined && { quantity: updates.quantity }),
+      ...(updates.avg_price !== undefined && { avg_price: updates.avg_price }),
+      ...(updates.sector !== undefined && { sector: updates.sector }),
+    }).eq('id', id).eq('user_id', user.id);
+    if (error) throw error;
+    await refresh();
+  }, [user, refresh]);
+
+  const deleteHolding = useCallback(async (id: string) => {
+    if (!user) return;
+    const { error } = await supabase.from('holdings').delete().eq('id', id).eq('user_id', user.id);
+    if (error) throw error;
+    await refresh();
+  }, [user, refresh]);
+
+  return { assets, holdings, loading, error, lastUpdate, refresh, addHolding, updateHolding, deleteHolding };
 }
