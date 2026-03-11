@@ -2,10 +2,11 @@ import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Plus, Upload, Download, Search, Pencil, Trash2, ArrowUpRight,
-  ArrowDownRight, ChevronRight, Loader2, FileSpreadsheet, X, AlertTriangle,
+  ArrowDownRight, ChevronRight, Loader2, FileSpreadsheet, X, AlertTriangle, FileUp,
 } from 'lucide-react';
 import { usePortfolio, type HoldingRow } from '@/hooks/usePortfolio';
 import HoldingModal from '@/components/dashboard/HoldingModal';
+import BrokerageImportPanel from '@/components/dashboard/BrokerageImportPanel';
 import { type Asset, formatCurrency, formatPercent } from '@/lib/mockData';
 
 const typeBadgeClass: Record<string, string> = {
