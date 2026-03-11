@@ -20,6 +20,7 @@ interface Props {
   name: string;
   type: string;
   candles: Candle[];
+  loadDelay?: number;
   holdingInfo?: {
     quantity: number;
     avgPrice: number;
