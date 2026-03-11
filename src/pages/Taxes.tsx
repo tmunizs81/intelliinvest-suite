@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useTaxes, type Transaction, type MonthlyTaxSummary } from '@/hooks/useTaxes';
 import { formatCurrency, formatPercent } from '@/lib/mockData';
 import {
@@ -6,6 +6,7 @@ import {
   AlertTriangle, CheckCircle2, Download, Receipt, CalendarDays, TrendingDown,
   Upload,
 } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
 const currentYear = new Date().getFullYear();
 const years = [currentYear, currentYear - 1, currentYear - 2, currentYear - 3];
