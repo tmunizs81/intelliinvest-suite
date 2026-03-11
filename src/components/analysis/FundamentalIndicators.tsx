@@ -29,6 +29,7 @@ interface FundamentalData {
 interface Props {
   ticker: string;
   type: string;
+  loadDelay?: number;
 }
 
 function Stat({ label, value, suffix, signal }: { label: string; value: string | null; suffix?: string; signal?: 'good' | 'bad' | 'neutral' }) {
