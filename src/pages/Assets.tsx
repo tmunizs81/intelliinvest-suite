@@ -469,6 +469,26 @@ export default function Assets() {
         </div>
       )}
 
+      {/* Brokerage Note Import Modal */}
+      {brokerageOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4">
+          <div className="w-full max-w-lg rounded-lg border border-border bg-card shadow-xl animate-fade-in max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between p-4 border-b border-border shrink-0">
+              <div className="flex items-center gap-2">
+                <FileUp className="h-5 w-5 text-primary" />
+                <h2 className="text-lg font-semibold">Importar Nota de Corretagem</h2>
+              </div>
+              <button onClick={() => setBrokerageOpen(false)} className="text-muted-foreground hover:text-foreground">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              <BrokerageImportPanel />
+            </div>
+          </div>
+        </div>
+      )}
+
       <HoldingModal
         open={modalOpen}
         onClose={() => { setModalOpen(false); setEditingHolding(null); }}
