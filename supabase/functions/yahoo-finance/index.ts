@@ -276,7 +276,8 @@ function mapToYahooTicker(ticker: string): string {
   if (irishEtfs[ticker]) return irishEtfs[ticker];
 
   if (ticker.includes(".")) return ticker;
-  if (/^[A-Z]{4}\d{1,2}$/.test(ticker)) return `${ticker}.SA`;
+  // Brazilian assets: letters/numbers ending in digits (e.g. PETR4, HGLG11, 5MVL3)
+  if (/^[A-Z0-9]{4,6}\d{1,2}$/.test(ticker) && !ticker.includes("-")) return `${ticker}.SA`;
   return ticker;
 }
 

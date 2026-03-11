@@ -6,18 +6,24 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+const CRYPTO_SET = new Set([
+  "BTC","ETH","SOL","ADA","DOT","XRP","BNB","DOGE","LTC","AVAX","MATIC",
+  "LINK","UNI","ATOM","NEAR","APT","ARB","OP","SHIB","FIL","ALGO","HBAR",
+  "VET","ICP","AAVE","GRT","SAND","MANA","CRV","MKR","RENDER","FET",
+  "SUI","SEI","TIA","INJ","PEPE","WIF","BONK","FLOKI","TON","SNX","COMP",
+  "ENS","LDO","RPL","IMX","RUNE","BLUR","WLD","PENDLE","JUP","PYTH",
+  "ONDO","ENA","STRK","MANTA","DYM","XLM","TRX","EOS","NEO","ZEC","XMR",
+  "DASH","BCH","ETC","USDT","USDC","DAI",
+]);
+
 function mapToYahooTicker(ticker: string): string {
-  const cryptoMap: Record<string, string> = {
-    BTC: "BTC-USD", ETH: "ETH-USD", SOL: "SOL-USD", ADA: "ADA-USD",
-    DOT: "DOT-USD", XRP: "XRP-USD", BNB: "BNB-USD", DOGE: "DOGE-USD",
-    LTC: "LTC-USD", AVAX: "AVAX-USD", MATIC: "MATIC-USD",
-  };
-  if (cryptoMap[ticker]) return cryptoMap[ticker];
-  if (/^[A-Z]{4}\d{1,2}$/.test(ticker)) return `${ticker}.SA`;
+  const t = ticker.toUpperCase();
+  // Crypto
+  if (CRYPTO_SET.has(t)) return `${t}-USD`;
+  // Brazilian assets: letters + numbers ending in digits (e.g. PETR4, HGLG11, 5MVL3, BOVA11)
+  if (/^[A-Z0-9]{4,6}\d{1,2}$/.test(t) && !t.includes("-")) return `${t}.SA`;
   return ticker;
 }
-
-const CRYPTO_TICKERS = ["BTC", "ETH", "SOL", "ADA", "DOT", "XRP", "BNB", "DOGE", "LTC", "AVAX", "MATIC", "LINK", "UNI"];
 
 async function getUsdBrlRate(): Promise<number> {
   try {
@@ -48,7 +54,7 @@ serve(async (req) => {
       );
     }
 
-    const isCrypto = CRYPTO_TICKERS.includes(ticker);
+    const isCrypto = CRYPTO_SET.has(ticker.toUpperCase());
     const yahooTicker = mapToYahooTicker(ticker);
     const url = `https://query1.finance.yahoo.com/v8/finance/chart/${yahooTicker}?interval=${interval}&range=${range}`;
 
