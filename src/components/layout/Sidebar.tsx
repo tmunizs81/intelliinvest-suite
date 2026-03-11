@@ -56,6 +56,7 @@ export default function Sidebar() {
           </span>
         </div>
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <ThemeToggle />
           <User className="h-3.5 w-3.5" />
           <span className="truncate max-w-[120px]">{user?.email}</span>
         </div>
