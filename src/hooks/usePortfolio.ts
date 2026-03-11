@@ -20,9 +20,21 @@ export function usePortfolio() {
   const { user } = useAuth();
   const [assets, setAssets] = useState<Asset[]>([]);
   const [holdings, setHoldings] = useState<HoldingRow[]>([]);
+  const [cashBalance, setCashBalance] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
+
+  // Load cash balance
+  const loadCashBalance = useCallback(async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from('cash_balance' as any)
+      .select('balance')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    setCashBalance((data as any)?.balance || 0);
+  }, [user]);
 
   // Load holdings from DB
   const loadHoldings = useCallback(async () => {
