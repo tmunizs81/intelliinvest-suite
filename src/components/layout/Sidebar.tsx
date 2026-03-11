@@ -13,6 +13,7 @@ const navItems = [
   { to: '/taxes', label: 'Impostos', icon: Calculator },
   { to: '/assets', label: 'Meus Ativos', icon: Briefcase },
   { to: '/analysis', label: 'Análise Avançada', icon: BarChart3 },
+  { to: '/settings', label: 'Configurações', icon: Settings },
 ];
 
 export default function Sidebar() {

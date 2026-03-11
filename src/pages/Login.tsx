@@ -82,8 +82,8 @@ export default function LoginPage() {
             Entrar
           </button>
 
-          <p className="text-center text-sm text-muted-foreground">
-            Não tem conta? <Link to="/signup" className="text-primary hover:underline font-medium">Criar conta</Link>
+          <p className="text-center text-xs text-muted-foreground mt-2">
+            Acesso exclusivo para usuários autorizados
           </p>
         </form>
       </div>
