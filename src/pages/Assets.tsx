@@ -353,6 +353,11 @@ export default function Assets() {
                         <p className="font-mono font-semibold text-sm">
                           {asset.currentPrice > 0 ? formatCurrency(asset.currentPrice) : '—'}
                         </p>
+                        {asset.currentPrice > 0 && asset.currency && asset.currency !== 'BRL' && (
+                          <p className="text-[10px] text-muted-foreground font-mono">
+                            {formatCurrency(asset.currentPrice / (asset.exchangeRate || 1), asset.currency)}
+                          </p>
+                        )}
                         {asset.currentPrice > 0 && (
                           <span className={`inline-flex items-center gap-0.5 text-xs font-mono ${isPositive ? 'text-gain' : 'text-loss'}`}>
                             {isPositive ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
