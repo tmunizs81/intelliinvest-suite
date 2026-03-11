@@ -611,31 +611,104 @@ O recurso de **Carteira Familiar** permite compartilhar e visualizar carteiras d
     id: 'telegram',
     title: '12. Integração Telegram',
     content: `
-## Notificações via Telegram
+## Integração Completa com Telegram
 
-O sistema pode enviar notificações em tempo real para seu Telegram.
+O T2-SimplyNvest possui um **bot Telegram completo** com 10 funcionalidades integradas, permitindo acompanhar sua carteira e interagir com a IA diretamente pelo celular.
 
 ### Configuração Inicial:
 
+#### Método Recomendado — Vinculação pelo Bot:
 1. Acesse **Configurações → Telegram**
-2. O sistema gerará um **código de vinculação**
-3. No Telegram:
-   - Busque o bot do SimplyNvest
-   - Envie o comando \`/start\`
-   - Envie o código de vinculação
-4. O sistema confirmará a vinculação
+2. Clique em **"Gerar Link de Vinculação"**
+3. Clique em **"🤖 Abrir no Telegram"**
+4. No Telegram, clique em **"Start"** — pronto!
 
-### Notificações Disponíveis:
+#### Método Manual (Avançado):
+1. No Telegram, busque **@userinfobot** e envie qualquer mensagem
+2. Copie seu **Chat ID**
+3. Em **Configurações → Telegram**, expanda "Configuração manual"
+4. Cole o Chat ID e clique em **"Salvar"**
+5. Use **"Testar"** para confirmar o envio
 
-- **Alertas de preço**: Quando um ativo atinge o preço alvo
-- **Relatório diário**: Resumo da carteira enviado diariamente
-- **Alertas inteligentes**: Oportunidades e riscos detectados pela IA
-- **Dividendos**: Aviso quando dividendos são creditados
+---
+
+### 📱 Funcionalidades do Bot
+
+#### 1. 💰 Resumo Diário Automático
+- Enviado automaticamente às **18h** todos os dias
+- Inclui: patrimônio total, variação do dia, top 3 altas e baixas
+- Powered by IA para análise contextualizada
+
+#### 2. 📊 Relatório Semanal
+- Enviado toda **segunda-feira** automaticamente
+- Evolução patrimonial da semana com gráfico ASCII
+- Comparação semanal de performance
+- Destaque dos melhores e piores ativos
+
+#### 3. 🚨 Alertas de Stop Loss / Take Profit
+- Monitoramento contínuo dos preços dos seus ativos
+- Notificação instantânea quando um alerta é disparado
+- Tipos suportados: preço acima, preço abaixo, variação %, stop loss, take profit
+- Configure alertas pelo Dashboard em **Alertas → + Novo Alerta** com "Notificar Telegram" ativado
+
+#### 4. 💰 Alertas de Dividendos
+- Notificação de dividendos previstos para os **próximos 7 dias**
+- Inclui: ticker, valor esperado, data de pagamento e tipo
+- Total consolidado de dividendos esperados
+
+#### 5. 🤖 Chat com IA via Telegram
+- Envie \`/perguntar [sua dúvida]\` para consultar o Consultor IA
+- A IA tem acesso à sua carteira real para respostas personalizadas
+- Exemplos:
+  - \`/perguntar Vale a pena comprar PETR4?\`
+  - \`/perguntar Qual meu ativo mais arriscado?\`
+  - \`/perguntar Devo rebalancear minha carteira?\`
+
+#### 6. ⚡ Comandos Rápidos
+| Comando | Descrição |
+|---------|-----------|
+| \`/carteira\` | Resumo completo da carteira com patrimônio e rentabilidade |
+| \`/cotacao PETR4\` | Cotação atual de qualquer ativo |
+| \`/ranking\` | Top 5 ativos por rentabilidade |
+| \`/saude\` | Score de saúde da carteira (0-100) |
+| \`/dividendos\` | Próximos dividendos esperados |
+| \`/metas\` | Progresso das metas de investimento |
+| \`/perguntar [texto]\` | Consulta livre ao Consultor IA |
+| \`/senha\` | Link para alterar a senha |
+
+#### 7. 🔔 Alerta de Rebalanceamento
+- Análise automática da concentração da carteira
+- Notifica quando a alocação desvia significativamente do ideal
+- Sugestões de compra/venda com valores exatos para rebalancear
+
+#### 8. 📰 Breaking News
+- Notícias relevantes geradas por IA sobre os ativos da sua carteira
+- Classificação de impacto: 🟢 positivo, 🔴 negativo, 🟡 neutro
+- Resumo de 3-5 notícias com análise de impacto
+
+#### 9. 🎯 Acompanhamento de Metas
+- Notificação quando metas atingem marcos de **25%, 50%, 75% e 100%**
+- Inclui: nome da meta, valor atual vs. alvo, percentual atingido
+- Mensagens motivacionais personalizadas por marco
+
+#### 10. 🔐 Alertas de Segurança
+- **Novo login**: notificação com dispositivo, IP e data/hora
+- **Senha alterada**: confirmação de alteração de senha
+- **Licença expirando**: aviso com dias restantes
+- **Licença expirada**: alerta de bloqueio iminente
+- **Transação grande**: notificação de operações de alto valor
+- **Atividade suspeita**: alertas de comportamento incomum
+
+---
 
 ### Gerenciamento:
-- Ative/desative notificações a qualquer momento
-- Teste o envio com o botão **"Enviar Teste"**
-- Desvinculação pode ser feita nas configurações
+- Ative/desative todas as notificações pelo switch em **Configurações → Telegram**
+- Use o botão **"Testar"** para verificar se o bot está funcionando
+- O código de vinculação é único por usuário e pode ser regenerado
+
+> 💡 **Dica**: Instale o Telegram no celular para receber alertas em tempo real, mesmo quando não estiver no computador.
+
+> ⚠️ **Importante**: Os alertas automáticos (diário, semanal, stop loss, dividendos, rebalanceamento, news, metas) são executados por agendamentos no servidor. Contate o administrador para ativar os cron jobs.
     `,
   },
   {
