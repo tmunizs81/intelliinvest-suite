@@ -104,3 +104,6 @@ verify_jwt = false
 
 [functions.ai-scoring]
 verify_jwt = false
+
+[functions.family-portfolio]
+verify_jwt = false

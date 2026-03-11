@@ -3,7 +3,7 @@ import { useAuth } from '@/hooks/useAuth';
 import {
   LayoutDashboard, Briefcase, BarChart3, LogOut, User,
   ChevronLeft, ChevronRight, TrendingUp, Brain, Calculator, DollarSign, Settings,
-  Menu, X, FileText,
+  Menu, X, FileText, Users,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import ThemeToggle from '@/components/ThemeToggle';
@@ -16,6 +16,7 @@ const navItems = [
   { to: '/assets', label: 'Meus Ativos', icon: Briefcase },
   { to: '/reports', label: 'Relatórios', icon: FileText },
   { to: '/analysis', label: 'Análise Avançada', icon: BarChart3 },
+  { to: '/family', label: 'Carteira Familiar', icon: Users },
   { to: '/settings', label: 'Configurações', icon: Settings },
 ];
 
