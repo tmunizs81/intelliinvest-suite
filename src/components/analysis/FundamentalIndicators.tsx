@@ -28,6 +28,11 @@ interface FundamentalData {
   fiftyTwoWeekLow?: number | null;
   avgVolume?: number | null;
   payout?: number | null;
+  vacancy?: number | null;
+  lastDividend?: number | null;
+  patrimony?: number | null;
+  cotistas?: number | null;
+  sources?: string[];
 }
 
 interface Props {
