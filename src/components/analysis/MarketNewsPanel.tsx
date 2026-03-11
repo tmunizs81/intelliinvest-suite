@@ -49,6 +49,15 @@ export default function MarketNewsPanel({ ticker, name, type }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showNews, setShowNews] = useState(true);
+  const [lastTicker, setLastTicker] = useState(ticker);
+
+  if (ticker !== lastTicker) {
+    setLastTicker(ticker);
+    setOpinion(null);
+    setError(null);
+    setLoading(false);
+    setShowNews(true);
+  }
 
   const fetchOpinion = useCallback(async () => {
     setLoading(true);

@@ -75,6 +75,7 @@ function getScrapingUrls(ticker: string, category: string): string[] {
     urls.push(`https://investidor10.com.br/bdrs/${t}/`);
     urls.push(`https://statusinvest.com.br/bdrs/${t}`);
   }
+  // For "international" category (crypto, foreign stocks), no Brazilian scraping sources
 
   return urls;
 }

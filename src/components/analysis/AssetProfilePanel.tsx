@@ -34,6 +34,17 @@ export default function AssetProfilePanel({ ticker, name, type }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [expandedSections, setExpandedSections] = useState<Set<number>>(new Set([0]));
   const [showAllAssets, setShowAllAssets] = useState(false);
+  const [lastTicker, setLastTicker] = useState(ticker);
+
+  // Reset state when ticker changes
+  if (ticker !== lastTicker) {
+    setLastTicker(ticker);
+    setProfile(null);
+    setError(null);
+    setLoading(false);
+    setExpandedSections(new Set([0]));
+    setShowAllAssets(false);
+  }
 
   const fetchProfile = useCallback(async () => {
     setLoading(true);
@@ -45,7 +56,6 @@ export default function AssetProfilePanel({ ticker, name, type }: Props) {
       if (fnError) throw new Error(fnError.message);
       if (data.error) throw new Error(data.error);
       setProfile(data);
-      // Expand all sections by default
       if (data.sections) {
         setExpandedSections(new Set(data.sections.map((_: any, i: number) => i)));
       }
