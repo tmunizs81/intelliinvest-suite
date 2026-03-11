@@ -5,6 +5,7 @@ const ResponsiveGrid: any = ResponsiveOrig;
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
 import { useIsMobile } from '@/hooks/use-mobile';
+import MobileDashboardTabs, { type MobileTab } from '@/components/dashboard/MobileDashboardTabs';
 
 import PortfolioSummary from '@/components/dashboard/PortfolioSummary';
 import PortfolioChart from '@/components/dashboard/PortfolioChart';
@@ -166,6 +167,7 @@ const Index = () => {
   }, [assets, loading, saveSnapshot]);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingHolding, setEditingHolding] = useState<HoldingRow | null>(null);
+  const [mobileTab, setMobileTab] = useState<MobileTab>('resumo');
   const [layouts, setLayouts] = useState(loadLayouts);
   const [locked, setLocked] = useState(true);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -268,44 +270,71 @@ const Index = () => {
         ) : (
           <div className="pb-12" ref={containerRef}>
             {isMobile ? (
-              <div className="flex flex-col gap-4">
-                <MobilePanel title="" noPadding><PortfolioSummary assets={assets} lastUpdate={lastUpdate} nextUpdate={nextUpdate} /></MobilePanel>
-                <MobilePanel title="Saúde da Carteira"><HealthScorePanel assets={assets} /></MobilePanel>
-                <MobilePanel title="Evolução Patrimonial"><PortfolioChart assets={assets} /></MobilePanel>
-                <MobilePanel title="Histórico Patrimonial (Real)"><PortfolioHistoryChart snapshots={snapshots} loading={snapshotsLoading} /></MobilePanel>
-                <MobilePanel title="Alocação"><AllocationChart assets={assets} /></MobilePanel>
-                <MobilePanel title="Rebalanceamento IA"><RebalancePanel assets={assets} /></MobilePanel>
-                <MobilePanel title="Correlação"><CorrelationHeatmap assets={assets} /></MobilePanel>
-                <MobilePanel title="Performance"><PerformanceChart assets={assets} /></MobilePanel>
-                <MobilePanel title="Dividendos"><DividendsPanel assets={assets} /></MobilePanel>
-                <MobilePanel title="Projeção de Dividendos IA"><DividendForecastPanel assets={assets} /></MobilePanel>
-                <MobilePanel title="Carteira">
-                  <HoldingsTable
-                    assets={assets}
-                    holdings={holdings}
-                    loading={loading}
-                    onAdd={() => { setEditingHolding(null); setModalOpen(true); }}
-                    onEdit={handleEdit}
-                    onDelete={deleteHolding}
-                  />
-                </MobilePanel>
-                <MobilePanel title="Alertas"><AlertsPanel /></MobilePanel>
-                <MobilePanel title="Câmbio"><CurrencyDashboard /></MobilePanel>
-                <MobilePanel title="Simulador E se?"><SimulatorPanel assets={assets} /></MobilePanel>
-                <MobilePanel title="Metas"><GoalsPanel assets={assets} /></MobilePanel>
-                <MobilePanel title="Notícias IA"><NewsPanel assets={assets} /></MobilePanel>
-                <MobilePanel title="IA Insights"><AIInsightsPanel assets={assets} /></MobilePanel>
-                <MobilePanel title="Alertas Inteligentes"><SmartAlertsPanel assets={assets} /></MobilePanel>
-                <MobilePanel title="Relatório Mensal"><MonthlyReportPanel assets={assets} /></MobilePanel>
-                <MobilePanel title="Aporte Inteligente"><SmartContributionPanel assets={assets} /></MobilePanel>
-                <MobilePanel title="Preço Teto (Bazin/Graham)"><CeilingPricePanel assets={assets} /></MobilePanel>
-                <MobilePanel title="Rentabilidade vs Benchmarks"><ProfitabilityPanel assets={assets} /></MobilePanel>
-                <MobilePanel title="Backtesting Histórico"><BacktestingPanel assets={assets} /></MobilePanel>
-                <MobilePanel title="Scoring IA de Ativos"><AssetScoringPanel assets={assets} /></MobilePanel>
-                <MobilePanel title="Resumo Renda Fixa"><FixedIncomePanel assets={assets} /></MobilePanel>
-                <MobilePanel title="Carteira vs Benchmarks (CDI/IBOV/Dólar)"><BenchmarkChart snapshots={snapshots} /></MobilePanel>
-                <MobilePanel title="Consultor IA de Investimentos"><AIAdvisorPanel assets={assets} cashBalance={0} /></MobilePanel>
-                <MobilePanel title="Análise de Risco IA"><AIRiskPanel assets={assets} /></MobilePanel>
+              <div>
+                <MobileDashboardTabs activeTab={mobileTab} onTabChange={setMobileTab} />
+                <div className="flex flex-col gap-3 mt-3">
+                  {mobileTab === 'resumo' && (
+                    <>
+                      <MobilePanel title="" noPadding><PortfolioSummary assets={assets} lastUpdate={lastUpdate} nextUpdate={nextUpdate} /></MobilePanel>
+                      <MobilePanel title="Saúde da Carteira"><HealthScorePanel assets={assets} /></MobilePanel>
+                      <MobilePanel title="Evolução Patrimonial"><PortfolioChart assets={assets} /></MobilePanel>
+                      <MobilePanel title="Histórico Patrimonial"><PortfolioHistoryChart snapshots={snapshots} loading={snapshotsLoading} /></MobilePanel>
+                    </>
+                  )}
+                  {mobileTab === 'carteira' && (
+                    <>
+                      <MobilePanel title="Carteira">
+                        <HoldingsTable
+                          assets={assets}
+                          holdings={holdings}
+                          loading={loading}
+                          onAdd={() => { setEditingHolding(null); setModalOpen(true); }}
+                          onEdit={handleEdit}
+                          onDelete={deleteHolding}
+                        />
+                      </MobilePanel>
+                      <MobilePanel title="Alocação"><AllocationChart assets={assets} /></MobilePanel>
+                      <MobilePanel title="Dividendos"><DividendsPanel assets={assets} /></MobilePanel>
+                      <MobilePanel title="Renda Fixa"><FixedIncomePanel assets={assets} /></MobilePanel>
+                      <MobilePanel title="Câmbio"><CurrencyDashboard /></MobilePanel>
+                    </>
+                  )}
+                  {mobileTab === 'analise' && (
+                    <>
+                      <MobilePanel title="Performance"><PerformanceChart assets={assets} /></MobilePanel>
+                      <MobilePanel title="Correlação"><CorrelationHeatmap assets={assets} /></MobilePanel>
+                      <MobilePanel title="Benchmarks"><BenchmarkChart snapshots={snapshots} /></MobilePanel>
+                      <MobilePanel title="Rentabilidade"><ProfitabilityPanel assets={assets} /></MobilePanel>
+                      <MobilePanel title="Backtesting"><BacktestingPanel assets={assets} /></MobilePanel>
+                      <MobilePanel title="Preço Teto"><CeilingPricePanel assets={assets} /></MobilePanel>
+                    </>
+                  )}
+                  {mobileTab === 'ia' && (
+                    <>
+                      <MobilePanel title="Consultor IA"><AIAdvisorPanel assets={assets} cashBalance={0} /></MobilePanel>
+                      <MobilePanel title="Análise de Risco IA"><AIRiskPanel assets={assets} /></MobilePanel>
+                      <MobilePanel title="IA Insights"><AIInsightsPanel assets={assets} /></MobilePanel>
+                      <MobilePanel title="Rebalanceamento IA"><RebalancePanel assets={assets} /></MobilePanel>
+                      <MobilePanel title="Scoring IA"><AssetScoringPanel assets={assets} /></MobilePanel>
+                      <MobilePanel title="Projeção Dividendos IA"><DividendForecastPanel assets={assets} /></MobilePanel>
+                      <MobilePanel title="Notícias IA"><NewsPanel assets={assets} /></MobilePanel>
+                    </>
+                  )}
+                  {mobileTab === 'alertas' && (
+                    <>
+                      <MobilePanel title="Alertas"><AlertsPanel /></MobilePanel>
+                      <MobilePanel title="Alertas Inteligentes"><SmartAlertsPanel assets={assets} /></MobilePanel>
+                    </>
+                  )}
+                  {mobileTab === 'mais' && (
+                    <>
+                      <MobilePanel title="Simulador E se?"><SimulatorPanel assets={assets} /></MobilePanel>
+                      <MobilePanel title="Metas"><GoalsPanel assets={assets} /></MobilePanel>
+                      <MobilePanel title="Aporte Inteligente"><SmartContributionPanel assets={assets} /></MobilePanel>
+                      <MobilePanel title="Relatório Mensal"><MonthlyReportPanel assets={assets} /></MobilePanel>
+                    </>
+                  )}
+                </div>
               </div>
             ) : (
             <ResponsiveGrid
