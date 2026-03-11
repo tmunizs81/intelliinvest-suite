@@ -10,7 +10,9 @@ interface FundamentalData {
   dividendYield?: number | null;
   evEbitda?: number | null;
   netMargin?: number | null;
+  grossMargin?: number | null;
   debtToEquity?: number | null;
+  currentRatio?: number | null;
   marketCap?: number | null;
   eps?: number | null;
   revenue?: number | null;
@@ -21,6 +23,7 @@ interface FundamentalData {
   fiftyTwoWeekHigh?: number | null;
   fiftyTwoWeekLow?: number | null;
   avgVolume?: number | null;
+  payout?: number | null;
 }
 
 interface Props {
@@ -131,10 +134,13 @@ export default function FundamentalIndicators({ ticker, type }: Props) {
               <h3 className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1 mt-4">Rentabilidade</h3>
               <Stat label="ROE" value={fmt(data.roe)} suffix="%" signal={data.roe != null ? (data.roe > 15 ? 'good' : data.roe < 5 ? 'bad' : 'neutral') : undefined} />
               <Stat label="Margem Líquida" value={fmt(data.netMargin)} suffix="%" signal={data.netMargin != null ? (data.netMargin > 15 ? 'good' : data.netMargin < 5 ? 'bad' : 'neutral') : undefined} />
+              <Stat label="Margem Bruta" value={fmt(data.grossMargin)} suffix="%" />
               <Stat label="Dividend Yield" value={fmt(data.dividendYield)} suffix="%" signal={data.dividendYield != null ? (data.dividendYield > 5 ? 'good' : 'neutral') : undefined} />
+              <Stat label="Payout" value={fmt(data.payout)} suffix="%" signal={data.payout != null ? (data.payout > 30 && data.payout < 80 ? 'good' : data.payout > 100 ? 'bad' : 'neutral') : undefined} />
 
               <h3 className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1 mt-4">Saúde Financeira</h3>
               <Stat label="Dívida/PL" value={fmt(data.debtToEquity)} signal={data.debtToEquity != null ? (data.debtToEquity < 0.5 ? 'good' : data.debtToEquity > 1.5 ? 'bad' : 'neutral') : undefined} />
+              <Stat label="Liquidez Corrente" value={fmt(data.currentRatio)} signal={data.currentRatio != null ? (data.currentRatio > 1.5 ? 'good' : data.currentRatio < 1 ? 'bad' : 'neutral') : undefined} />
               <Stat label="Market Cap" value={fmtBig(data.marketCap)} />
               <Stat label="Receita" value={fmtBig(data.revenue)} />
               <Stat label="EBITDA" value={fmtBig(data.ebitda)} />
