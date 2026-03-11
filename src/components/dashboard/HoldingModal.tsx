@@ -5,7 +5,9 @@ import type { HoldingRow } from '@/hooks/usePortfolio';
 import { type Asset } from '@/lib/mockData';
 import AICopilotSignal from './AICopilotSignal';
 
-const TYPES = ['Ação', 'FII', 'ETF', 'ETF Internacional', 'Cripto', 'Renda Fixa'] as const;
+const TYPES = ['Ação', 'FII', 'ETF', 'ETF Internacional', 'Cripto', 'Renda Fixa', 'LCI', 'LCA', 'Tesouro Selic'] as const;
+
+const FIXED_INCOME_TYPES = ['Renda Fixa', 'LCI', 'LCA', 'Tesouro Selic'];
 
 interface SearchResult {
   symbol: string;
