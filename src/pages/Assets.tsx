@@ -550,6 +550,13 @@ export default function Assets() {
         onClose={() => { setSellOpen(false); setSellingHolding(null); }}
         onSell={sellHolding}
       />
+
+      <CashBalanceModal
+        open={cashModalOpen}
+        onClose={() => setCashModalOpen(false)}
+        currentBalance={cashBalance}
+        onConfirm={updateCashBalance}
+      />
     </div>
   );
 }
