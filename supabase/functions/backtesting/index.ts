@@ -40,7 +40,7 @@ Use dados históricos reais do mercado brasileiro. Calcule drawdown máximo, rec
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: "Você é um analista quantitativo especializado em backtesting de carteiras brasileiras. Use dados históricos reais para simular cenários." },
           { role: "user", content: prompt },

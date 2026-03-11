@@ -43,7 +43,7 @@ Use a ferramenta para retornar resultado estruturado.`;
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: "Você é um analista fundamentalista especialista em valuation de ações e FIIs brasileiros. Calcule preços teto de forma conservadora e realista." },
           { role: "user", content: prompt },

@@ -47,7 +47,7 @@ Inclua: resumo executivo, performance geral, top 3 melhores e piores, análise d
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: "Você é um analista de investimentos sênior que produz relatórios mensais profissionais para investidores brasileiros. Use linguagem técnica mas acessível. Formate com markdown." },
           { role: "user", content: prompt },

@@ -41,7 +41,7 @@ Considere: diversificação ideal por tipo (Ações, FIIs, ETFs, Cripto, Renda F
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: "Você é um consultor financeiro especialista em alocação de ativos no mercado brasileiro. Sugira rebalanceamento prático e acionável." },
           { role: "user", content: prompt },

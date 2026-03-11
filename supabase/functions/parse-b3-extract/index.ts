@@ -36,7 +36,7 @@ Identifique: ticker, nome do ativo, tipo (Ação, FII, ETF), operação (buy/sel
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: "Você é um parser especializado em extratos de corretagem da B3 e CEI. Extraia operações de forma precisa." },
           { role: "user", content: prompt },
