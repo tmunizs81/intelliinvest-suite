@@ -30,12 +30,30 @@ const Index = () => {
     <div className="min-h-screen bg-background">
       <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between py-6">
-          <DashboardHeader onRefresh={refresh} lastUpdate={lastUpdate} />
-          <div className="flex items-center gap-3">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">
+              Invest<span className="text-primary">AI</span>
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              Controle inteligente de investimentos
+              {lastUpdate && (
+                <span className="ml-2 text-xs">
+                  • Atualizado {lastUpdate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                </span>
+              )}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <User className="h-4 w-4" />
-              <span className="hidden sm:inline">{user?.email}</span>
+              <span className="hidden sm:inline truncate max-w-[150px]">{user?.email}</span>
             </div>
+            <button
+              onClick={() => refresh()}
+              className="h-9 w-9 rounded-lg border border-border bg-card flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-primary/30 transition-all"
+            >
+              <Loader2 className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            </button>
             <button
               onClick={signOut}
               className="h-9 px-3 rounded-lg border border-border bg-card text-sm text-muted-foreground hover:text-foreground hover:border-destructive/30 transition-all flex items-center gap-2"
