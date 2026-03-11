@@ -25,6 +25,7 @@ export interface CashBalanceRow {
 
 export function usePortfolio() {
   const { user } = useAuth();
+  const { log: auditLog } = useAuditLog();
   const [assets, setAssets] = useState<Asset[]>([]);
   const [holdings, setHoldings] = useState<HoldingRow[]>([]);
   const [cashBalances, setCashBalances] = useState<CashBalanceRow[]>([]);
