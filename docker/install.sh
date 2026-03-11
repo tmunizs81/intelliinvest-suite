@@ -150,7 +150,7 @@ cd "$SCRIPT_DIR" && $COMPOSE_CMD --env-file "$ENV_FILE" build --no-cache 2>&1 | 
 log_ok "Imagem construída com sucesso"
 
 # ── 6. Iniciar ──
-log_step "6/7" "Iniciando InvestAI..."
+log_step "6/7" "Iniciando T2-Simplynvest..."
 cd "$SCRIPT_DIR" && $COMPOSE_CMD --env-file "$ENV_FILE" up -d
 sleep 2
 log_ok "Container iniciado"
