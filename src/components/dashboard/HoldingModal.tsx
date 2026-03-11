@@ -22,16 +22,18 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Reset form when modal opens/closes or editData changes
-  useState(() => {
-    setTicker(editData?.ticker || '');
-    setName(editData?.name || '');
-    setType(editData?.type || 'Ação');
-    setQuantity(editData?.quantity?.toString() || '');
-    setAvgPrice(editData?.avg_price?.toString() || '');
-    setSector(editData?.sector || '');
-    setError('');
-  });
+  // Reset form when modal opens or editData changes
+  useEffect(() => {
+    if (open) {
+      setTicker(editData?.ticker || '');
+      setName(editData?.name || '');
+      setType(editData?.type || 'Ação');
+      setQuantity(editData?.quantity?.toString() || '');
+      setAvgPrice(editData?.avg_price?.toString() || '');
+      setSector(editData?.sector || '');
+      setError('');
+    }
+  }, [open, editData]);
 
   if (!open) return null;
 
