@@ -1,5 +1,10 @@
 import { TrendingUp, TrendingDown, Wallet, BarChart3, Clock } from 'lucide-react';
-import { formatCurrency, formatPercent, getPortfolioTotal, getTotalGain, getTotalGainPercent, getDailyChange } from '@/lib/mockData';
+import { type Asset, formatCurrency, formatPercent } from '@/lib/mockData';
+
+interface Props {
+  assets: Asset[];
+  lastUpdate: Date | null;
+}
 
 const StatCard = ({ label, value, subValue, icon: Icon, positive }: {
   label: string;
@@ -22,12 +27,17 @@ const StatCard = ({ label, value, subValue, icon: Icon, positive }: {
   </div>
 );
 
-export default function PortfolioSummary() {
-  const total = getPortfolioTotal();
-  const gain = getTotalGain();
-  const gainPct = getTotalGainPercent();
-  const daily = getDailyChange();
-  const dailyPct = (daily / (total - daily)) * 100;
+export default function PortfolioSummary({ assets, lastUpdate }: Props) {
+  const total = assets.reduce((s, a) => s + a.currentPrice * a.quantity, 0);
+  const cost = assets.reduce((s, a) => s + a.avgPrice * a.quantity, 0);
+  const gain = total - cost;
+  const gainPct = cost > 0 ? (gain / cost) * 100 : 0;
+
+  const daily = assets.reduce((s, a) => {
+    const prev = a.currentPrice / (1 + a.change24h / 100);
+    return s + (a.currentPrice - prev) * a.quantity;
+  }, 0);
+  const dailyPct = (total - daily) > 0 ? (daily / (total - daily)) * 100 : 0;
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -60,8 +70,8 @@ export default function PortfolioSummary() {
 
       <StatCard
         label="Última Atualização"
-        value={new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-        subValue="Atualiza a cada 10 min"
+        value={lastUpdate ? lastUpdate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '--:--'}
+        subValue="Yahoo Finance • 10 min"
         icon={Clock}
         positive={null}
       />

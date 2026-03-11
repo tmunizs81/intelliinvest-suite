@@ -1,5 +1,5 @@
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
-import { mockAssets } from '@/lib/mockData';
+import { type Asset } from '@/lib/mockData';
 
 const COLORS = [
   'hsl(160,84%,39%)',
@@ -14,18 +14,21 @@ const COLORS = [
   'hsl(0,60%,50%)',
 ];
 
-// Group by sector
-const sectorData = mockAssets.reduce<Record<string, number>>((acc, a) => {
-  const sector = a.sector || 'Outros';
-  acc[sector] = (acc[sector] || 0) + a.allocation;
-  return acc;
-}, {});
+interface Props {
+  assets: Asset[];
+}
 
-const chartData = Object.entries(sectorData)
-  .map(([name, value]) => ({ name, value: Math.round(value * 10) / 10 }))
-  .sort((a, b) => b.value - a.value);
+export default function AllocationChart({ assets }: Props) {
+  const sectorData = assets.reduce<Record<string, number>>((acc, a) => {
+    const sector = a.sector || 'Outros';
+    acc[sector] = (acc[sector] || 0) + a.allocation;
+    return acc;
+  }, {});
 
-export default function AllocationChart() {
+  const chartData = Object.entries(sectorData)
+    .map(([name, value]) => ({ name, value: Math.round(value * 10) / 10 }))
+    .sort((a, b) => b.value - a.value);
+
   return (
     <div className="rounded-lg border border-border bg-card p-5 animate-fade-in">
       <h2 className="text-lg font-semibold mb-1">Alocação por Setor</h2>

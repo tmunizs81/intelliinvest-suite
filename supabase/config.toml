@@ -1,0 +1,4 @@
+project_id = "qysofdyyumoggkptxxuf"
+
+[functions.yahoo-finance]
+verify_jwt = false

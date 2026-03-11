@@ -1,5 +1,5 @@
-import { ArrowUpRight, ArrowDownRight } from 'lucide-react';
-import { mockAssets, formatCurrency, formatPercent } from '@/lib/mockData';
+import { ArrowUpRight, ArrowDownRight, Loader2 } from 'lucide-react';
+import { type Asset, formatCurrency, formatPercent } from '@/lib/mockData';
 
 const typeBadgeClass: Record<string, string> = {
   'Ação': 'bg-primary/10 text-primary',
@@ -9,12 +9,26 @@ const typeBadgeClass: Record<string, string> = {
   'Renda Fixa': 'bg-secondary text-secondary-foreground',
 };
 
-export default function HoldingsTable() {
+interface Props {
+  assets: Asset[];
+  loading: boolean;
+}
+
+export default function HoldingsTable({ assets, loading }: Props) {
   return (
     <div className="rounded-lg border border-border bg-card overflow-hidden animate-fade-in">
-      <div className="p-5 border-b border-border">
-        <h2 className="text-lg font-semibold">Carteira de Ativos</h2>
-        <p className="text-sm text-muted-foreground">{mockAssets.length} ativos monitorados</p>
+      <div className="p-5 border-b border-border flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-semibold">Carteira de Ativos</h2>
+          <p className="text-sm text-muted-foreground">
+            {assets.length} ativos • Dados Yahoo Finance
+            {loading && <Loader2 className="inline ml-2 h-3 w-3 animate-spin" />}
+          </p>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="h-2 w-2 rounded-full bg-primary animate-pulse-slow" />
+          <span className="text-xs text-muted-foreground">Live</span>
+        </div>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
@@ -31,11 +45,11 @@ export default function HoldingsTable() {
             </tr>
           </thead>
           <tbody>
-            {mockAssets.map((asset, i) => {
+            {assets.map((asset, i) => {
               const total = asset.currentPrice * asset.quantity;
               const cost = asset.avgPrice * asset.quantity;
               const profit = total - cost;
-              const profitPct = (profit / cost) * 100;
+              const profitPct = cost > 0 ? (profit / cost) * 100 : 0;
               const isPositive = asset.change24h >= 0;
               const isProfitable = profit >= 0;
 
@@ -58,19 +72,27 @@ export default function HoldingsTable() {
                   </td>
                   <td className="text-right p-4 font-mono">{asset.quantity}</td>
                   <td className="text-right p-4 font-mono text-muted-foreground">{formatCurrency(asset.avgPrice)}</td>
-                  <td className="text-right p-4 font-mono font-medium">{formatCurrency(asset.currentPrice)}</td>
-                  <td className="text-right p-4">
-                    <span className={`inline-flex items-center gap-1 font-mono text-sm ${isPositive ? 'text-gain' : 'text-loss'}`}>
-                      {isPositive ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
-                      {formatPercent(asset.change24h)}
-                    </span>
+                  <td className="text-right p-4 font-mono font-medium">
+                    {asset.currentPrice > 0 ? formatCurrency(asset.currentPrice) : '—'}
                   </td>
-                  <td className="text-right p-4 font-mono font-medium">{formatCurrency(total)}</td>
                   <td className="text-right p-4">
-                    <div className={`font-mono ${isProfitable ? 'text-gain' : 'text-loss'}`}>
-                      <span className="font-medium">{formatCurrency(profit)}</span>
-                      <p className="text-xs">{formatPercent(profitPct)}</p>
-                    </div>
+                    {asset.currentPrice > 0 ? (
+                      <span className={`inline-flex items-center gap-1 font-mono text-sm ${isPositive ? 'text-gain' : 'text-loss'}`}>
+                        {isPositive ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
+                        {formatPercent(asset.change24h)}
+                      </span>
+                    ) : '—'}
+                  </td>
+                  <td className="text-right p-4 font-mono font-medium">
+                    {asset.currentPrice > 0 ? formatCurrency(total) : '—'}
+                  </td>
+                  <td className="text-right p-4">
+                    {asset.currentPrice > 0 ? (
+                      <div className={`font-mono ${isProfitable ? 'text-gain' : 'text-loss'}`}>
+                        <span className="font-medium">{formatCurrency(profit)}</span>
+                        <p className="text-xs">{formatPercent(profitPct)}</p>
+                      </div>
+                    ) : '—'}
                   </td>
                 </tr>
               );
