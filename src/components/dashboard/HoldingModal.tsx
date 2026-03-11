@@ -293,46 +293,89 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
                 {TYPES.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
             </div>
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-muted-foreground">Setor</label>
-              <input
-                value={sector} onChange={e => setSector(e.target.value)}
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                placeholder="Tecnologia, Saúde..."
-              />
-            </div>
+            {type !== 'Renda Fixa' && (
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground">Setor</label>
+                <input
+                  value={sector} onChange={e => setSector(e.target.value)}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  placeholder="Tecnologia, Saúde..."
+                />
+              </div>
+            )}
+            {type === 'Renda Fixa' && (
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground">Subtipo *</label>
+                <select
+                  value={fixedIncomeSubtype}
+                  onChange={e => setFixedIncomeSubtype(e.target.value)}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                >
+                  {FIXED_INCOME_SUBTYPES.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
+            )}
           </div>
 
           <BrokerAutocomplete value={broker} onChange={setBroker} />
 
           {/* Campos de Renda Fixa */}
-          {FIXED_INCOME_TYPES.includes(type) && (
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-muted-foreground">Indexador *</label>
-                <select
-                  value={indexerType}
-                  onChange={e => setIndexerType(e.target.value)}
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                >
-                  <option value="Pré-fixado">Pré-fixado</option>
-                  <option value="Pós-fixado">Pós-fixado</option>
-                  <option value="IPCA+">IPCA+</option>
-                  <option value="CDI">CDI</option>
-                  <option value="CDI+">CDI+</option>
-                  <option value="Selic">Selic</option>
-                </select>
+          {type === 'Renda Fixa' && (
+            <>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">Indexador *</label>
+                  <select
+                    value={indexerType}
+                    onChange={e => setIndexerType(e.target.value)}
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  >
+                    <option value="Pré-fixado">Pré-fixado</option>
+                    <option value="Pós-fixado">Pós-fixado</option>
+                    <option value="IPCA+">IPCA+</option>
+                    <option value="CDI">CDI</option>
+                    <option value="CDI+">CDI+</option>
+                    <option value="Selic">Selic</option>
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">Rentabilidade</label>
+                  <input
+                    value={yieldRate}
+                    onChange={e => setYieldRate(e.target.value)}
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                    placeholder={indexerType === 'Pré-fixado' ? '12.5% a.a.' : indexerType === 'IPCA+' ? 'IPCA + 6.5%' : '110% CDI'}
+                  />
+                </div>
               </div>
               <div className="space-y-1">
-                <label className="text-xs font-medium text-muted-foreground">Rentabilidade</label>
-                <input
-                  value={yieldRate}
-                  onChange={e => setYieldRate(e.target.value)}
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                  placeholder={indexerType === 'Pré-fixado' ? '12.5% a.a.' : indexerType === 'IPCA+' ? 'IPCA + 6.5%' : '110% CDI'}
-                />
+                <label className="text-xs font-medium text-muted-foreground">Data de Vencimento</label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button
+                      type="button"
+                      className={cn(
+                        'w-full flex items-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm text-left focus:outline-none focus:ring-2 focus:ring-ring',
+                        !maturityDate && 'text-muted-foreground'
+                      )}
+                    >
+                      <CalendarIcon className="h-4 w-4 shrink-0" />
+                      {maturityDate ? format(maturityDate, 'dd/MM/yyyy', { locale: ptBR }) : 'Selecione a data'}
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={maturityDate}
+                      onSelect={setMaturityDate}
+                      disabled={(date) => date < new Date()}
+                      initialFocus
+                      className={cn('p-3 pointer-events-auto')}
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
-            </div>
+            </>
           )}
 
           <div className="space-y-1">
