@@ -1,5 +1,5 @@
 services:
-  investai:
+  simplynvest:
     build:
       context: ..
       dockerfile: docker/Dockerfile
@@ -7,12 +7,12 @@ services:
         VITE_SUPABASE_URL: ${VITE_SUPABASE_URL}
         VITE_SUPABASE_PUBLISHABLE_KEY: ${VITE_SUPABASE_PUBLISHABLE_KEY}
         VITE_SUPABASE_PROJECT_ID: ${VITE_SUPABASE_PROJECT_ID}
-    container_name: investai-app
+    container_name: simplynvest-app
     restart: unless-stopped
     ports:
       - "${APP_PORT:-3080}:80"
     networks:
-      - investai-net
+      - simplynvest-net
     logging:
       driver: json-file
       options:
@@ -20,6 +20,6 @@ services:
         max-file: "3"
 
 networks:
-  investai-net:
+  simplynvest-net:
     driver: bridge
-    name: investai-net
+    name: simplynvest-net

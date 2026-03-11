@@ -1,6 +1,6 @@
 #!/bin/bash
 # ══════════════════════════════════════════
-#  T2-Simplynvest - Backup Automático
+#  SimplyNvest - Backup Automático
 #  Salva configurações e estado do container
 # ══════════════════════════════════════════
 
@@ -14,13 +14,13 @@ NC='\033[0m'
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BACKUP_DIR="$SCRIPT_DIR/backups"
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
-BACKUP_NAME="investai_backup_${TIMESTAMP}"
+BACKUP_NAME="simplynvest_backup_${TIMESTAMP}"
 BACKUP_PATH="$BACKUP_DIR/$BACKUP_NAME"
 MAX_BACKUPS=7  # Manter últimos 7 backups
 
 mkdir -p "$BACKUP_PATH"
 
-echo -e "${YELLOW}[T2-Simplynvest Backup] Iniciando backup...${NC}"
+echo -e "${YELLOW}[SimplyNvest Backup] Iniciando backup...${NC}"
 
 # 1. Backup do .env
 if [ -f "$SCRIPT_DIR/.env" ]; then
@@ -37,11 +37,11 @@ cp "$SCRIPT_DIR/nginx.conf" "$BACKUP_PATH/nginx.conf"
 echo -e "${GREEN}  ✓ nginx.conf${NC}"
 
 # 4. Info do container
-docker inspect investai-app > "$BACKUP_PATH/container_info.json" 2>/dev/null || echo "{}" > "$BACKUP_PATH/container_info.json"
+docker inspect simplynvest-app > "$BACKUP_PATH/container_info.json" 2>/dev/null || echo "{}" > "$BACKUP_PATH/container_info.json"
 echo -e "${GREEN}  ✓ container info${NC}"
 
 # 5. Logs recentes
-docker logs investai-app --tail 500 > "$BACKUP_PATH/container_logs.txt" 2>&1 || true
+docker logs simplynvest-app --tail 500 > "$BACKUP_PATH/container_logs.txt" 2>&1 || true
 echo -e "${GREEN}  ✓ logs${NC}"
 
 # 6. Compactar
