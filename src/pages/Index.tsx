@@ -87,6 +87,7 @@ const defaultLayouts: any = {
     { i: 'ceiling-price', x: 5, y: 78, w: 5, h: 9, minW: 4, minH: 6 },
     { i: 'profitability', x: 0, y: 87, w: 5, h: 9, minW: 4, minH: 6 },
     { i: 'backtesting', x: 5, y: 87, w: 5, h: 9, minW: 4, minH: 6 },
+    { i: 'asset-scoring', x: 0, y: 96, w: 10, h: 12, minW: 4, minH: 8 },
   ],
   sm: [
     { i: 'summary', x: 0, y: 0, w: 6, h: 4, minW: 6, minH: 3 },
