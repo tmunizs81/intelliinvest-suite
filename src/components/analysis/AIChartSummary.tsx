@@ -64,6 +64,7 @@ export default function AIChartSummary({ ticker, name, type, candles, loadDelay 
           if ((String(data.error).includes('Rate limit') || String(data.error).includes('429')) && attempt < retries) continue;
           throw new Error(data.error);
         }
+        chartCache.set(ticker, { data, ts: Date.now() });
         setSummary(data);
         setLastTicker(ticker);
         setLoading(false);
