@@ -24,7 +24,7 @@ interface Props {
   assets?: Asset[];
 }
 
-export default function HoldingModal({ open, onClose, onSave, editData, onUpdate }: Props) {
+export default function HoldingModal({ open, onClose, onSave, editData, onUpdate, assets = [] }: Props) {
   const [ticker, setTicker] = useState('');
   const [name, setName] = useState('');
   const [type, setType] = useState<string>('Ação');
