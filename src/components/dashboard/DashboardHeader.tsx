@@ -17,10 +17,12 @@ export default function DashboardHeader({ onRefresh, lastUpdate }: Props) {
 
   return (
     <header className="flex items-center justify-between py-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">
-          T2-<span className="text-primary">Simplynvest</span>
-        </h1>
+      <div className="flex items-center gap-3">
+        <img src="/pwa-icon-192.png" alt="T2-Simplynvest" className="h-9 w-9 rounded-lg" />
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">
+            T2-<span className="text-primary">Simplynvest</span>
+          </h1>
         <p className="text-sm text-muted-foreground">
           Controle inteligente de investimentos
           {lastUpdate && (
@@ -29,6 +31,7 @@ export default function DashboardHeader({ onRefresh, lastUpdate }: Props) {
             </span>
           )}
         </p>
+        </div>
       </div>
       <div className="flex items-center gap-2">
         <button
