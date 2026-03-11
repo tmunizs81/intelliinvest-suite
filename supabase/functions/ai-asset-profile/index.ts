@@ -176,16 +176,34 @@ serve(async (req) => {
 
     console.log(`Fetching asset profile for ${ticker} (${category}), scraping ${urls.length} sources`);
 
-    // Scrape pages in parallel
-    const pageTexts = await Promise.all(urls.map((url) => fetchPageText(url)));
-    const scrapedContent = pageTexts
-      .filter(Boolean)
-      .map((text, i) => `[Fonte ${i + 1}: ${urls[i]}]\n${text!.substring(0, 7000)}`)
-      .join("\n\n---\n\n");
+    // Fetch data sources in parallel
+    let scrapedContent = "";
+    let coinGeckoContent = "";
+
+    if (category === "crypto") {
+      const coinId = getCoinGeckoId(ticker);
+      if (coinId) {
+        coinGeckoContent = await fetchCoinGeckoData(coinId) || "";
+        console.log(`CoinGecko data fetched for ${coinId}: ${coinGeckoContent ? "success" : "empty"}`);
+      }
+    }
+
+    if (urls.length > 0) {
+      const pageTexts = await Promise.all(urls.map((url) => fetchPageText(url)));
+      scrapedContent = pageTexts
+        .filter(Boolean)
+        .map((text, i) => `[Fonte ${i + 1}: ${urls[i]}]\n${text!.substring(0, 7000)}`)
+        .join("\n\n---\n\n");
+    }
+
+    const dataSection = [
+      coinGeckoContent ? `Dados do CoinGecko (API oficial):\n${coinGeckoContent}` : "",
+      scrapedContent ? `Dados coletados de fontes brasileiras:\n${scrapedContent}` : "",
+    ].filter(Boolean).join("\n\n---\n\n");
 
     const prompt = `Gere um resumo completo e detalhado sobre o ativo ${ticker} (${name || ticker}, tipo: ${type || category}).
 
-${scrapedContent ? `Dados coletados de fontes brasileiras:\n${scrapedContent}\n\n` : ""}
+${dataSection ? `${dataSection}\n\n` : ""}
 
 Use a ferramenta para retornar o resultado estruturado. Preencha TODOS os campos com as informações disponíveis. Se não houver informação, coloque null.
 
@@ -194,8 +212,9 @@ Para o campo "sections", crie seções relevantes conforme o tipo de ativo:
 - Ação: Sobre a Empresa, Segmentos de Negócio, Posição no Mercado, Governança, Riscos e Oportunidades
 - ETF: Estratégia do Fundo, Composição, Metodologia do Índice, Custos, Exposição
 - BDR: Empresa Original, Negócios Principais, Presença Global, Estrutura do BDR
+- Cripto: Sobre o Projeto, Tecnologia e Blockchain, Tokenomics, Ecossistema, Casos de Uso, Dados de Mercado
 
-Para "key_assets", liste os principais ativos/imóveis/subsidiárias/holdings que compõem o fundo ou empresa.`;
+Para "key_assets", liste os principais ativos/imóveis/subsidiárias/holdings que compõem o fundo, empresa ou ecossistema crypto.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
