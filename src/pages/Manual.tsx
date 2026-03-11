@@ -438,6 +438,34 @@ O módulo de **Impostos** automatiza o cálculo de IR sobre operações na bolsa
 
 A tela de **Análise Avançada** oferece ferramentas profissionais para análise de ativos.
 
+### 🏢 Perfil do Ativo (Sobre):
+- Resumo completo do ativo com dados reais coletados de fontes públicas
+- Informações: Administrador, Gestor, Segmento, Classificação, Listagem, Taxas
+- **Destaques** do ativo (Dividend Yield, Liquidez, Gestão)
+- **Estratégia** descritiva do fundo ou empresa
+- Dados obtidos de Investidor10, StatusInvest e FundsExplorer
+
+### 🏗️ Lista de Imóveis (FIIs):
+- Disponível apenas para **Fundos Imobiliários** (FIIs)
+- Lista completa de propriedades do fundo com endereços
+- Informações: Nome, Tipo, Cidade, Estado, Área (m²), Endereço
+- **Gráfico de distribuição** por estado (donut chart)
+- **Barras por estado** com contagem de imóveis
+- Dados coletados de Investidor10 e StatusInvest via IA
+
+### 📰 Notícias de Mercado e Opinião IA:
+- Varredura automática nos principais portais financeiros brasileiros e mundiais
+- Fontes: Google News, InfoMoney, Valor Econômico, Bloomberg, Reuters
+- **Sentimento de mercado**: Muito Positivo, Positivo, Neutro, Negativo, Muito Negativo
+- **Nível de confiança** da análise (%)
+- **Catalisadores** classificados por impacto (Positivo/Negativo/Neutro)
+- **Opinião consolidada da IA** baseada nas notícias encontradas
+
+### 🤖 Sinal IA (Compra/Venda/Manter):
+- Badge com recomendação automática baseada em análise técnica e fundamentalista
+- Considera: indicadores técnicos, candles, posição na carteira, fundamentos
+- Score de confiança e justificativa da recomendação
+
 ### Análise Técnica:
 - **Gráfico de Candlestick** interativo
 - Indicadores técnicos:
@@ -461,6 +489,11 @@ A tela de **Análise Avançada** oferece ferramentas profissionais para análise
 - Ferramentas de desenho e análise
 - Múltiplos timeframes
 
+### Resumo Gráfico IA:
+- Análise automática do padrão gráfico atual
+- Identificação de suportes, resistências e tendências
+- Disponível tanto no gráfico TradingView quanto no Customizado
+
 ### Análise IA do Ativo:
 1. Digite o ticker na barra de busca
 2. O sistema buscará dados em tempo real
@@ -472,9 +505,11 @@ A tela de **Análise Avançada** oferece ferramentas profissionais para análise
 
 ### Como Usar:
 1. Acesse **Análise Avançada** no menu
-2. Selecione ou busque um ativo
-3. Alterne entre as abas: **Técnica**, **Fundamentalista** e **IA**
-4. Ajuste período e indicadores conforme necessário
+2. Selecione um ativo da carteira (acesso rápido) ou busque pelo ticker
+3. Veja o **Perfil do ativo** e **Lista de imóveis** (FIIs) automaticamente
+4. Clique em **"Analisar notícias de mercado"** para varredura de portais
+5. Alterne entre gráficos **TradingView** e **Customizado**
+6. Consulte indicadores técnicos, fundamentalistas e análise IA nas 3 colunas
     `,
   },
   {
