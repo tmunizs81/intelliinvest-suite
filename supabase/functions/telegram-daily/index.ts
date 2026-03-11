@@ -138,7 +138,7 @@ ${totalGain >= 0 ? '✅' : '❌'} *Lucro total:* ${totalGain >= 0 ? '+' : ''}R$$
 📋 *Seus Ativos:*
 ${assetLines.join('\n')}${dividendLine}${alertsLine}
 
-_Powered by InvestAI_ 🤖`;
+_Powered by T2-Simplynvest_ 🤖`;
 
         // Send to Telegram
         const sendResp = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {

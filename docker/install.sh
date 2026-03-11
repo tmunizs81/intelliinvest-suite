@@ -196,7 +196,7 @@ SERVER_IP=$(hostname -I 2>/dev/null | awk '{print $1}' || echo "SEU_IP")
 
 echo ""
 echo -e "${BLUE}══════════════════════════════════════════════${NC}"
-echo -e "${GREEN}  ✅ InvestAI instalado com sucesso!${NC}"
+echo -e "${GREEN}  ✅ T2-Simplynvest instalado com sucesso!${NC}"
 echo -e "${BLUE}══════════════════════════════════════════════${NC}"
 echo ""
 echo -e "  🌐 Acesse: ${GREEN}http://${SERVER_IP}:${APP_PORT}${NC}"

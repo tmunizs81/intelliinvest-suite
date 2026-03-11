@@ -27,4 +27,4 @@ docker network rm investai-net 2>/dev/null || true
 # Remover imagens órfãs do build
 docker image prune -f --filter "label=com.docker.compose.project=docker" 2>/dev/null || true
 
-echo -e "${GREEN}✅ InvestAI removido com sucesso. Nenhum outro serviço foi afetado.${NC}"
+echo -e "${GREEN}✅ T2-Simplynvest removido com sucesso. Nenhum outro serviço foi afetado.${NC}"

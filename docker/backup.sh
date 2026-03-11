@@ -20,7 +20,7 @@ MAX_BACKUPS=7  # Manter últimos 7 backups
 
 mkdir -p "$BACKUP_PATH"
 
-echo -e "${YELLOW}[InvestAI Backup] Iniciando backup...${NC}"
+echo -e "${YELLOW}[T2-Simplynvest Backup] Iniciando backup...${NC}"
 
 # 1. Backup do .env
 if [ -f "$SCRIPT_DIR/.env" ]; then

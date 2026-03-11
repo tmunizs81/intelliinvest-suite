@@ -1,6 +1,6 @@
 #!/bin/bash
 # ══════════════════════════════════════════
-#  InvestAI - Configurar Backup Automático
+#  T2-Simplynvest - Configurar Backup Automático
 #  Adiciona cron job para backup diário
 # ══════════════════════════════════════════
 
