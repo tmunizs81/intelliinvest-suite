@@ -220,7 +220,7 @@ const Index = () => {
                   <AIInsightsPanel assets={assets} />
                 </DashboardPanel>
               </div>
-            </Responsive>
+            </ResponsiveGrid>
           </div>
         )}
       </div>
