@@ -340,6 +340,16 @@ const Index = () => {
                   <CeilingPricePanel assets={assets} />
                 </DashboardPanel>
               </div>
+              <div key="profitability">
+                <DashboardPanel title="Rentabilidade vs Benchmarks" locked={locked}>
+                  <ProfitabilityPanel assets={assets} />
+                </DashboardPanel>
+              </div>
+              <div key="backtesting">
+                <DashboardPanel title="Backtesting Histórico" locked={locked}>
+                  <BacktestingPanel assets={assets} />
+                </DashboardPanel>
+              </div>
             </ResponsiveGrid>
           </div>
         )}
