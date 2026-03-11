@@ -48,22 +48,34 @@ export default function FundamentalIndicators({ ticker, type }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchFundamentals = useCallback(async () => {
+  const fetchFundamentals = useCallback(async (retries = 2) => {
     setLoading(true);
     setError(null);
-    try {
-      const { data: resp, error: fnError } = await supabase.functions.invoke('yahoo-finance-fundamentals', {
-        body: { ticker, type },
-      });
-      if (fnError) throw new Error(fnError.message);
-      if (resp.error) throw new Error(resp.error);
-      setData(resp);
-    } catch (err) {
-      console.error('Fundamentals error:', err);
-      setError(err instanceof Error ? err.message : 'Erro ao buscar dados');
-    } finally {
-      setLoading(false);
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        if (attempt > 0) await new Promise(r => setTimeout(r, 2000 * attempt));
+        const { data: resp, error: fnError } = await supabase.functions.invoke('yahoo-finance-fundamentals', {
+          body: { ticker, type },
+        });
+        if (fnError) {
+          if (fnError.message?.includes('429') && attempt < retries) continue;
+          throw new Error(fnError.message);
+        }
+        if (resp?.error) {
+          if ((String(resp.error).includes('Rate limit') || String(resp.error).includes('429') || String(resp.error).includes('404')) && attempt < retries) continue;
+          throw new Error(resp.error);
+        }
+        setData(resp);
+        setLoading(false);
+        return;
+      } catch (err) {
+        if (attempt === retries) {
+          console.error('Fundamentals error:', err);
+          setError(err instanceof Error ? err.message : 'Erro ao buscar dados');
+        }
+      }
     }
+    setLoading(false);
   }, [ticker, type]);
 
   useEffect(() => {
@@ -88,7 +100,7 @@ export default function FundamentalIndicators({ ticker, type }: Props) {
           <h2 className="text-sm font-semibold">{isFII ? 'Indicadores FII' : 'Indicadores Fundamentalistas'}</h2>
         </div>
         <button
-          onClick={fetchFundamentals}
+          onClick={() => fetchFundamentals()}
           disabled={loading}
           className="h-7 w-7 rounded-lg border border-border flex items-center justify-center text-muted-foreground hover:text-foreground transition-all"
         >

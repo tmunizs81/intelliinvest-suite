@@ -69,21 +69,33 @@ export default function FiiPropertiesPanel({ ticker }: Props) {
     setShowAll(false);
   }
 
-  const fetchProperties = useCallback(async () => {
+  const fetchProperties = useCallback(async (retries = 3) => {
     setLoading(true);
     setError(null);
-    try {
-      const { data: result, error: fnError } = await supabase.functions.invoke('fii-properties', {
-        body: { ticker },
-      });
-      if (fnError) throw new Error(fnError.message);
-      if (result.error) throw new Error(result.error);
-      setData(result);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao buscar imóveis');
-    } finally {
-      setLoading(false);
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        if (attempt > 0) await new Promise(r => setTimeout(r, 2000 * attempt));
+        const { data: result, error: fnError } = await supabase.functions.invoke('fii-properties', {
+          body: { ticker },
+        });
+        if (fnError) {
+          if (fnError.message?.includes('429') && attempt < retries) continue;
+          throw new Error(fnError.message);
+        }
+        if (result?.error) {
+          if ((String(result.error).includes('Rate limit') || String(result.error).includes('429')) && attempt < retries) continue;
+          throw new Error(result.error);
+        }
+        setData(result);
+        setLoading(false);
+        return;
+      } catch (err) {
+        if (attempt === retries) {
+          setError(err instanceof Error ? err.message : 'Erro ao buscar imóveis');
+        }
+      }
     }
+    setLoading(false);
   }, [ticker]);
 
   // State distribution for chart
@@ -111,14 +123,14 @@ export default function FiiPropertiesPanel({ ticker }: Props) {
             <p className="text-[10px] text-muted-foreground">Propriedades do fundo — fonte: Investidor10 / StatusInvest</p>
           </div>
         </div>
-        <button onClick={fetchProperties} disabled={loading}
+        <button onClick={() => fetchProperties()} disabled={loading}
           className="h-7 w-7 rounded-lg border border-border flex items-center justify-center text-muted-foreground hover:text-foreground transition-all disabled:opacity-50">
           {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
         </button>
       </div>
 
       {!data && !loading && !error && (
-        <button onClick={fetchProperties}
+        <button onClick={() => fetchProperties()}
           className="w-full py-10 flex flex-col items-center gap-3 text-muted-foreground hover:text-foreground transition-all">
           <Map className="h-10 w-10" />
           <span className="text-sm font-medium">Carregar lista de imóveis do {ticker}</span>

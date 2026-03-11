@@ -25,37 +25,47 @@ export default function AIChartSummary({ ticker, name, type, candles }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [lastTicker, setLastTicker] = useState('');
 
-  const analyze = useCallback(async () => {
+  const analyze = useCallback(async (retries = 3) => {
     if (candles.length < 20) return;
     setLoading(true);
     setError(null);
 
-    try {
-      const indicators = getLatestIndicators(candles);
-      const recentCandles = candles.slice(-15).map(c => ({
-        date: c.date,
-        open: +c.open.toFixed(2),
-        high: +c.high.toFixed(2),
-        low: +c.low.toFixed(2),
-        close: +c.close.toFixed(2),
-        volume: c.volume,
-      }));
+    const indicators = getLatestIndicators(candles);
+    const recentCandles = candles.slice(-15).map(c => ({
+      date: c.date,
+      open: +c.open.toFixed(2),
+      high: +c.high.toFixed(2),
+      low: +c.low.toFixed(2),
+      close: +c.close.toFixed(2),
+      volume: c.volume,
+    }));
 
-      const { data, error: fnError } = await supabase.functions.invoke('ai-chart-summary', {
-        body: { ticker, name, type, indicators, recentCandles },
-      });
-
-      if (fnError) throw new Error(fnError.message);
-      if (data.error) throw new Error(data.error);
-
-      setSummary(data);
-      setLastTicker(ticker);
-    } catch (err) {
-      console.error('AI chart summary error:', err);
-      setError(err instanceof Error ? err.message : 'Erro na análise');
-    } finally {
-      setLoading(false);
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        if (attempt > 0) await new Promise(r => setTimeout(r, 2000 * attempt));
+        const { data, error: fnError } = await supabase.functions.invoke('ai-chart-summary', {
+          body: { ticker, name, type, indicators, recentCandles },
+        });
+        if (fnError) {
+          if (fnError.message?.includes('429') && attempt < retries) continue;
+          throw new Error(fnError.message);
+        }
+        if (data?.error) {
+          if ((String(data.error).includes('Rate limit') || String(data.error).includes('429')) && attempt < retries) continue;
+          throw new Error(data.error);
+        }
+        setSummary(data);
+        setLastTicker(ticker);
+        setLoading(false);
+        return;
+      } catch (err) {
+        if (attempt === retries) {
+          console.error('AI chart summary error:', err);
+          setError(err instanceof Error ? err.message : 'Erro na análise');
+        }
+      }
     }
+    setLoading(false);
   }, [ticker, name, type, candles]);
 
   useEffect(() => {
@@ -78,7 +88,7 @@ export default function AIChartSummary({ ticker, name, type, candles }: Props) {
           <h3 className="text-sm font-semibold">Resumo IA do Gráfico</h3>
         </div>
         <button
-          onClick={analyze}
+          onClick={() => analyze()}
           disabled={loading}
           className="h-7 px-3 rounded-lg bg-primary/10 text-primary text-xs font-medium flex items-center gap-1.5 hover:bg-primary/20 transition-all disabled:opacity-50"
         >

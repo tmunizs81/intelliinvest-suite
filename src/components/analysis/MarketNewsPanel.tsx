@@ -59,21 +59,33 @@ export default function MarketNewsPanel({ ticker, name, type }: Props) {
     setShowNews(true);
   }
 
-  const fetchOpinion = useCallback(async () => {
+  const fetchOpinion = useCallback(async (retries = 3) => {
     setLoading(true);
     setError(null);
-    try {
-      const { data, error: fnError } = await supabase.functions.invoke('ai-market-news', {
-        body: { ticker, name, type },
-      });
-      if (fnError) throw new Error(fnError.message);
-      if (data.error) throw new Error(data.error);
-      setOpinion(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro');
-    } finally {
-      setLoading(false);
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        if (attempt > 0) await new Promise(r => setTimeout(r, 2000 * attempt));
+        const { data, error: fnError } = await supabase.functions.invoke('ai-market-news', {
+          body: { ticker, name, type },
+        });
+        if (fnError) {
+          if (fnError.message?.includes('429') && attempt < retries) continue;
+          throw new Error(fnError.message);
+        }
+        if (data?.error) {
+          if ((String(data.error).includes('Rate limit') || String(data.error).includes('429')) && attempt < retries) continue;
+          throw new Error(data.error);
+        }
+        setOpinion(data);
+        setLoading(false);
+        return;
+      } catch (err) {
+        if (attempt === retries) {
+          setError(err instanceof Error ? err.message : 'Erro');
+        }
+      }
     }
+    setLoading(false);
   }, [ticker, name, type]);
 
   const cfg = opinion ? sentimentConfig[opinion.sentiment] : null;
@@ -90,14 +102,14 @@ export default function MarketNewsPanel({ ticker, name, type }: Props) {
             <p className="text-[10px] text-muted-foreground">Varredura IA em portais financeiros</p>
           </div>
         </div>
-        <button onClick={fetchOpinion} disabled={loading}
+        <button onClick={() => fetchOpinion()} disabled={loading}
           className="h-7 w-7 rounded-lg border border-border flex items-center justify-center text-muted-foreground hover:text-foreground transition-all disabled:opacity-50">
           {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
         </button>
       </div>
 
       {!opinion && !loading && !error && (
-        <button onClick={fetchOpinion}
+        <button onClick={() => fetchOpinion()}
           className="w-full py-10 flex flex-col items-center gap-3 text-muted-foreground hover:text-foreground transition-all">
           <Newspaper className="h-10 w-10" />
           <span className="text-sm font-medium">Analisar notícias de mercado sobre {ticker}</span>

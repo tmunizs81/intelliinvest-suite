@@ -42,7 +42,7 @@ export default function AIAnalysisPanel({ ticker, name, type, candles, holdingIn
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleAnalyze = async () => {
+  const handleAnalyze = async (retries = 3) => {
     if (candles.length < 20) {
       setError('Dados históricos insuficientes para análise (mínimo 20 candles)');
       return;
@@ -51,41 +51,44 @@ export default function AIAnalysisPanel({ ticker, name, type, candles, holdingIn
     setLoading(true);
     setError(null);
 
-    try {
-      const indicators = getLatestIndicators(candles);
-      const recentCandles = candles.slice(-10).map(c => ({
-        date: c.date,
-        open: +c.open.toFixed(2),
-        high: +c.high.toFixed(2),
-        low: +c.low.toFixed(2),
-        close: +c.close.toFixed(2),
-        volume: c.volume,
-      }));
+    const indicators = getLatestIndicators(candles);
+    const recentCandles = candles.slice(-10).map(c => ({
+      date: c.date,
+      open: +c.open.toFixed(2),
+      high: +c.high.toFixed(2),
+      low: +c.low.toFixed(2),
+      close: +c.close.toFixed(2),
+      volume: c.volume,
+    }));
 
-      const { data, error: fnError } = await supabase.functions.invoke('ai-asset-analysis', {
-        body: {
-          ticker,
-          name,
-          type,
-          indicators,
-          recentCandles,
-          holdingInfo: holdingInfo ? {
-            ...holdingInfo,
-            profitPct: +holdingInfo.profitPct.toFixed(2),
-          } : undefined,
-        },
-      });
-
-      if (fnError) throw new Error(fnError.message);
-      if (data.error) throw new Error(data.error);
-
-      setAnalysis(data);
-    } catch (err) {
-      console.error('AI analysis error:', err);
-      setError(err instanceof Error ? err.message : 'Erro na análise IA');
-    } finally {
-      setLoading(false);
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        if (attempt > 0) await new Promise(r => setTimeout(r, 2000 * attempt));
+        const { data, error: fnError } = await supabase.functions.invoke('ai-asset-analysis', {
+          body: {
+            ticker, name, type, indicators, recentCandles,
+            holdingInfo: holdingInfo ? { ...holdingInfo, profitPct: +holdingInfo.profitPct.toFixed(2) } : undefined,
+          },
+        });
+        if (fnError) {
+          if (fnError.message?.includes('429') && attempt < retries) continue;
+          throw new Error(fnError.message);
+        }
+        if (data?.error) {
+          if ((String(data.error).includes('Rate limit') || String(data.error).includes('429')) && attempt < retries) continue;
+          throw new Error(data.error);
+        }
+        setAnalysis(data);
+        setLoading(false);
+        return;
+      } catch (err) {
+        if (attempt === retries) {
+          console.error('AI analysis error:', err);
+          setError(err instanceof Error ? err.message : 'Erro na análise IA');
+        }
+      }
     }
+    setLoading(false);
   };
 
   const TrendIcon = analysis?.trend === 'alta' ? TrendingUp : analysis?.trend === 'baixa' ? TrendingDown : Minus;
@@ -100,7 +103,7 @@ export default function AIAnalysisPanel({ ticker, name, type, candles, holdingIn
           <h2 className="text-sm font-semibold">Análise IA</h2>
         </div>
         <button
-          onClick={handleAnalyze}
+          onClick={() => handleAnalyze()}
           disabled={loading}
           className="h-8 px-3 rounded-lg bg-primary text-primary-foreground text-xs font-medium flex items-center gap-1.5 hover:opacity-90 transition-opacity disabled:opacity-50"
         >
