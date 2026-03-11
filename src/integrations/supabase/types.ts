@@ -275,6 +275,7 @@ export type Database = {
           created_at: string
           id: string
           indexer_type: string | null
+          maturity_date: string | null
           name: string
           quantity: number
           sector: string | null
@@ -290,6 +291,7 @@ export type Database = {
           created_at?: string
           id?: string
           indexer_type?: string | null
+          maturity_date?: string | null
           name: string
           quantity: number
           sector?: string | null
@@ -305,6 +307,7 @@ export type Database = {
           created_at?: string
           id?: string
           indexer_type?: string | null
+          maturity_date?: string | null
           name?: string
           quantity?: number
           sector?: string | null

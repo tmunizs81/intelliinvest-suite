@@ -1,13 +1,18 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { X, Plus, Loader2, Search } from 'lucide-react';
+import { X, Plus, Loader2, Search, CalendarIcon } from 'lucide-react';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import type { HoldingRow } from '@/hooks/usePortfolio';
 import { type Asset } from '@/lib/mockData';
 import AICopilotSignal from './AICopilotSignal';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { cn } from '@/lib/utils';
 
-const TYPES = ['Ação', 'FII', 'ETF', 'ETF Internacional', 'Cripto', 'Renda Fixa', 'LCI', 'LCA', 'Tesouro Selic'] as const;
+const TYPES = ['Ação', 'FII', 'ETF', 'ETF Internacional', 'Cripto', 'Renda Fixa'] as const;
 
-const FIXED_INCOME_TYPES = ['Renda Fixa', 'LCI', 'LCA', 'Tesouro Selic'];
+const FIXED_INCOME_SUBTYPES = ['CDB', 'LCI', 'LCA', 'Tesouro Selic', 'Tesouro IPCA+', 'Tesouro Pré', 'Debênture', 'CRA', 'CRI', 'LC', 'Outro'] as const;
 
 interface SearchResult {
   symbol: string;
@@ -21,7 +26,7 @@ interface Props {
   open: boolean;
   onClose: () => void;
   onSave: (holding: Omit<HoldingRow, 'id'>) => Promise<void>;
-  editData?: (HoldingRow & { yield_rate?: string | null; indexer_type?: string | null }) | null;
+  editData?: (HoldingRow & { yield_rate?: string | null; indexer_type?: string | null; maturity_date?: string | null }) | null;
   onUpdate?: (id: string, data: Partial<HoldingRow>) => Promise<void>;
   assets?: Asset[];
 }
@@ -36,6 +41,8 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
   const [broker, setBroker] = useState('');
   const [yieldRate, setYieldRate] = useState('');
   const [indexerType, setIndexerType] = useState<string>('Pós-fixado');
+  const [fixedIncomeSubtype, setFixedIncomeSubtype] = useState<string>('CDB');
+  const [maturityDate, setMaturityDate] = useState<Date | undefined>(undefined);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -59,6 +66,8 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
       setBroker(editData?.broker || '');
       setYieldRate(editData?.yield_rate || '');
       setIndexerType(editData?.indexer_type || 'Pós-fixado');
+      setFixedIncomeSubtype(editData?.sector && type === 'Renda Fixa' ? editData.sector : 'CDB');
+      setMaturityDate(editData?.maturity_date ? new Date(editData.maturity_date) : undefined);
       setError('');
       setSuggestions([]);
       setShowSuggestions(false);
@@ -158,16 +167,18 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
     setLoading(true);
 
     try {
+      const isFixedIncome = type === 'Renda Fixa';
       const data: any = {
         ticker: ticker.toUpperCase().trim(),
         name: name.trim(),
         type,
         quantity: parseFloat(quantity),
         avg_price: parseFloat(avgPrice),
-        sector: sector.trim() || null,
+        sector: isFixedIncome ? fixedIncomeSubtype : (sector.trim() || null),
         broker: broker.trim() || null,
-        yield_rate: FIXED_INCOME_TYPES.includes(type) ? yieldRate.trim() || null : null,
-        indexer_type: FIXED_INCOME_TYPES.includes(type) ? indexerType : null,
+        yield_rate: isFixedIncome ? yieldRate.trim() || null : null,
+        indexer_type: isFixedIncome ? indexerType : null,
+        maturity_date: isFixedIncome && maturityDate ? format(maturityDate, 'yyyy-MM-dd') : null,
       };
 
       if (!data.ticker || !data.name || isNaN(data.quantity) || isNaN(data.avg_price)) {
@@ -282,46 +293,89 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
                 {TYPES.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
             </div>
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-muted-foreground">Setor</label>
-              <input
-                value={sector} onChange={e => setSector(e.target.value)}
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                placeholder="Tecnologia, Saúde..."
-              />
-            </div>
+            {type !== 'Renda Fixa' && (
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground">Setor</label>
+                <input
+                  value={sector} onChange={e => setSector(e.target.value)}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  placeholder="Tecnologia, Saúde..."
+                />
+              </div>
+            )}
+            {type === 'Renda Fixa' && (
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground">Subtipo *</label>
+                <select
+                  value={fixedIncomeSubtype}
+                  onChange={e => setFixedIncomeSubtype(e.target.value)}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                >
+                  {FIXED_INCOME_SUBTYPES.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
+            )}
           </div>
 
           <BrokerAutocomplete value={broker} onChange={setBroker} />
 
           {/* Campos de Renda Fixa */}
-          {FIXED_INCOME_TYPES.includes(type) && (
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-muted-foreground">Indexador *</label>
-                <select
-                  value={indexerType}
-                  onChange={e => setIndexerType(e.target.value)}
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                >
-                  <option value="Pré-fixado">Pré-fixado</option>
-                  <option value="Pós-fixado">Pós-fixado</option>
-                  <option value="IPCA+">IPCA+</option>
-                  <option value="CDI">CDI</option>
-                  <option value="CDI+">CDI+</option>
-                  <option value="Selic">Selic</option>
-                </select>
+          {type === 'Renda Fixa' && (
+            <>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">Indexador *</label>
+                  <select
+                    value={indexerType}
+                    onChange={e => setIndexerType(e.target.value)}
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  >
+                    <option value="Pré-fixado">Pré-fixado</option>
+                    <option value="Pós-fixado">Pós-fixado</option>
+                    <option value="IPCA+">IPCA+</option>
+                    <option value="CDI">CDI</option>
+                    <option value="CDI+">CDI+</option>
+                    <option value="Selic">Selic</option>
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">Rentabilidade</label>
+                  <input
+                    value={yieldRate}
+                    onChange={e => setYieldRate(e.target.value)}
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                    placeholder={indexerType === 'Pré-fixado' ? '12.5% a.a.' : indexerType === 'IPCA+' ? 'IPCA + 6.5%' : '110% CDI'}
+                  />
+                </div>
               </div>
               <div className="space-y-1">
-                <label className="text-xs font-medium text-muted-foreground">Rentabilidade</label>
-                <input
-                  value={yieldRate}
-                  onChange={e => setYieldRate(e.target.value)}
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                  placeholder={indexerType === 'Pré-fixado' ? '12.5% a.a.' : indexerType === 'IPCA+' ? 'IPCA + 6.5%' : '110% CDI'}
-                />
+                <label className="text-xs font-medium text-muted-foreground">Data de Vencimento</label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button
+                      type="button"
+                      className={cn(
+                        'w-full flex items-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm text-left focus:outline-none focus:ring-2 focus:ring-ring',
+                        !maturityDate && 'text-muted-foreground'
+                      )}
+                    >
+                      <CalendarIcon className="h-4 w-4 shrink-0" />
+                      {maturityDate ? format(maturityDate, 'dd/MM/yyyy', { locale: ptBR }) : 'Selecione a data'}
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={maturityDate}
+                      onSelect={setMaturityDate}
+                      disabled={(date) => date < new Date()}
+                      initialFocus
+                      className={cn('p-3 pointer-events-auto')}
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
-            </div>
+            </>
           )}
 
           <div className="space-y-1">
