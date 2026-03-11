@@ -18,6 +18,7 @@ const navItems = [
   { to: '/analysis', label: 'Análise Avançada', icon: BarChart3 },
   { to: '/family', label: 'Carteira Familiar', icon: Users },
   { to: '/settings', label: 'Configurações', icon: Settings },
+  { to: '/manual', label: 'Manual', icon: Book },
 ];
 
 export default function Sidebar() {
