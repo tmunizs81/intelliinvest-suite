@@ -141,7 +141,7 @@ ${assetLines.join('\n')}${dividendLine}${alertsLine}
 _Powered by InvestAI_ 🤖`;
 
         // Send to Telegram
-        const sendResp = await fetch(`https://api.telegram.org/bot${tgUser.bot_token}/sendMessage`, {
+        const sendResp = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
