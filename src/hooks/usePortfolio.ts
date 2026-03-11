@@ -266,11 +266,20 @@ export function usePortfolio() {
       } as any);
     }
 
+    // Record cash movement for sell
+    await supabase.from('cash_movements' as any).insert({
+      user_id: user.id,
+      type: 'sell',
+      amount: netTotal,
+      broker: holding.broker || null,
+      description: `Venda de ${sellQty}x ${holding.ticker} a ${sellPrice.toFixed(2)}`,
+    } as any);
+
     await refresh();
   }, [user, holdings, refresh]);
 
   // Update cash balance for a specific broker
-  const updateCashBalanceBroker = useCallback(async (amount: number, broker: string | null) => {
+  const updateCashBalanceBroker = useCallback(async (amount: number, broker: string | null, movementType?: 'deposit' | 'withdraw', movementAmount?: number) => {
     if (!user) return;
     const brokerVal = broker || '';
     const { data: existing } = await supabase
@@ -285,8 +294,32 @@ export function usePortfolio() {
     } else {
       await supabase.from('cash_balance' as any).insert({ user_id: user.id, balance: amount, broker: broker || null } as any);
     }
+
+    // Record cash movement
+    if (movementType && movementAmount) {
+      await supabase.from('cash_movements' as any).insert({
+        user_id: user.id,
+        type: movementType,
+        amount: movementAmount,
+        broker: broker || null,
+        description: movementType === 'deposit' ? `Depósito em ${broker || 'caixa'}` : `Saque de ${broker || 'caixa'}`,
+      } as any);
+    }
+
     await loadCashBalance();
   }, [user, loadCashBalance]);
 
-  return { assets, holdings, cashBalance, cashBalances, loading, error, lastUpdate, refresh, addHolding, updateHolding, deleteHolding, sellHolding, updateCashBalance: updateCashBalanceBroker };
+  // Load cash movements
+  const loadCashMovements = useCallback(async () => {
+    if (!user) return [];
+    const { data } = await supabase
+      .from('cash_movements' as any)
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(100);
+    return (data as any[]) || [];
+  }, [user]);
+
+  return { assets, holdings, cashBalance, cashBalances, loading, error, lastUpdate, refresh, addHolding, updateHolding, deleteHolding, sellHolding, updateCashBalance: updateCashBalanceBroker, loadCashMovements };
 }
