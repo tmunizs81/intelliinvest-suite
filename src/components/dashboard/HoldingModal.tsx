@@ -28,6 +28,7 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
   const [quantity, setQuantity] = useState('');
   const [avgPrice, setAvgPrice] = useState('');
   const [sector, setSector] = useState('');
+  const [broker, setBroker] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
