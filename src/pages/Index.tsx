@@ -157,9 +157,10 @@ const Index = () => {
             <p className="text-muted-foreground">Carregando carteira...</p>
           </div>
         ) : (
-          <div className="pb-12">
-            <ResponsiveGridLayout
+          <div className="pb-12" ref={containerRef}>
+            <Responsive
               className="layout"
+              width={containerWidth}
               layouts={layouts}
               breakpoints={{ lg: 1200, md: 800, sm: 0 }}
               cols={{ lg: 12, md: 10, sm: 6 }}
@@ -169,7 +170,7 @@ const Index = () => {
               onLayoutChange={handleLayoutChange}
               draggableHandle=".drag-handle"
               compactType="vertical"
-              margin={[16, 16]}
+              margin={[16, 16] as [number, number]}
             >
               <div key="summary">
                 <DashboardPanel title="" noPadding locked={locked}>
