@@ -265,7 +265,7 @@ const Index = () => {
             >
               <div key="summary">
                 <DashboardPanel title="" noPadding locked={locked}>
-                  <PortfolioSummary assets={assets} lastUpdate={lastUpdate} />
+                  <PortfolioSummary assets={assets} lastUpdate={lastUpdate} nextUpdate={nextUpdate} />
                 </DashboardPanel>
               </div>
               <div key="health-score">
