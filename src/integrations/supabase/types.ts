@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      alerts: {
+        Row: {
+          alert_type: Database["public"]["Enums"]["alert_type"]
+          created_at: string
+          current_value: number | null
+          id: string
+          name: string
+          notify_telegram: boolean
+          status: Database["public"]["Enums"]["alert_status"]
+          target_value: number
+          ticker: string
+          triggered_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          alert_type: Database["public"]["Enums"]["alert_type"]
+          created_at?: string
+          current_value?: number | null
+          id?: string
+          name: string
+          notify_telegram?: boolean
+          status?: Database["public"]["Enums"]["alert_status"]
+          target_value: number
+          ticker: string
+          triggered_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          alert_type?: Database["public"]["Enums"]["alert_type"]
+          created_at?: string
+          current_value?: number | null
+          id?: string
+          name?: string
+          notify_telegram?: boolean
+          status?: Database["public"]["Enums"]["alert_status"]
+          target_value?: number
+          ticker?: string
+          triggered_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       holdings: {
         Row: {
           avg_price: number
@@ -80,6 +125,36 @@ export type Database = {
         }
         Relationships: []
       }
+      telegram_settings: {
+        Row: {
+          bot_token: string | null
+          chat_id: string | null
+          created_at: string
+          enabled: boolean
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          bot_token?: string | null
+          chat_id?: string | null
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          bot_token?: string | null
+          chat_id?: string | null
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -88,7 +163,14 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      alert_status: "active" | "triggered" | "paused"
+      alert_type:
+        | "price_above"
+        | "price_below"
+        | "variation_up"
+        | "variation_down"
+        | "stop_loss"
+        | "take_profit"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -215,6 +297,16 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      alert_status: ["active", "triggered", "paused"],
+      alert_type: [
+        "price_above",
+        "price_below",
+        "variation_up",
+        "variation_down",
+        "stop_loss",
+        "take_profit",
+      ],
+    },
   },
 } as const
