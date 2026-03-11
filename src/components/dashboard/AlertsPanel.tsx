@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Bell, Plus, Trash2, Pause, Play, RotateCcw, MessageCircle, BellRing, Target, TrendingDown, TrendingUp, ArrowUp, ArrowDown } from 'lucide-react';
+import { Bell, Plus, Trash2, Pause, Play, RotateCcw, MessageCircle, BellRing, Target, TrendingDown, TrendingUp, ArrowUp, ArrowDown, BellDot } from 'lucide-react';
 import { useAlerts, type AlertRow, type AlertStatus } from '@/hooks/useAlerts';
+import { usePushNotifications } from '@/hooks/usePushNotifications';
 import AlertModal from './AlertModal';
 import TelegramSettingsModal from './TelegramSettingsModal';
 import { formatCurrency } from '@/lib/mockData';
