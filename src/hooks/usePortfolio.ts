@@ -186,8 +186,11 @@ export function usePortfolio() {
       notes: 'Lançamento automático via Meus Ativos',
     });
 
+    await auditLog('buy', 'holding', holding.ticker.toUpperCase(), {
+      ticker: holding.ticker.toUpperCase(), quantity: holding.quantity, price: holding.avg_price,
+    });
     await refresh();
-  }, [user, refresh]);
+  }, [user, refresh, auditLog]);
 
   const updateHolding = useCallback(async (id: string, updates: Partial<HoldingRow>) => {
     if (!user) return;
