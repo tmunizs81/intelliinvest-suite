@@ -569,6 +569,7 @@ export default function Assets() {
         cashBalances={cashBalances}
         totalBalance={cashBalance}
         onConfirm={updateCashBalance}
+        loadMovements={loadCashMovements}
       />
     </div>
   );
