@@ -243,17 +243,17 @@ export default function Dividends() {
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">Dividendos & Proventos</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Histórico de 5 anos, projeções e calendário de pagamentos
+            Histórico de 5 anos, projeções e calendário
           </p>
         </div>
         <button
           onClick={fetchDividends}
           disabled={loading}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border bg-card text-sm font-medium hover:bg-accent/50 transition-all"
+          className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border bg-card text-sm font-medium hover:bg-accent/50 transition-all self-start"
         >
           <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
           Atualizar
