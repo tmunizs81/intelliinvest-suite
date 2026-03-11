@@ -1,6 +1,15 @@
 import { useState, useCallback, useMemo } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { type Asset } from '@/lib/mockData';
-import { Grid3X3, Loader2, RefreshCw } from 'lucide-react';
+import { Grid3X3, Loader2, RefreshCw, Sparkles, AlertTriangle, Lightbulb } from 'lucide-react';
+
+interface AICorrelation {
+  risk_score: number;
+  high_correlation_pairs: { pair: string; estimated_correlation: number; reason: string }[];
+  hidden_risks: { risk: string; severity: string; affected_tickers: string[] }[];
+  diversification_suggestions: string[];
+  summary: string;
+}
 
 // Simple correlation estimation based on asset type and sector
 function estimateCorrelation(a: Asset, b: Asset): number {
