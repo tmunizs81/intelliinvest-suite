@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import {
   LayoutDashboard, Briefcase, BarChart3, LogOut, User,
-  ChevronLeft, ChevronRight, TrendingUp, Brain, Calculator,
+  ChevronLeft, ChevronRight, TrendingUp, Brain, Calculator, DollarSign,
 } from 'lucide-react';
 import { useState } from 'react';
 
