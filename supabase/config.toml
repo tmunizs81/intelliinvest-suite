@@ -122,3 +122,24 @@ verify_jwt = false
 
 [functions.ai-risk-analysis]
 verify_jwt = false
+
+[functions.telegram-stoploss-alerts]
+verify_jwt = false
+
+[functions.telegram-dividend-alerts]
+verify_jwt = false
+
+[functions.telegram-weekly]
+verify_jwt = false
+
+[functions.telegram-rebalance-alert]
+verify_jwt = false
+
+[functions.telegram-news-alerts]
+verify_jwt = false
+
+[functions.telegram-goals-alert]
+verify_jwt = false
+
+[functions.telegram-security-alert]
+verify_jwt = false
