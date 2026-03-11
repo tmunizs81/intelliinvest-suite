@@ -289,7 +289,7 @@ export default function Analysis() {
           ) : (
             <>
               <CandlestickChart candles={candles} />
-              <AIChartSummary ticker={ticker} name={assetName || ticker} type={assetType} candles={candles} />
+              <AIChartSummary ticker={ticker} name={assetName || ticker} type={assetType} candles={candles} loadDelay={4000} />
             </>
           )}
 
