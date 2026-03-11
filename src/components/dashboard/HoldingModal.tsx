@@ -167,16 +167,18 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
     setLoading(true);
 
     try {
+      const isFixedIncome = type === 'Renda Fixa';
       const data: any = {
         ticker: ticker.toUpperCase().trim(),
         name: name.trim(),
         type,
         quantity: parseFloat(quantity),
         avg_price: parseFloat(avgPrice),
-        sector: sector.trim() || null,
+        sector: isFixedIncome ? fixedIncomeSubtype : (sector.trim() || null),
         broker: broker.trim() || null,
-        yield_rate: FIXED_INCOME_TYPES.includes(type) ? yieldRate.trim() || null : null,
-        indexer_type: FIXED_INCOME_TYPES.includes(type) ? indexerType : null,
+        yield_rate: isFixedIncome ? yieldRate.trim() || null : null,
+        indexer_type: isFixedIncome ? indexerType : null,
+        maturity_date: isFixedIncome && maturityDate ? format(maturityDate, 'yyyy-MM-dd') : null,
       };
 
       if (!data.ticker || !data.name || isNaN(data.quantity) || isNaN(data.avg_price)) {
