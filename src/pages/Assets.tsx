@@ -23,7 +23,7 @@ const typeBadgeClass: Record<string, string> = {
 
 export default function Assets() {
   const navigate = useNavigate();
-  const { assets, holdings, cashBalance, loading, refresh, addHolding, updateHolding, deleteHolding, sellHolding } = usePortfolio();
+  const { assets, holdings, cashBalance, loading, refresh, addHolding, updateHolding, deleteHolding, sellHolding, updateCashBalance } = usePortfolio();
   const [modalOpen, setModalOpen] = useState(false);
   const [editingHolding, setEditingHolding] = useState<HoldingRow | null>(null);
   const [sellOpen, setSellOpen] = useState(false);
