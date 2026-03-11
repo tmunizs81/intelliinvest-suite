@@ -3,15 +3,16 @@ import {
   Settings, Users, Key, Shield, Bell, Database, UserPlus,
   Trash2, Copy, RefreshCw, Loader2, Check, X, Download, Upload,
   Send, ChevronDown, ChevronUp, Plus, Crown, User,
-  Pause, Play, Snowflake, AlertTriangle, ShieldCheck, Clock, Calendar,
+  Pause, Play, Snowflake, AlertTriangle, ShieldCheck, Clock, Calendar, ClipboardList,
 } from 'lucide-react';
+import AuditLogPanel from '@/components/dashboard/AuditLogPanel';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useRole } from '@/hooks/useRole';
 import { formatCurrency } from '@/lib/mockData';
 import { toast } from 'sonner';
 
-type SettingsTab = 'general' | 'users' | 'keys' | 'license' | 'family' | 'telegram' | 'backup';
+type SettingsTab = 'general' | 'users' | 'keys' | 'license' | 'family' | 'telegram' | 'backup' | 'audit';
 
 // ─── Serial Key Generator ───
 function generateSerialKey(): string {
@@ -50,6 +51,7 @@ export default function SettingsPage() {
     { key: 'family' as const, label: 'Família', icon: Users, adminOnly: false },
     { key: 'telegram' as const, label: 'Telegram', icon: Bell, adminOnly: false },
     { key: 'backup' as const, label: 'Backup', icon: Database, adminOnly: false },
+    { key: 'audit' as const, label: 'Atividades', icon: ClipboardList, adminOnly: false },
   ].filter(t => !t.adminOnly || isAdmin);
 
   return (
@@ -86,6 +88,7 @@ export default function SettingsPage() {
       {tab === 'family' && <FamilyTab />}
       {tab === 'telegram' && <TelegramTab />}
       {tab === 'backup' && <BackupTab />}
+      {tab === 'audit' && <AuditLogPanel />}
     </div>
   );
 }

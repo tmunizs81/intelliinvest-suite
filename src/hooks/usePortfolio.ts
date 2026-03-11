@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useAuditLog } from '@/hooks/useAuditLog';
 import { type Asset } from '@/lib/mockData';
 
 const POLL_INTERVAL = 2 * 60 * 1000; // 2 minutes
@@ -24,6 +25,7 @@ export interface CashBalanceRow {
 
 export function usePortfolio() {
   const { user } = useAuth();
+  const { log: auditLog } = useAuditLog();
   const [assets, setAssets] = useState<Asset[]>([]);
   const [holdings, setHoldings] = useState<HoldingRow[]>([]);
   const [cashBalances, setCashBalances] = useState<CashBalanceRow[]>([]);
@@ -184,8 +186,11 @@ export function usePortfolio() {
       notes: 'Lançamento automático via Meus Ativos',
     });
 
+    await auditLog('buy', 'holding', holding.ticker.toUpperCase(), {
+      ticker: holding.ticker.toUpperCase(), quantity: holding.quantity, price: holding.avg_price,
+    });
     await refresh();
-  }, [user, refresh]);
+  }, [user, refresh, auditLog]);
 
   const updateHolding = useCallback(async (id: string, updates: Partial<HoldingRow>) => {
     if (!user) return;
@@ -204,10 +209,12 @@ export function usePortfolio() {
 
   const deleteHolding = useCallback(async (id: string) => {
     if (!user) return;
+    const holding = holdings.find(h => h.id === id);
     const { error } = await supabase.from('holdings').delete().eq('id', id).eq('user_id', user.id);
     if (error) throw error;
+    await auditLog('delete', 'holding', id, { ticker: holding?.ticker });
     await refresh();
-  }, [user, refresh]);
+  }, [user, refresh, holdings, auditLog]);
 
   // Sell holding (partial or full)
   const sellHolding = useCallback(async (holdingId: string, sellQty: number, sellPrice: number, fees: number = 0) => {
@@ -275,8 +282,11 @@ export function usePortfolio() {
       description: `Venda de ${sellQty}x ${holding.ticker} a ${sellPrice.toFixed(2)}`,
     } as any);
 
+    await auditLog('sell', 'holding', holdingId, {
+      ticker: holding.ticker, quantity: sellQty, price: sellPrice, total: sellTotal,
+    });
     await refresh();
-  }, [user, holdings, refresh]);
+  }, [user, holdings, refresh, auditLog]);
 
   // Update cash balance for a specific broker
   const updateCashBalanceBroker = useCallback(async (amount: number, broker: string | null, movementType?: 'deposit' | 'withdraw', movementAmount?: number) => {

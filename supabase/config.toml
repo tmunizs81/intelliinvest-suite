@@ -77,3 +77,9 @@ verify_jwt = false
 
 [functions.parse-brokerage-note]
 verify_jwt = false
+
+[functions.smart-contribution]
+verify_jwt = false
+
+[functions.ceiling-price]
+verify_jwt = false

@@ -25,6 +25,8 @@ import GoalsPanel from '@/components/dashboard/GoalsPanel';
 import DashboardChatbot from '@/components/dashboard/DashboardChatbot';
 import SmartAlertsPanel from '@/components/dashboard/SmartAlertsPanel';
 import MonthlyReportPanel from '@/components/dashboard/MonthlyReportPanel';
+import SmartContributionPanel from '@/components/dashboard/SmartContributionPanel';
+import CeilingPricePanel from '@/components/dashboard/CeilingPricePanel';
 
 import { usePortfolio, type HoldingRow } from '@/hooks/usePortfolio';
 import { Loader2, Lock, Unlock, RotateCcw } from 'lucide-react';
@@ -50,6 +52,8 @@ const defaultLayouts: any = {
     { i: 'ai-insights', x: 8, y: 52, w: 4, h: 7, minW: 3, minH: 4 },
     { i: 'smart-alerts', x: 0, y: 59, w: 6, h: 7, minW: 3, minH: 5 },
     { i: 'monthly-report', x: 6, y: 59, w: 6, h: 7, minW: 3, minH: 5 },
+    { i: 'smart-contribution', x: 0, y: 66, w: 6, h: 9, minW: 4, minH: 6 },
+    { i: 'ceiling-price', x: 6, y: 66, w: 6, h: 9, minW: 4, minH: 6 },
   ],
   md: [
     { i: 'summary', x: 0, y: 0, w: 10, h: 3, minW: 6, minH: 3 },
@@ -69,6 +73,8 @@ const defaultLayouts: any = {
     { i: 'ai-insights', x: 6, y: 64, w: 4, h: 7, minW: 3, minH: 4 },
     { i: 'smart-alerts', x: 0, y: 71, w: 5, h: 7, minW: 3, minH: 5 },
     { i: 'monthly-report', x: 5, y: 71, w: 5, h: 7, minW: 3, minH: 5 },
+    { i: 'smart-contribution', x: 0, y: 78, w: 5, h: 9, minW: 4, minH: 6 },
+    { i: 'ceiling-price', x: 5, y: 78, w: 5, h: 9, minW: 4, minH: 6 },
   ],
   sm: [
     { i: 'summary', x: 0, y: 0, w: 6, h: 4, minW: 6, minH: 3 },
@@ -88,6 +94,8 @@ const defaultLayouts: any = {
     { i: 'ai-insights', x: 0, y: 100, w: 6, h: 5, minW: 6, minH: 4 },
     { i: 'smart-alerts', x: 0, y: 105, w: 6, h: 7, minW: 6, minH: 5 },
     { i: 'monthly-report', x: 0, y: 112, w: 6, h: 7, minW: 6, minH: 5 },
+    { i: 'smart-contribution', x: 0, y: 119, w: 6, h: 9, minW: 6, minH: 6 },
+    { i: 'ceiling-price', x: 0, y: 128, w: 6, h: 9, minW: 6, minH: 6 },
   ],
 };
 
@@ -311,6 +319,16 @@ const Index = () => {
               <div key="monthly-report">
                 <DashboardPanel title="Relatório Mensal" locked={locked}>
                   <MonthlyReportPanel assets={assets} />
+                </DashboardPanel>
+              </div>
+              <div key="smart-contribution">
+                <DashboardPanel title="Aporte Inteligente" locked={locked}>
+                  <SmartContributionPanel assets={assets} />
+                </DashboardPanel>
+              </div>
+              <div key="ceiling-price">
+                <DashboardPanel title="Preço Teto (Bazin/Graham)" locked={locked}>
+                  <CeilingPricePanel assets={assets} />
                 </DashboardPanel>
               </div>
             </ResponsiveGrid>
