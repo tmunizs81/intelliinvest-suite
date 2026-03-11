@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # ══════════════════════════════════════════════
-#  InvestAI - Instalador de Produção
+#  T2-Simplynvest - Instalador de Produção
 #  Ubuntu 24.04 LTS + Docker (Isolado)
 # ══════════════════════════════════════════════
 
