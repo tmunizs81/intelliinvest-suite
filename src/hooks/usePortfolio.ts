@@ -136,6 +136,23 @@ export function usePortfolio() {
       sector: holding.sector,
     });
     if (error) throw error;
+
+    // Auto-create buy transaction for tax tracking
+    await supabase.from('transactions').insert({
+      user_id: user.id,
+      ticker: holding.ticker.toUpperCase(),
+      name: holding.name,
+      type: holding.type,
+      operation: 'buy',
+      quantity: holding.quantity,
+      price: holding.avg_price,
+      total: holding.quantity * holding.avg_price,
+      fees: 0,
+      date: new Date().toISOString().split('T')[0],
+      is_daytrade: false,
+      notes: 'Lançamento automático via Meus Ativos',
+    });
+
     await refresh();
   }, [user, refresh]);
 
