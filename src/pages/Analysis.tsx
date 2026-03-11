@@ -181,7 +181,23 @@ export default function Analysis() {
             </div>
           </div>
 
-          {/* Chart Tabs */}
+          {/* AI Signal Badge */}
+          <div className="mb-4">
+            <AISignalBadge
+              ticker={ticker}
+              name={assetName || ticker}
+              type={assetType}
+              candles={candles}
+              holdingInfo={asset ? {
+                quantity: asset.quantity,
+                avgPrice: asset.avgPrice,
+                currentPrice: asset.currentPrice,
+                profitPct: profitInfo?.profitPct || 0,
+              } : undefined}
+            />
+          </div>
+
+
           <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
             <div className="flex gap-1 bg-muted rounded-lg p-1">
               <button
