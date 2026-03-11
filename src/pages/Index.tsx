@@ -12,6 +12,7 @@ import PerformanceChart from '@/components/dashboard/PerformanceChart';
 import DividendsPanel from '@/components/dashboard/DividendsPanel';
 import HoldingsTable from '@/components/dashboard/HoldingsTable';
 import AIInsightsPanel from '@/components/dashboard/AIInsightsPanel';
+import CurrencyDashboard from '@/components/dashboard/CurrencyDashboard';
 import AlertsPanel from '@/components/dashboard/AlertsPanel';
 import LicenseAlert from '@/components/dashboard/LicenseAlert';
 import HoldingModal from '@/components/dashboard/HoldingModal';
@@ -29,7 +30,8 @@ const defaultLayouts: any = {
     { i: 'dividends', x: 0, y: 18, w: 12, h: 9, minW: 6, minH: 6 },
     { i: 'holdings', x: 0, y: 27, w: 8, h: 10, minW: 6, minH: 6 },
     { i: 'alerts', x: 8, y: 27, w: 4, h: 5, minW: 3, minH: 4 },
-    { i: 'ai-insights', x: 8, y: 32, w: 4, h: 5, minW: 3, minH: 4 },
+    { i: 'currency', x: 8, y: 32, w: 4, h: 5, minW: 3, minH: 4 },
+    { i: 'ai-insights', x: 8, y: 37, w: 4, h: 5, minW: 3, minH: 4 },
   ],
   md: [
     { i: 'summary', x: 0, y: 0, w: 10, h: 3, minW: 6, minH: 3 },
@@ -39,7 +41,8 @@ const defaultLayouts: any = {
     { i: 'dividends', x: 0, y: 18, w: 10, h: 9, minW: 6, minH: 6 },
     { i: 'holdings', x: 0, y: 27, w: 10, h: 10, minW: 6, minH: 6 },
     { i: 'alerts', x: 0, y: 37, w: 5, h: 5, minW: 3, minH: 4 },
-    { i: 'ai-insights', x: 5, y: 37, w: 5, h: 5, minW: 3, minH: 4 },
+    { i: 'currency', x: 5, y: 37, w: 5, h: 5, minW: 3, minH: 4 },
+    { i: 'ai-insights', x: 0, y: 42, w: 10, h: 5, minW: 3, minH: 4 },
   ],
   sm: [
     { i: 'summary', x: 0, y: 0, w: 6, h: 4, minW: 6, minH: 3 },
@@ -49,7 +52,8 @@ const defaultLayouts: any = {
     { i: 'dividends', x: 0, y: 26, w: 6, h: 9, minW: 6, minH: 6 },
     { i: 'holdings', x: 0, y: 35, w: 6, h: 10, minW: 6, minH: 6 },
     { i: 'alerts', x: 0, y: 45, w: 6, h: 5, minW: 6, minH: 4 },
-    { i: 'ai-insights', x: 0, y: 50, w: 6, h: 5, minW: 6, minH: 4 },
+    { i: 'currency', x: 0, y: 50, w: 6, h: 5, minW: 6, minH: 4 },
+    { i: 'ai-insights', x: 0, y: 55, w: 6, h: 5, minW: 6, minH: 4 },
   ],
 };
 
@@ -222,6 +226,11 @@ const Index = () => {
               <div key="ai-insights">
                 <DashboardPanel title="IA Insights" locked={locked}>
                   <AIInsightsPanel assets={assets} />
+                </DashboardPanel>
+              </div>
+              <div key="currency">
+                <DashboardPanel title="Câmbio" locked={locked}>
+                  <CurrencyDashboard />
                 </DashboardPanel>
               </div>
             </ResponsiveGrid>
