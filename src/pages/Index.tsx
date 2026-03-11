@@ -5,6 +5,7 @@ import PortfolioChart from '@/components/dashboard/PortfolioChart';
 import AllocationChart from '@/components/dashboard/AllocationChart';
 import HoldingsTable from '@/components/dashboard/HoldingsTable';
 import AIInsightsPanel from '@/components/dashboard/AIInsightsPanel';
+import AlertsPanel from '@/components/dashboard/AlertsPanel';
 import HoldingModal from '@/components/dashboard/HoldingModal';
 import { usePortfolio, type HoldingRow } from '@/hooks/usePortfolio';
 import { useAuth } from '@/hooks/useAuth';
