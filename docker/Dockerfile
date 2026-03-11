@@ -28,7 +28,7 @@ FROM nginx:1.27-alpine AS production
 RUN rm -f /etc/nginx/conf.d/default.conf
 
 # Copiar config customizada
-COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
+COPY docker/nginx.conf /etc/nginx/conf.d/simplynvest.conf
 
 # Copiar arquivos estáticos do build
 COPY --from=builder /app/dist /usr/share/nginx/html
@@ -36,6 +36,7 @@ COPY --from=builder /app/dist /usr/share/nginx/html
 # Instalar curl para healthcheck
 RUN apk add --no-cache curl
 
+# Container escuta na porta 80 (internamente)
 EXPOSE 80
 
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
