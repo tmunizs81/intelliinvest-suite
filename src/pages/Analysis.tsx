@@ -14,6 +14,7 @@ import AISignalBadge from '@/components/analysis/AISignalBadge';
 import AIChartSummary from '@/components/analysis/AIChartSummary';
 import AssetProfilePanel from '@/components/analysis/AssetProfilePanel';
 import MarketNewsPanel from '@/components/analysis/MarketNewsPanel';
+import FiiPropertiesPanel from '@/components/analysis/FiiPropertiesPanel';
 
 type RangeOption = '1mo' | '3mo' | '6mo' | '1y' | '2y' | '5y' | '10y' | 'max';
 
@@ -307,6 +308,12 @@ export default function Analysis() {
             </div>
           </div>
 
+          {/* FII Properties List */}
+          {(assetType === 'FII' || /^[A-Z]{4}11$/i.test(ticker)) && (
+            <div className="mt-6">
+              <FiiPropertiesPanel ticker={ticker} />
+            </div>
+          )}
 
           {/* Position info */}
           {asset && profitInfo && (
