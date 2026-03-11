@@ -8,6 +8,7 @@ import {
 import { usePortfolio, type HoldingRow } from '@/hooks/usePortfolio';
 import HoldingModal from '@/components/dashboard/HoldingModal';
 import SellModal from '@/components/dashboard/SellModal';
+import CashBalanceModal from '@/components/dashboard/CashBalanceModal';
 import BrokerageImportPanel from '@/components/dashboard/BrokerageImportPanel';
 import { type Asset, formatCurrency, formatPercent } from '@/lib/mockData';
 
