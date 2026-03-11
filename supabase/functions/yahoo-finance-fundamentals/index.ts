@@ -6,6 +6,46 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+interface FundamentalResult {
+  pe: number | null;
+  pb: number | null;
+  roe: number | null;
+  dividendYield: number | null;
+  evEbitda: number | null;
+  netMargin: number | null;
+  debtToEquity: number | null;
+  marketCap: number | null;
+  eps: number | null;
+  revenue: number | null;
+  ebitda: number | null;
+  freeCashFlow: number | null;
+  bookValue: number | null;
+  beta: number | null;
+  fiftyTwoWeekHigh: number | null;
+  fiftyTwoWeekLow: number | null;
+  avgVolume: number | null;
+}
+
+const EMPTY_RESULT: FundamentalResult = {
+  pe: null,
+  pb: null,
+  roe: null,
+  dividendYield: null,
+  evEbitda: null,
+  netMargin: null,
+  debtToEquity: null,
+  marketCap: null,
+  eps: null,
+  revenue: null,
+  ebitda: null,
+  freeCashFlow: null,
+  bookValue: null,
+  beta: null,
+  fiftyTwoWeekHigh: null,
+  fiftyTwoWeekLow: null,
+  avgVolume: null,
+};
+
 function mapToYahooTicker(ticker: string): string {
   const mappings: Record<string, string> = {
     BTC: "BTC-BRL",
@@ -25,145 +65,132 @@ function randomUA() {
   return userAgents[Math.floor(Math.random() * userAgents.length)];
 }
 
-// Get Yahoo Finance crumb + cookie for authenticated API access
+function decodeHtmlEntities(text: string) {
+  return text
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">");
+}
+
+function stripHtmlToText(html: string) {
+  return decodeHtmlEntities(html)
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function parseLocaleNumber(value?: string | null): number | null {
+  if (!value) return null;
+  const cleaned = value.replace(/[^\d,.-]/g, "").trim();
+  if (!cleaned) return null;
+
+  if (cleaned.includes(",") && cleaned.includes(".")) {
+    return Number(cleaned.replace(/\./g, "").replace(",", "."));
+  }
+
+  if (cleaned.includes(",")) {
+    return Number(cleaned.replace(",", "."));
+  }
+
+  return Number(cleaned);
+}
+
+function parseMoneyMagnitude(value?: string | null): number | null {
+  if (!value) return null;
+  const normalized = value.replace(/\s+/g, " ").trim();
+  const match = normalized.match(/R\$\s*([\d.,]+)\s*([KMB]|Mil|Mi|Bi)?/i);
+  if (!match) return null;
+
+  const base = parseLocaleNumber(match[1]);
+  if (base == null || Number.isNaN(base)) return null;
+
+  const suffix = (match[2] || "").toUpperCase();
+  if (suffix === "K" || suffix === "MIL") return base * 1e3;
+  if (suffix === "M" || suffix === "MI") return base * 1e6;
+  if (suffix === "B" || suffix === "BI") return base * 1e9;
+  return base;
+}
+
+function parseFirst(text: string, regex: RegExp): number | null {
+  const match = text.match(regex);
+  return parseLocaleNumber(match?.[1] ?? null);
+}
+
+async function fetchHtml(url: string): Promise<string | null> {
+  try {
+    const resp = await fetch(url, {
+      headers: {
+        "User-Agent": randomUA(),
+        "Accept": "text/html,application/xhtml+xml",
+        "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
+      },
+    });
+
+    if (!resp.ok) return null;
+    return await resp.text();
+  } catch (error) {
+    console.error(`fetchHtml error for ${url}:`, error);
+    return null;
+  }
+}
+
 async function getCrumbAndCookie(): Promise<{ crumb: string; cookie: string } | null> {
   try {
     const ua = randomUA();
-    
-    // Step 1: Get consent cookie by visiting Yahoo Finance
     const initResp = await fetch("https://fc.yahoo.com/", {
       headers: { "User-Agent": ua },
       redirect: "manual",
     });
-    
+
     const setCookies = initResp.headers.get("set-cookie") || "";
-    
-    // Step 2: Get crumb
     const crumbResp = await fetch("https://query2.finance.yahoo.com/v1/test/getcrumb", {
       headers: {
         "User-Agent": ua,
-        "Cookie": setCookies,
+        Cookie: setCookies,
       },
     });
-    
+
     if (!crumbResp.ok) return null;
     const crumb = await crumbResp.text();
     if (!crumb || crumb.includes("<")) return null;
-    
+
     return { crumb, cookie: setCookies };
-  } catch (e) {
-    console.error("Failed to get crumb:", e);
+  } catch (error) {
+    console.error("Failed to get Yahoo crumb:", error);
     return null;
   }
 }
 
-// Strategy 1: Scrape from Yahoo Finance HTML page (most reliable, no auth needed)
-async function tryHtmlScrape(yahooTicker: string): Promise<any | null> {
+async function tryYahooV10(yahooTicker: string, auth: { crumb: string; cookie: string } | null): Promise<Partial<FundamentalResult> | null> {
   try {
-    const ua = randomUA();
-    const url = `https://finance.yahoo.com/quote/${yahooTicker}/`;
-    const resp = await fetch(url, {
-      headers: {
-        "User-Agent": ua,
-        "Accept": "text/html,application/xhtml+xml",
-        "Accept-Language": "en-US,en;q=0.9",
-      },
-    });
-    if (!resp.ok) return null;
-    const html = await resp.text();
-    
-    // Extract JSON data embedded in the page
-    const match = html.match(/root\.App\.main\s*=\s*(\{.*?\});\s*\n/s) 
-      || html.match(/"QuoteSummaryStore":\s*(\{.*?\})\s*,\s*"[A-Z]/s);
-    
-    if (!match) {
-      // Try finding data in newer format - look for quoteSummary in script tags
-      const scriptMatch = html.match(/<script[^>]*>.*?"quoteSummary".*?<\/script>/s);
-      if (scriptMatch) {
-        // Try to extract individual values using regex patterns
-        return extractFromHtml(html);
-      }
-      return extractFromHtml(html);
-    }
-    
-    return null;
-  } catch (e) {
-    console.error("HTML scrape error:", e);
-    return null;
-  }
-}
-
-function extractFromHtml(html: string): any | null {
-  const extract = (pattern: RegExp): number | null => {
-    const m = html.match(pattern);
-    if (m?.[1]) {
-      const val = parseFloat(m[1].replace(/,/g, ""));
-      return isNaN(val) ? null : val;
-    }
-    return null;
-  };
-
-  // Look for data in fin-streamer elements and data attributes
-  const pe = extract(/data-field="trailingPE"[^>]*>([0-9.,]+)/) 
-    ?? extract(/"trailingPE":\s*\{"raw":\s*([0-9.]+)/);
-  const pb = extract(/data-field="priceToBook"[^>]*>([0-9.,]+)/)
-    ?? extract(/"priceToBook":\s*\{"raw":\s*([0-9.]+)/);
-  const eps = extract(/"epsTrailingTwelveMonths":\s*([0-9.]+)/)
-    ?? extract(/data-field="epsTrailingTwelveMonths"[^>]*>([0-9.,]+)/);
-  const bookValue = extract(/"bookValue":\s*\{"raw":\s*([0-9.]+)/)
-    ?? extract(/data-field="bookValue"[^>]*>([0-9.,]+)/);
-  const marketCap = extract(/"marketCap":\s*\{"raw":\s*([0-9.]+)/);
-  const dividendYield = extract(/"dividendYield":\s*\{"raw":\s*([0-9.]+)/);
-  const fiftyTwoWeekHigh = extract(/"fiftyTwoWeekHigh":\s*\{"raw":\s*([0-9.]+)/)
-    ?? extract(/data-field="fiftyTwoWeekHigh"[^>]*>([0-9.,]+)/);
-  const fiftyTwoWeekLow = extract(/"fiftyTwoWeekLow":\s*\{"raw":\s*([0-9.]+)/)
-    ?? extract(/data-field="fiftyTwoWeekLow"[^>]*>([0-9.,]+)/);
-  const beta = extract(/"beta":\s*\{"raw":\s*([0-9.]+)/);
-  const avgVolume = extract(/"averageDailyVolume10Day":\s*\{"raw":\s*([0-9.]+)/)
-    ?? extract(/data-field="averageDailyVolume10Day"[^>]*>([0-9.,]+)/);
-
-  const hasData = [pe, pb, eps, bookValue, marketCap, dividendYield, fiftyTwoWeekHigh, fiftyTwoWeekLow].some(v => v != null);
-  if (!hasData) return null;
-
-  return {
-    pe, pb, evEbitda: null, eps, bookValue,
-    roe: null, netMargin: null,
-    dividendYield: dividendYield != null ? dividendYield * 100 : null,
-    debtToEquity: null, marketCap,
-    revenue: null, ebitda: null, freeCashFlow: null,
-    fiftyTwoWeekHigh, fiftyTwoWeekLow, beta, avgVolume,
-  };
-}
-
-// Strategy 2: Yahoo v10 quoteSummary with crumb auth
-async function tryV10(yahooTicker: string, auth: { crumb: string; cookie: string } | null): Promise<any | null> {
-  const modules = "summaryDetail,defaultKeyStatistics,financialData,price";
-  const crumbParam = auth ? `&crumb=${encodeURIComponent(auth.crumb)}` : "";
-  const url = `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${yahooTicker}?modules=${modules}${crumbParam}`;
-  
-  try {
+    const modules = "summaryDetail,defaultKeyStatistics,financialData,price";
+    const crumbParam = auth ? `&crumb=${encodeURIComponent(auth.crumb)}` : "";
+    const url = `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${yahooTicker}?modules=${modules}${crumbParam}`;
     const headers: Record<string, string> = { "User-Agent": randomUA() };
-    if (auth?.cookie) headers["Cookie"] = auth.cookie;
-    
+    if (auth?.cookie) headers.Cookie = auth.cookie;
+
     const resp = await fetch(url, { headers });
-    if (!resp.ok) {
-      console.log(`v10 returned ${resp.status} for ${yahooTicker}`);
-      return null;
-    }
+    if (!resp.ok) return null;
+
     const data = await resp.json();
     const result = data.quoteSummary?.result?.[0];
     if (!result) return null;
-
-    const summary = result.summaryDetail || {};
-    const keyStats = result.defaultKeyStatistics || {};
-    const financial = result.financialData || {};
-    const price = result.price || {};
 
     const getRaw = (obj: any) => {
       if (obj == null) return null;
       if (typeof obj === "number") return obj;
       return obj?.raw ?? obj?.rawValue ?? null;
     };
+
+    const summary = result.summaryDetail || {};
+    const keyStats = result.defaultKeyStatistics || {};
+    const financial = result.financialData || {};
+    const price = result.price || {};
 
     return {
       pe: getRaw(summary.trailingPE) ?? getRaw(keyStats.trailingPE),
@@ -188,81 +215,90 @@ async function tryV10(yahooTicker: string, auth: { crumb: string; cookie: string
       beta: getRaw(keyStats.beta) ?? getRaw(summary.beta),
       avgVolume: getRaw(summary.averageDailyVolume10Day) ?? getRaw(price.averageDailyVolume10Day),
     };
-  } catch (e) {
-    console.error("v10 error:", e);
+  } catch (error) {
+    console.error("tryYahooV10 error:", error);
     return null;
   }
 }
 
-// Strategy 3: Yahoo v8 chart + quote combined
-async function tryChart(yahooTicker: string): Promise<any | null> {
+async function tryYahooChart(yahooTicker: string): Promise<Partial<FundamentalResult> | null> {
   try {
     const url = `https://query2.finance.yahoo.com/v8/finance/chart/${yahooTicker}?interval=1d&range=5d&includePrePost=false`;
     const resp = await fetch(url, { headers: { "User-Agent": randomUA() } });
     if (!resp.ok) return null;
+
     const data = await resp.json();
     const meta = data.chart?.result?.[0]?.meta;
     if (!meta) return null;
 
     return {
-      pe: null, pb: null, evEbitda: null, eps: null, bookValue: null,
-      roe: null, netMargin: null, dividendYield: null, debtToEquity: null,
-      marketCap: null, revenue: null, ebitda: null, freeCashFlow: null,
       fiftyTwoWeekHigh: meta.fiftyTwoWeekHigh ?? null,
       fiftyTwoWeekLow: meta.fiftyTwoWeekLow ?? null,
-      beta: null, avgVolume: null,
     };
-  } catch {
+  } catch (error) {
+    console.error("tryYahooChart error:", error);
     return null;
   }
 }
 
-// Strategy 4: Use alternative API (brapi.dev - Brazilian stocks API)
-async function tryBrapi(ticker: string): Promise<any | null> {
-  try {
-    // brapi works with raw Brazilian tickers (no .SA suffix)
-    const url = `https://brapi.dev/api/quote/${ticker}?fundamental=true`;
-    const resp = await fetch(url, { headers: { "User-Agent": randomUA() } });
-    if (!resp.ok) return null;
-    const data = await resp.json();
-    const q = data.results?.[0];
-    if (!q) return null;
+function parseInvestidor10Fii(text: string, ticker: string): Partial<FundamentalResult> | null {
+  const upperTicker = ticker.toUpperCase();
+  const currentPrice = parseFirst(text, new RegExp(`${upperTicker}\\s+Cotação\\s+R\\$\\s*([\\d.,]+)`, "i"));
+  const dividendYield = parseFirst(text, new RegExp(`${upperTicker}\\s+DY\\s*\\(12M\\)\\s*([\\d.,]+)%`, "i"));
+  const pb = parseFirst(text, /P\/?VP\s*([\d.,]+)/i);
+  const avgVolumeValue = text.match(/Liquidez Di[aá]ria\s*R\$\s*([\d.,]+\s*[KMB]|[\d.,]+)/i)?.[1] ?? null;
+  const avgVolume = parseMoneyMagnitude(avgVolumeValue ? `R$ ${avgVolumeValue}` : null);
 
-    return {
-      pe: q.priceEarnings ?? null,
-      pb: q.priceToBookRatio ?? null,
-      evEbitda: q.evToEbitda ?? null,
-      eps: q.earningsPerShare ?? null,
-      bookValue: q.bookValuePerShare ?? null,
-      roe: q.returnOnEquity != null ? q.returnOnEquity * 100 : null,
-      netMargin: q.netMargin != null ? q.netMargin * 100 : null,
-      dividendYield: q.dividendYield ?? (q.dividendsPerShare != null && q.regularMarketPrice ? (q.dividendsPerShare / q.regularMarketPrice) * 100 : null),
-      debtToEquity: q.debtToEquity ?? null,
-      marketCap: q.marketCap ?? null,
-      revenue: q.totalRevenue ?? null,
-      ebitda: q.ebitda ?? null,
-      freeCashFlow: q.freeCashFlow ?? null,
-      fiftyTwoWeekHigh: q.fiftyTwoWeekHigh ?? null,
-      fiftyTwoWeekLow: q.fiftyTwoWeekLow ?? null,
-      beta: q.beta ?? null,
-      avgVolume: q.averageDailyVolume10Day ?? null,
-    };
-  } catch (e) {
-    console.error("brapi error:", e);
-    return null;
+  const result: Partial<FundamentalResult> = {
+    dividendYield,
+    pb,
+    avgVolume,
+  };
+
+  if (currentPrice != null && pb != null && pb > 0) {
+    result.bookValue = currentPrice / pb;
   }
+
+  return Object.values(result).some((value) => value != null) ? result : null;
 }
 
-function mergeData(primary: any, secondary: any): any {
-  if (!primary) return secondary;
-  if (!secondary) return primary;
-  const merged = { ...primary };
-  for (const key of Object.keys(secondary)) {
-    if (merged[key] == null && secondary[key] != null) {
-      merged[key] = secondary[key];
+function parseStatusInvestFii(text: string): Partial<FundamentalResult> | null {
+  const currentPrice = parseFirst(text, /Valor atual\s*R\$\s*([\d.,]+)/i);
+  const low52 = parseFirst(text, /Min\.\s*52\s*semanas\s*R\$\s*([\d.,]+)/i);
+  const high52 = parseFirst(text, /M[aá]x\.\s*52\s*semanas\s*R\$\s*([\d.,]+)/i);
+  const dividendYield = parseFirst(text, /Dividend Yield\s*([\d.,]+)\s*%/i);
+  const bookValue = parseFirst(text, /Val\.\s*patrimonial\s*p\/?cota\s*Valor patrimonial\s*p\/?cota\s*R\$\s*([\d.,]+)/i);
+  const patrimony = parseMoneyMagnitude(text.match(/Patrim[oô]nio\s*R\$\s*([\d.,]+(?:\s*[KMB])?)/i)?.[0] ?? null);
+  const pb = parseFirst(text, /P\/?VP\s*([\d.,]+)\s*Valor de mercado/i) ?? (currentPrice != null && bookValue != null && bookValue > 0 ? currentPrice / bookValue : null);
+  const marketCapFromText = parseMoneyMagnitude(text.match(/Valor de mercado\s*R\$\s*([\d.,]+(?:\s*[KMB])?)/i)?.[0] ?? null);
+  const marketCap = marketCapFromText ?? (patrimony != null && pb != null ? patrimony * pb : null);
+
+  const result: Partial<FundamentalResult> = {
+    pb,
+    dividendYield,
+    bookValue,
+    marketCap,
+    fiftyTwoWeekHigh: high52,
+    fiftyTwoWeekLow: low52,
+  };
+
+  return Object.values(result).some((value) => value != null) ? result : null;
+}
+
+function mergeData(...sources: Array<Partial<FundamentalResult> | null>): FundamentalResult {
+  const result: FundamentalResult = { ...EMPTY_RESULT };
+
+  for (const source of sources) {
+    if (!source) continue;
+    for (const [key, value] of Object.entries(source)) {
+      const typedKey = key as keyof FundamentalResult;
+      if (result[typedKey] == null && value != null) {
+        result[typedKey] = value as never;
+      }
     }
   }
-  return merged;
+
+  return result;
 }
 
 serve(async (req) => {
@@ -273,73 +309,49 @@ serve(async (req) => {
   try {
     const { ticker, type } = await req.json();
     if (!ticker) {
-      return new Response(
-        JSON.stringify({ error: "ticker required" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "ticker required" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const yahooTicker = mapToYahooTicker(ticker);
-    const isBrazilian = yahooTicker.endsWith(".SA");
-    console.log(`Fetching fundamentals for ${ticker} → ${yahooTicker} (isBR: ${isBrazilian})`);
+    const isFii = type === "FII" && /^[A-Z]{4}\d{1,2}$/i.test(ticker);
 
-    // Get crumb for authenticated Yahoo requests
+    console.log(`Fetching fundamentals for ${ticker} → ${yahooTicker} (FII: ${isFii})`);
+
     const auth = await getCrumbAndCookie();
-    console.log(`Auth crumb obtained: ${!!auth}`);
 
-    // Run all strategies in parallel
-    const strategies = [
-      tryV10(yahooTicker, auth),
-      tryChart(yahooTicker),
-    ];
-    
-    // For Brazilian stocks, also try brapi as additional source
-    if (isBrazilian) {
-      strategies.push(tryBrapi(ticker));
-    }
+    const [yahooV10, yahooChart, investidorHtml, statusInvestHtml] = await Promise.all([
+      tryYahooV10(yahooTicker, auth),
+      tryYahooChart(yahooTicker),
+      isFii ? fetchHtml(`https://investidor10.com.br/fiis/${ticker.toLowerCase()}/`) : Promise.resolve(null),
+      isFii ? fetchHtml(`https://statusinvest.com.br/fundos-imobiliarios/${ticker.toLowerCase()}`) : Promise.resolve(null),
+    ]);
 
-    const results = await Promise.allSettled(strategies);
-    
-    const v10 = results[0].status === "fulfilled" ? results[0].value : null;
-    const chart = results[1].status === "fulfilled" ? results[1].value : null;
-    const brapi = results.length > 2 && results[2].status === "fulfilled" ? results[2].value : null;
+    const investidorParsed = investidorHtml ? parseInvestidor10Fii(stripHtmlToText(investidorHtml), ticker) : null;
+    const statusInvestParsed = statusInvestHtml ? parseStatusInvestFii(stripHtmlToText(statusInvestHtml)) : null;
 
-    console.log(`Results - v10: ${v10 ? "ok" : "null"}, chart: ${chart ? "ok" : "null"}, brapi: ${brapi ? "ok" : "null"}`);
+    const result = isFii
+      ? mergeData(statusInvestParsed, investidorParsed, yahooV10, yahooChart)
+      : mergeData(yahooV10, yahooChart);
 
-    let result = mergeData(v10, chart);
-    if (brapi) {
-      result = mergeData(result, brapi);
-    }
+    console.log(`Parsed sources for ${ticker}:`, JSON.stringify({
+      yahooV10: !!yahooV10,
+      yahooChart: !!yahooChart,
+      investidorParsed,
+      statusInvestParsed,
+    }));
+    console.log(`Fundamentals result for ${ticker}: ${JSON.stringify(result)}`);
 
-    // If still empty, try HTML scrape as last resort
-    if (!result || Object.values(result).filter(v => v != null).length <= 2) {
-      console.log("Trying HTML scrape as fallback...");
-      const htmlData = await tryHtmlScrape(yahooTicker);
-      result = mergeData(result, htmlData);
-    }
-
-    if (!result) {
-      result = {
-        pe: null, pb: null, evEbitda: null, eps: null, bookValue: null,
-        roe: null, netMargin: null, dividendYield: null, debtToEquity: null,
-        marketCap: null, revenue: null, ebitda: null, freeCashFlow: null,
-        fiftyTwoWeekHigh: null, fiftyTwoWeekLow: null, beta: null, avgVolume: null,
-      };
-    }
-
-    const nonNullCount = Object.values(result).filter(v => v != null).length;
-    console.log(`Fundamentals result for ${ticker}: ${nonNullCount} non-null fields`);
-    console.log(JSON.stringify(result));
-
-    return new Response(
-      JSON.stringify(result),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify(result), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   } catch (err) {
     console.error("yahoo-finance-fundamentals error:", err);
-    return new Response(
-      JSON.stringify({ error: err instanceof Error ? err.message : "Unknown error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ error: err instanceof Error ? err.message : "Unknown error" }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 });
