@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 // @ts-ignore
-import { Responsive, useContainerWidth } from 'react-grid-layout';
+import { Responsive as ResponsiveOrig } from 'react-grid-layout';
+const ResponsiveGrid: any = ResponsiveOrig;
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
 
