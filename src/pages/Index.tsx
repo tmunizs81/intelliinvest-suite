@@ -158,6 +158,7 @@ const Index = () => {
           </div>
         ) : (
           <div className="pb-12" ref={containerRef}>
+            {/* @ts-ignore - react-grid-layout types mismatch */}
             <Responsive
               className="layout"
               width={containerWidth}
@@ -170,7 +171,7 @@ const Index = () => {
               onLayoutChange={handleLayoutChange}
               draggableHandle=".drag-handle"
               compactType="vertical"
-              margin={[16, 16] as [number, number]}
+              margin={[16, 16]}
             >
               <div key="summary">
                 <DashboardPanel title="" noPadding locked={locked}>
