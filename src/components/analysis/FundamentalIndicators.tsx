@@ -145,8 +145,14 @@ export default function FundamentalIndicators({ ticker, type, loadDelay = 0 }: P
               <h3 className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1">Valuation</h3>
               <Stat label="P/VP" value={fmt(data.pb)} signal={data.pb != null ? (data.pb < 1 ? 'good' : data.pb > 1.3 ? 'bad' : 'neutral') : undefined} />
               <Stat label="Dividend Yield" value={fmt(data.dividendYield)} suffix="%" signal={data.dividendYield != null ? (data.dividendYield > 8 ? 'good' : 'neutral') : undefined} />
+              <Stat label="Último Rendimento" value={data.lastDividend != null ? formatCurrency(data.lastDividend) : null} />
               <Stat label="Valor Patrimonial" value={data.bookValue != null ? formatCurrency(data.bookValue) : null} />
               <Stat label="Market Cap" value={fmtBig(data.marketCap)} />
+              <Stat label="Patrimônio Líq." value={fmtBig(data.patrimony)} />
+
+              <h3 className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1 mt-4">Operacional</h3>
+              <Stat label="Vacância" value={fmt(data.vacancy)} suffix="%" signal={data.vacancy != null ? (data.vacancy < 5 ? 'good' : data.vacancy > 15 ? 'bad' : 'neutral') : undefined} />
+              <Stat label="Nº Cotistas" value={data.cotistas != null ? `${data.cotistas.toLocaleString('pt-BR')}` : null} />
 
               <h3 className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1 mt-4">Preço</h3>
               <Stat label="Máxima 52 sem" value={data.fiftyTwoWeekHigh != null ? formatCurrency(data.fiftyTwoWeekHigh) : null} />
@@ -182,6 +188,15 @@ export default function FundamentalIndicators({ ticker, type, loadDelay = 0 }: P
               <Stat label="Mínima 52 sem" value={data.fiftyTwoWeekLow != null ? formatCurrency(data.fiftyTwoWeekLow) : null} />
               <Stat label="Beta" value={fmt(data.beta)} />
             </>
+          )}
+
+          {/* Sources footer */}
+          {data.sources && data.sources.length > 0 && (
+            <div className="pt-3 mt-3 border-t border-border/50">
+              <p className="text-[9px] text-muted-foreground">
+                Fontes: {data.sources.join(' · ')}
+              </p>
+            </div>
           )}
         </div>
       ) : null}
