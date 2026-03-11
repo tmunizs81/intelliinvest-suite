@@ -358,6 +358,9 @@ const Index = () => {
       {/* Floating AI Chatbot */}
       <DashboardChatbot assets={assets} />
 
+      {/* Onboarding */}
+      <OnboardingOverlay />
+
       <HoldingModal
         open={modalOpen}
         onClose={handleCloseModal}
