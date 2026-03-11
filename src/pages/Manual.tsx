@@ -15,10 +15,13 @@ O **T2-SimplyNvest** é uma plataforma inteligente de gestão de investimentos q
 - **Inteligência Artificial** para análises e recomendações
 - **Controle fiscal** automatizado com cálculo de DARF
 - **Gestão de dividendos** com projeções futuras
-- **Relatórios profissionais** exportáveis
-- **Alertas inteligentes** em tempo real
+- **Relatórios profissionais** exportáveis (PDF e CSV)
+- **Alertas inteligentes** em tempo real com Push e Telegram
 - **Suporte a múltiplas corretoras** e tipos de ativos
 - **Carteira familiar** para gestão compartilhada
+- **Histórico patrimonial** real com snapshots diários
+- **Atualização automática** de preços a cada 5 minutos
+- **Comparador de ativos** com veredito IA
 
 ### Requisitos do Sistema:
 - Navegador moderno (Chrome, Firefox, Edge, Safari)
@@ -73,17 +76,24 @@ O Dashboard é a tela principal do sistema, oferecendo uma visão completa e per
 - Patrimônio total investido
 - Rentabilidade geral (R$ e %)
 - Variação no dia
-- Número de ativos
+- Countdown para próxima atualização automática (5 min)
 
 #### 🏥 Score de Saúde
 - Nota de 0 a 100 para sua carteira
 - Avaliação de diversificação, risco e concentração
 - Recomendações de melhoria
+- Rate limiting: máx. 4 consultas IA/minuto
 
 #### 📈 Gráfico de Evolução
 - Evolução patrimonial ao longo do tempo
 - Comparação com benchmarks (CDI, IBOV, IFIX)
 - Filtros de período (1M, 3M, 6M, 1A, Total)
+
+#### 📊 Histórico Patrimonial (Real)
+- Gráfico baseado em **snapshots reais** salvos diariamente
+- Linha de patrimônio + linha tracejada de custo
+- Dados construídos automaticamente a cada login
+- Filtros: 7D, 1M, 3M, 6M, 1A, Total
 
 #### 🎯 Alocação por Tipo
 - Gráfico de pizza com distribuição por classe de ativo
@@ -142,10 +152,12 @@ O Dashboard é a tela principal do sistema, oferecendo uma visão completa e per
 #### ⚡ Alertas Inteligentes
 - Análise automatizada de oportunidades e riscos
 - Notificações baseadas em IA
+- Proteção contra excesso de chamadas (rate limiting)
 
-#### 📑 Relatório Mensal
-- Resumo mensal automático do desempenho
-- Gerado por IA
+#### 🔔 Notificações Push (PWA)
+- Receba alertas diretamente no navegador/celular
+- Ative clicando no ícone 🔔 no painel de alertas
+- Funciona mesmo com o app minimizado (quando instalado como PWA)
 
 #### 💡 Aporte Inteligente
 - Sugestão de onde alocar novos aportes
@@ -179,6 +191,13 @@ O Dashboard é **totalmente personalizável**:
 2. **Redimensionar**: Arraste as bordas dos painéis para alterar o tamanho
 3. **Travar layout**: Clique no ícone de cadeado (🔒) para impedir movimentações acidentais
 4. **Resetar layout**: Clique no ícone de reset (↩️) para voltar ao layout padrão
+
+### Atualização Automática de Preços
+
+- Os preços são atualizados automaticamente a cada **5 minutos**
+- Um countdown exibe o tempo restante para a próxima atualização
+- Clique no botão de refresh para atualizar manualmente a qualquer momento
+- Fontes: Yahoo Finance, CoinGecko (cripto), AwesomeAPI (câmbio)
 
 > 💡 O layout é salvo automaticamente no navegador. Cada usuário tem seu layout personalizado.
     `,
@@ -471,8 +490,10 @@ O módulo de **Relatórios** gera documentos completos sobre sua carteira.
 - 1 Mês, 3 Meses, 6 Meses, 1 Ano, Total
 
 ### Exportação:
-- Clique em **"Exportar PDF"** ou **"Imprimir"** para gerar o relatório
-- Formato otimizado para impressão A4
+- **PDF**: Clique em "Exportar PDF" para gerar relatório formatado para impressão
+- **CSV Carteira**: Exporta todos os ativos com preço médio, atual, resultado e alocação
+- **CSV Transações**: Exporta histórico completo de operações (compras, vendas, taxas)
+- Arquivos CSV compatíveis com Excel (separador ;, codificação UTF-8)
     `,
   },
   {
@@ -612,6 +633,18 @@ O sistema pode enviar notificações em tempo real para seu Telegram.
    - **Notificar via Telegram**: Sim/Não
 4. Clique em **"Criar Alerta"**
 
+### Canais de Notificação:
+
+#### 🔔 Push Notifications (navegador)
+- Clique no ícone **🔔** no painel de alertas para ativar
+- O navegador pedirá permissão para enviar notificações
+- Funciona mesmo com o app minimizado (quando instalado como PWA)
+- Não precisa de Telegram configurado
+
+#### 📱 Telegram
+- Configure em **Configurações → Telegram**
+- Receba alertas diretamente no celular via bot
+
 ### Status dos Alertas:
 - 🟢 **Ativo**: Monitorando em tempo real
 - 🟡 **Disparado**: Condição atingida
@@ -746,8 +779,40 @@ Disponível apenas para usuários com papel **Admin**.
     `,
   },
   {
+    id: 'comparator',
+    title: '18. Comparador de Ativos',
+    content: `
+## Comparador de Ativos
+
+O **Comparador** permite analisar lado a lado até 3 ativos simultaneamente.
+
+### Como Usar:
+
+1. Acesse **Comparador** no menu lateral
+2. Pesquise e adicione até **3 ativos** para comparar
+3. O sistema carregará automaticamente:
+   - Preços e variações
+   - Indicadores técnicos (RSI, MACD, Médias Móveis)
+   - Indicadores fundamentalistas (P/L, P/VP, DY)
+   - Sinal IA (Compra/Venda/Manter)
+
+### Veredito IA:
+
+Após adicionar os ativos:
+1. Clique no botão **"🏆 Veredito IA"**
+2. A IA analisará todos os indicadores comparativamente
+3. O resultado incluirá:
+   - **Ativo vencedor** destacado
+   - Justificativa detalhada
+   - Tabela comparativa resumida
+4. Clique em **"Atualizar"** para refazer a análise
+
+> 💡 O veredito considera análise técnica, fundamentalista, momento de mercado e dados de preço em tempo real.
+    `,
+  },
+  {
     id: 'shortcuts',
-    title: '18. Dicas e Atalhos',
+    title: '19. Dicas e Atalhos',
     content: `
 ## Dicas para Melhor Uso
 
@@ -776,8 +841,20 @@ Disponível apenas para usuários com papel **Admin**.
   - "Devo vender PETR4?"
 
 ### 📤 Exportação de Dados
-- Relatórios podem ser impressos/exportados em PDF
-- Use Ctrl+P ou o botão "Imprimir" nas telas de relatório
+- **PDF**: Use o botão "Exportar PDF" em Relatórios
+- **CSV Carteira**: Exporta ativos com preço médio, atual e resultado
+- **CSV Transações**: Exporta todas as operações para Excel
+- **Manual**: Imprima este manual via botão "Imprimir / Salvar PDF"
+
+### 🔄 Atualização Automática
+- Preços atualizam automaticamente a cada 5 minutos
+- O countdown aparece no card "Última Atualização" do Dashboard
+- Clique no botão refresh para atualizar manualmente
+
+### ⚡ Rate Limiting IA
+- O sistema protege contra excesso de chamadas à IA
+- Máximo 4 consultas por minuto
+- Aguarde 10 segundos entre consultas consecutivas
 
 ### 🔐 Segurança
 - Sempre faça logout ao usar computadores compartilhados
@@ -787,7 +864,7 @@ Disponível apenas para usuários com papel **Admin**.
   },
   {
     id: 'support',
-    title: '19. Suporte e Contato',
+    title: '20. Suporte e Contato',
     content: `
 ## Suporte Técnico
 
@@ -824,7 +901,7 @@ Disponível apenas para usuários com papel **Admin**.
 ---
 
 **T2-SimplyNvest** — Investimentos Inteligentes  
-*Versão 1.0 — Manual do Usuário*  
+*Versão 2.0 — Manual do Usuário*  
 *© 2025 T2 Systems. Todos os direitos reservados.*
     `,
   },
@@ -889,7 +966,7 @@ export default function Manual() {
         <img src="/pwa-icon-192.png" alt="T2" className="h-16 w-16 mx-auto mb-4 rounded-xl" />
         <h1 className="text-3xl font-bold mb-2">T2-SimplyNvest</h1>
         <h2 className="text-xl text-muted-foreground mb-1">Manual do Usuário</h2>
-        <p className="text-sm text-muted-foreground">Versão 1.0 — Guia Completo de Funcionalidades</p>
+        <p className="text-sm text-muted-foreground">Versão 2.0 — Guia Completo de Funcionalidades</p>
       </div>
 
       {/* Table of Contents - print only */}
@@ -937,7 +1014,7 @@ export default function Manual() {
 
       {/* Footer - print only */}
       <div className="hidden print:block mt-12 pt-4 border-t text-center text-xs text-muted-foreground">
-        <p>T2-SimplyNvest — Manual do Usuário v1.0</p>
+        <p>T2-SimplyNvest — Manual do Usuário v2.0</p>
         <p>© 2025 T2 Systems. Todos os direitos reservados.</p>
       </div>
     </div>
