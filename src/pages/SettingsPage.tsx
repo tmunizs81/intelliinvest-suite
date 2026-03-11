@@ -44,8 +44,9 @@ export default function SettingsPage() {
 
   const tabs = [
     { key: 'general' as const, label: 'Geral', icon: Settings, adminOnly: false },
+    { key: 'license' as const, label: 'Licença', icon: ShieldCheck, adminOnly: false },
     { key: 'users' as const, label: 'Usuários', icon: Users, adminOnly: true },
-    { key: 'keys' as const, label: 'Licenças', icon: Key, adminOnly: true },
+    { key: 'keys' as const, label: 'Chaves', icon: Key, adminOnly: true },
     { key: 'family' as const, label: 'Família', icon: Users, adminOnly: false },
     { key: 'telegram' as const, label: 'Telegram', icon: Bell, adminOnly: false },
     { key: 'backup' as const, label: 'Backup', icon: Database, adminOnly: false },
