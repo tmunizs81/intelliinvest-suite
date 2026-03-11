@@ -156,6 +156,59 @@ function TransactionForm({ onSave, onCancel }: { onSave: (tx: Omit<Transaction, 
   );
 }
 
+const MONTH_LABELS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+
+function TaxChart({ monthly, year }: { monthly: MonthlyTaxSummary[]; year: number }) {
+  const data = useMemo(() => {
+    return MONTH_LABELS.map((label, i) => {
+      const month = `${year}-${String(i + 1).padStart(2, '0')}`;
+      const found = monthly.find(m => m.month === month);
+      return {
+        name: label,
+        imposto: found?.totalTax || 0,
+        ganho: found ? found.gains.reduce((s, g) => s + g.grossGain, 0) : 0,
+      };
+    });
+  }, [monthly, year]);
+
+  const hasData = data.some(d => d.imposto > 0 || d.ganho !== 0);
+  if (!hasData) return null;
+
+  return (
+    <div className="rounded-xl border border-border bg-card p-5 mb-6">
+      <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
+        <CalendarDays className="h-4 w-4 text-warning" />
+        Impostos por Mês — {year}
+      </h3>
+      <div className="h-52">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={data} barGap={4}>
+            <CartesianGrid strokeDasharray="3 3" stroke="hsl(220,14%,16%)" vertical={false} />
+            <XAxis dataKey="name" tick={{ fontSize: 11, fill: 'hsl(215,12%,50%)' }} axisLine={false} tickLine={false} />
+            <YAxis
+              tick={{ fontSize: 10, fill: 'hsl(215,12%,50%)' }}
+              axisLine={false} tickLine={false}
+              tickFormatter={(v: number) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v)}
+            />
+            <Tooltip
+              contentStyle={{ background: 'hsl(220,18%,9%)', border: '1px solid hsl(220,14%,16%)', borderRadius: '8px', fontSize: '12px' }}
+              itemStyle={{ color: 'hsl(210,20%,92%)' }}
+              formatter={(value: number, name: string) => [formatCurrency(value), name === 'imposto' ? 'Imposto' : 'Ganho de Capital']}
+              labelStyle={{ color: 'hsl(215,12%,50%)', fontSize: '11px' }}
+            />
+            <Bar dataKey="ganho" name="Ganho" radius={[4, 4, 0, 0]} maxBarSize={28}>
+              {data.map((entry, i) => (
+                <Cell key={i} fill={entry.ganho >= 0 ? 'hsl(160,84%,39%)' : 'hsl(0,72%,51%)'} fillOpacity={0.3} />
+              ))}
+            </Bar>
+            <Bar dataKey="imposto" name="Imposto" radius={[4, 4, 0, 0]} fill="hsl(38,92%,50%)" maxBarSize={28} />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+}
+
 // --- DARF Card ---
 function DarfCard({ summary }: { summary: MonthlyTaxSummary }) {
   const [expanded, setExpanded] = useState(false);
