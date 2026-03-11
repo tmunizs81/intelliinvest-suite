@@ -363,7 +363,7 @@ export default function AITrader() {
   };
 
   return (
-    <div className="h-screen flex bg-background">
+    <div className="h-[calc(100vh-3.5rem)] md:h-screen flex bg-background">
       {/* History Sidebar */}
       <HistorySidebar
         conversations={conversations}
