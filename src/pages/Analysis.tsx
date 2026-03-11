@@ -210,6 +210,7 @@ export default function Analysis() {
               name={assetName || ticker}
               type={assetType}
               candles={candles}
+              loadDelay={2000}
               holdingInfo={asset ? {
                 quantity: asset.quantity,
                 avgPrice: asset.avgPrice,
@@ -278,7 +279,7 @@ export default function Analysis() {
           {activeTab === 'tradingview' ? (
             <>
               <TradingViewWidget ticker={ticker} type={assetType} />
-              <AIChartSummary ticker={ticker} name={assetName || ticker} type={assetType} candles={candles} />
+              <AIChartSummary ticker={ticker} name={assetName || ticker} type={assetType} candles={candles} loadDelay={4000} />
             </>
           ) : loading && candles.length === 0 ? (
             <div className="flex items-center justify-center py-20 gap-3">
@@ -288,7 +289,7 @@ export default function Analysis() {
           ) : (
             <>
               <CandlestickChart candles={candles} />
-              <AIChartSummary ticker={ticker} name={assetName || ticker} type={assetType} candles={candles} />
+              <AIChartSummary ticker={ticker} name={assetName || ticker} type={assetType} candles={candles} loadDelay={4000} />
             </>
           )}
 
@@ -298,7 +299,7 @@ export default function Analysis() {
               <IndicatorsPanel candles={candles} />
             </div>
             <div>
-              <FundamentalIndicators ticker={ticker} type={assetType} />
+              <FundamentalIndicators ticker={ticker} type={assetType} loadDelay={1000} />
             </div>
             <div>
               <AIAnalysisPanel

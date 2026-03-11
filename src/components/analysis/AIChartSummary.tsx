@@ -17,9 +17,10 @@ interface Props {
   name: string;
   type: string;
   candles: Candle[];
+  loadDelay?: number;
 }
 
-export default function AIChartSummary({ ticker, name, type, candles }: Props) {
+export default function AIChartSummary({ ticker, name, type, candles, loadDelay = 0 }: Props) {
   const [summary, setSummary] = useState<ChartSummary | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -70,9 +71,13 @@ export default function AIChartSummary({ ticker, name, type, candles }: Props) {
 
   useEffect(() => {
     if (ticker && ticker !== lastTicker && candles.length >= 20 && !loading) {
+      if (loadDelay > 0) {
+        const timer = setTimeout(() => analyze(), loadDelay);
+        return () => clearTimeout(timer);
+      }
       analyze();
     }
-  }, [ticker, candles.length]);
+  }, [ticker, candles.length, loadDelay]);
 
   if (!ticker || candles.length < 20) return null;
 

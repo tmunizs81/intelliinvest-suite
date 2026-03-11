@@ -29,6 +29,7 @@ interface FundamentalData {
 interface Props {
   ticker: string;
   type: string;
+  loadDelay?: number;
 }
 
 function Stat({ label, value, suffix, signal }: { label: string; value: string | null; suffix?: string; signal?: 'good' | 'bad' | 'neutral' }) {
@@ -43,7 +44,7 @@ function Stat({ label, value, suffix, signal }: { label: string; value: string |
   );
 }
 
-export default function FundamentalIndicators({ ticker, type }: Props) {
+export default function FundamentalIndicators({ ticker, type, loadDelay = 0 }: Props) {
   const [data, setData] = useState<FundamentalData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -79,8 +80,12 @@ export default function FundamentalIndicators({ ticker, type }: Props) {
   }, [ticker, type]);
 
   useEffect(() => {
+    if (loadDelay > 0) {
+      const timer = setTimeout(() => fetchFundamentals(), loadDelay);
+      return () => clearTimeout(timer);
+    }
     fetchFundamentals();
-  }, [fetchFundamentals]);
+  }, [fetchFundamentals, loadDelay]);
 
   const fmt = (v?: number | null, decimals = 2) => v != null ? v.toFixed(decimals) : null;
   const fmtBig = (v?: number | null) => {
