@@ -554,7 +554,8 @@ export default function Assets() {
       <CashBalanceModal
         open={cashModalOpen}
         onClose={() => setCashModalOpen(false)}
-        currentBalance={cashBalance}
+        cashBalances={cashBalances}
+        totalBalance={cashBalance}
         onConfirm={updateCashBalance}
       />
     </div>
