@@ -38,7 +38,7 @@ export default function HoldingsTable({ assets, holdings, loading, onAdd, onEdit
         <div>
           <h2 className="text-lg font-semibold">Carteira de Ativos</h2>
           <p className="text-sm text-muted-foreground">
-            {assets.length} ativos • Yahoo Finance
+            {assets.length} ativos • Brapi + Yahoo Finance
             {loading && <Loader2 className="inline ml-2 h-3 w-3 animate-spin" />}
           </p>
         </div>
@@ -80,6 +80,7 @@ export default function HoldingsTable({ assets, holdings, loading, onAdd, onEdit
                 <th className="text-right p-4 font-medium">24h</th>
                 <th className="text-right p-4 font-medium">Total</th>
                 <th className="text-right p-4 font-medium">Lucro</th>
+                <th className="text-center p-4 font-medium">Fonte</th>
                 <th className="text-right p-4 font-medium w-20"></th>
               </tr>
             </thead>
@@ -130,6 +131,21 @@ export default function HoldingsTable({ assets, holdings, loading, onAdd, onEdit
                           <p className="text-xs">{formatPercent(profitPct)}</p>
                         </div>
                       ) : '—'}
+                    </td>
+                    <td className="text-center p-4">
+                      {asset.source ? (
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
+                          asset.source === 'brapi'
+                            ? 'bg-emerald-500/10 text-emerald-400'
+                            : asset.source === 'yahoo'
+                              ? 'bg-violet-500/10 text-violet-400'
+                              : 'bg-muted text-muted-foreground'
+                        }`}>
+                          {asset.source === 'brapi' ? 'Brapi' : asset.source === 'yahoo' ? 'Yahoo' : '—'}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground text-xs">—</span>
+                      )}
                     </td>
                     <td className="text-right p-4" onClick={e => e.stopPropagation()}>
                       <div className="flex items-center justify-end gap-1">
