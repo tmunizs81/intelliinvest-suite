@@ -23,7 +23,7 @@ const typeBadgeClass: Record<string, string> = {
 
 export default function Assets() {
   const navigate = useNavigate();
-  const { assets, holdings, cashBalance, loading, refresh, addHolding, updateHolding, deleteHolding, sellHolding, updateCashBalance } = usePortfolio();
+  const { assets, holdings, cashBalance, cashBalances, loading, refresh, addHolding, updateHolding, deleteHolding, sellHolding, updateCashBalance } = usePortfolio();
   const [modalOpen, setModalOpen] = useState(false);
   const [editingHolding, setEditingHolding] = useState<HoldingRow | null>(null);
   const [sellOpen, setSellOpen] = useState(false);
@@ -139,19 +139,31 @@ export default function Assets() {
         </div>
 
         {/* Cash balance card */}
-        <div className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-2.5 flex items-center gap-3">
-          <Wallet className="h-4 w-4 text-primary" />
-          <div>
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Saldo em Caixa</p>
-            <p className="text-lg font-bold font-mono text-primary">{formatCurrency(cashBalance)}</p>
+        <div className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-2.5">
+          <div className="flex items-center gap-3">
+            <Wallet className="h-4 w-4 text-primary" />
+            <div>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Saldo em Caixa</p>
+              <p className="text-lg font-bold font-mono text-primary">{formatCurrency(cashBalance)}</p>
+            </div>
+            <button
+              onClick={() => setCashModalOpen(true)}
+              className="ml-auto h-8 px-3 rounded-lg border border-primary/30 bg-primary/10 text-xs text-primary hover:bg-primary/20 transition-all font-medium"
+            >
+              <DollarSign className="h-3.5 w-3.5 inline mr-1" />
+              Gerenciar
+            </button>
           </div>
-          <button
-            onClick={() => setCashModalOpen(true)}
-            className="ml-auto h-8 px-3 rounded-lg border border-primary/30 bg-primary/10 text-xs text-primary hover:bg-primary/20 transition-all font-medium"
-          >
-            <DollarSign className="h-3.5 w-3.5 inline mr-1" />
-            Gerenciar
-          </button>
+          {cashBalances.length > 0 && (
+            <div className="mt-2 pt-2 border-t border-primary/10 space-y-0.5">
+              {cashBalances.map((cb) => (
+                <div key={cb.id} className="flex justify-between text-xs">
+                  <span className="text-muted-foreground">{cb.broker || 'Sem corretora'}</span>
+                  <span className="font-mono text-primary/80">{formatCurrency(cb.balance)}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -554,7 +566,8 @@ export default function Assets() {
       <CashBalanceModal
         open={cashModalOpen}
         onClose={() => setCashModalOpen(false)}
-        currentBalance={cashBalance}
+        cashBalances={cashBalances}
+        totalBalance={cashBalance}
         onConfirm={updateCashBalance}
       />
     </div>

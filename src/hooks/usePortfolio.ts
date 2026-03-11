@@ -16,10 +16,17 @@ export interface HoldingRow {
   broker: string | null;
 }
 
+export interface CashBalanceRow {
+  id: string;
+  broker: string | null;
+  balance: number;
+}
+
 export function usePortfolio() {
   const { user } = useAuth();
   const [assets, setAssets] = useState<Asset[]>([]);
   const [holdings, setHoldings] = useState<HoldingRow[]>([]);
+  const [cashBalances, setCashBalances] = useState<CashBalanceRow[]>([]);
   const [cashBalance, setCashBalance] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -30,10 +37,11 @@ export function usePortfolio() {
     if (!user) return;
     const { data } = await supabase
       .from('cash_balance' as any)
-      .select('balance')
-      .eq('user_id', user.id)
-      .maybeSingle();
-    setCashBalance((data as any)?.balance || 0);
+      .select('id, balance, broker')
+      .eq('user_id', user.id);
+    const rows = ((data as any[]) || []).map((r: any) => ({ id: r.id, broker: r.broker, balance: Number(r.balance) }));
+    setCashBalances(rows);
+    setCashBalance(rows.reduce((s: number, r: CashBalanceRow) => s + r.balance, 0));
   }, [user]);
 
   // Load holdings from DB
@@ -236,11 +244,13 @@ export function usePortfolio() {
       await supabase.from('holdings').update({ quantity: remainingQty } as any).eq('id', holdingId).eq('user_id', user.id);
     }
 
-    // Update cash balance
+    // Update cash balance (use holding's broker)
+    const holdingBroker = holding.broker || '';
     const { data: existing } = await supabase
       .from('cash_balance' as any)
       .select('id, balance')
       .eq('user_id', user.id)
+      .eq('broker', holdingBroker)
       .maybeSingle();
 
     if (existing) {
@@ -252,28 +262,31 @@ export function usePortfolio() {
       await supabase.from('cash_balance' as any).insert({
         user_id: user.id,
         balance: netTotal,
+        broker: holdingBroker || null,
       } as any);
     }
 
     await refresh();
   }, [user, holdings, refresh]);
 
-  // Update cash balance manually
-  const updateCashBalance = useCallback(async (amount: number) => {
+  // Update cash balance for a specific broker
+  const updateCashBalanceBroker = useCallback(async (amount: number, broker: string | null) => {
     if (!user) return;
+    const brokerVal = broker || '';
     const { data: existing } = await supabase
       .from('cash_balance' as any)
       .select('id')
       .eq('user_id', user.id)
+      .eq('broker', brokerVal)
       .maybeSingle();
 
     if (existing) {
       await supabase.from('cash_balance' as any).update({ balance: amount, updated_at: new Date().toISOString() } as any).eq('id', (existing as any).id);
     } else {
-      await supabase.from('cash_balance' as any).insert({ user_id: user.id, balance: amount } as any);
+      await supabase.from('cash_balance' as any).insert({ user_id: user.id, balance: amount, broker: broker || null } as any);
     }
-    setCashBalance(amount);
-  }, [user]);
+    await loadCashBalance();
+  }, [user, loadCashBalance]);
 
-  return { assets, holdings, cashBalance, loading, error, lastUpdate, refresh, addHolding, updateHolding, deleteHolding, sellHolding, updateCashBalance };
+  return { assets, holdings, cashBalance, cashBalances, loading, error, lastUpdate, refresh, addHolding, updateHolding, deleteHolding, sellHolding, updateCashBalance: updateCashBalanceBroker };
 }
