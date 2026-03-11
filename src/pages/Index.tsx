@@ -339,9 +339,11 @@ function DashboardPanel({ children, title, noPadding, locked }: {
   locked: boolean;
 }) {
   return (
-    <div className="h-full w-full overflow-auto rounded-lg">
+    <div className={`h-full w-full flex flex-col rounded-xl border border-border bg-card overflow-hidden transition-shadow ${
+      !locked ? 'ring-1 ring-primary/10 shadow-lg shadow-primary/5' : 'shadow-sm'
+    }`}>
       {!locked && title && (
-        <div className="drag-handle cursor-grab active:cursor-grabbing bg-muted/50 border-b border-border px-3 py-1.5 flex items-center gap-2 rounded-t-lg">
+        <div className="drag-handle cursor-grab active:cursor-grabbing bg-muted/60 border-b border-border px-3 py-1.5 flex items-center gap-2 shrink-0">
           <div className="flex gap-0.5">
             <span className="h-1 w-1 rounded-full bg-muted-foreground/40" />
             <span className="h-1 w-1 rounded-full bg-muted-foreground/40" />
@@ -350,7 +352,7 @@ function DashboardPanel({ children, title, noPadding, locked }: {
           <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">{title}</span>
         </div>
       )}
-      <div className={noPadding ? '' : ''}>{children}</div>
+      <div className={`flex-1 overflow-auto ${noPadding ? '' : ''}`}>{children}</div>
     </div>
   );
 }
