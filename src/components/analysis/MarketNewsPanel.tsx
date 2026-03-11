@@ -1,5 +1,8 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+
+const cache = new Map<string, { data: MarketOpinion; ts: number }>();
+const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
 import {
   Loader2, RefreshCw, Newspaper, TrendingUp, TrendingDown, Minus,
   ChevronDown, ChevronUp, Shield, AlertTriangle, ThumbsUp, ThumbsDown,
