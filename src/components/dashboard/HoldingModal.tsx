@@ -281,14 +281,7 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
             </div>
           </div>
 
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-muted-foreground">Corretora</label>
-            <input
-              value={broker} onChange={e => setBroker(e.target.value)}
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-              placeholder="XP, Clear, Inter, NuInvest..."
-            />
-          </div>
+          <BrokerAutocomplete value={broker} onChange={setBroker} />
 
           <div className="space-y-1">
             <label className="text-xs font-medium text-muted-foreground">Nome *</label>
@@ -327,6 +320,64 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
           </button>
         </form>
       </div>
+    </div>
+  );
+}
+
+const BROKERS = [
+  'XP Investimentos', 'Clear Corretora', 'Rico Investimentos', 'BTG Pactual',
+  'Itaú Corretora', 'Bradesco Corretora', 'Banco do Brasil Investimentos',
+  'NuInvest (Easynvest)', 'Inter Invest', 'Genial Investimentos',
+  'Modal Mais', 'Ágora Investimentos', 'Guide Investimentos', 'Órama',
+  'Toro Investimentos', 'CM Capital', 'Mirae Asset', 'Necton',
+  'Terra Investimentos', 'Safra Corretora', 'Santander Corretora',
+  'Avenue Securities', 'Nomad', 'Stake', 'Passfolio',
+  'Interactive Brokers', 'Charles Schwab', 'TD Ameritrade',
+];
+
+function BrokerAutocomplete({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  const filtered = value.trim()
+    ? BROKERS.filter(b => b.toLowerCase().includes(value.toLowerCase()))
+    : BROKERS;
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  return (
+    <div className="space-y-1 relative" ref={ref}>
+      <label className="text-xs font-medium text-muted-foreground">Corretora</label>
+      <input
+        value={value}
+        onChange={e => { onChange(e.target.value); setOpen(true); }}
+        onFocus={() => setOpen(true)}
+        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+        placeholder="Digite para buscar..."
+        autoComplete="off"
+      />
+      {open && filtered.length > 0 && (
+        <div className="absolute z-50 mt-1 w-full rounded-md border border-border bg-popover shadow-lg max-h-48 overflow-y-auto">
+          {filtered.map(b => (
+            <button
+              key={b}
+              type="button"
+              onClick={() => { onChange(b); setOpen(false); }}
+              className={`w-full text-left px-3 py-2 text-sm hover:bg-accent/50 transition-colors ${
+                value === b ? 'bg-accent/30 font-medium' : ''
+              }`}
+            >
+              {b}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
