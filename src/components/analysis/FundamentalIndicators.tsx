@@ -80,8 +80,12 @@ export default function FundamentalIndicators({ ticker, type, loadDelay = 0 }: P
   }, [ticker, type]);
 
   useEffect(() => {
+    if (loadDelay > 0) {
+      const timer = setTimeout(() => fetchFundamentals(), loadDelay);
+      return () => clearTimeout(timer);
+    }
     fetchFundamentals();
-  }, [fetchFundamentals]);
+  }, [fetchFundamentals, loadDelay]);
 
   const fmt = (v?: number | null, decimals = 2) => v != null ? v.toFixed(decimals) : null;
   const fmtBig = (v?: number | null) => {

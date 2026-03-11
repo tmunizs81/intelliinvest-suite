@@ -89,12 +89,15 @@ export default function AISignalBadge({ ticker, name, type, candles, loadDelay =
     setLoading(false);
   }, [ticker, name, type, candles, holdingInfo]);
 
-  // Auto-analyze when ticker changes and candles are ready
   useEffect(() => {
     if (ticker && ticker !== lastTicker && candles.length >= 20 && !loading) {
+      if (loadDelay > 0) {
+        const timer = setTimeout(() => analyze(), loadDelay);
+        return () => clearTimeout(timer);
+      }
       analyze();
     }
-  }, [ticker, candles.length]);
+  }, [ticker, candles.length, loadDelay]);
 
   if (!ticker) return null;
 
