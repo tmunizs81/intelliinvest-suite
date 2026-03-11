@@ -4,6 +4,7 @@ import { Responsive as ResponsiveOrig } from 'react-grid-layout';
 const ResponsiveGrid: any = ResponsiveOrig;
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 import PortfolioSummary from '@/components/dashboard/PortfolioSummary';
 import PortfolioChart from '@/components/dashboard/PortfolioChart';
