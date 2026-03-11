@@ -102,7 +102,7 @@ export default function MarketNewsPanel({ ticker, name, type }: Props) {
             <p className="text-[10px] text-muted-foreground">Varredura IA em portais financeiros</p>
           </div>
         </div>
-        <button onClick={fetchOpinion} disabled={loading}
+        <button onClick={() => fetchOpinion()} disabled={loading}
           className="h-7 w-7 rounded-lg border border-border flex items-center justify-center text-muted-foreground hover:text-foreground transition-all disabled:opacity-50">
           {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
         </button>
