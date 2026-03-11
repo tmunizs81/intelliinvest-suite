@@ -65,6 +65,19 @@ const Index = () => {
   const [editingHolding, setEditingHolding] = useState<HoldingRow | null>(null);
   const [layouts, setLayouts] = useState(loadLayouts);
   const [locked, setLocked] = useState(true);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [containerWidth, setContainerWidth] = useState(1200);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        setContainerWidth(entry.contentRect.width);
+      }
+    });
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, []);
 
   const handleLayoutChange = useCallback((_: any, allLayouts: any) => {
     setLayouts(allLayouts);
