@@ -50,7 +50,7 @@ export default function Sidebar() {
           </button>
           <TrendingUp className="h-5 w-5 text-primary" />
           <span className="text-base font-bold tracking-tight">
-            Invest<span className="text-primary">AI</span>
+            T2-<span className="text-primary">Simplynvest</span>
           </span>
         </div>
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
