@@ -26,7 +26,7 @@ interface Props {
   open: boolean;
   onClose: () => void;
   onSave: (holding: Omit<HoldingRow, 'id'>) => Promise<void>;
-  editData?: (HoldingRow & { yield_rate?: string | null; indexer_type?: string | null }) | null;
+  editData?: (HoldingRow & { yield_rate?: string | null; indexer_type?: string | null; maturity_date?: string | null }) | null;
   onUpdate?: (id: string, data: Partial<HoldingRow>) => Promise<void>;
   assets?: Asset[];
 }
