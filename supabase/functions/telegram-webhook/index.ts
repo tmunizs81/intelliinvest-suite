@@ -58,7 +58,7 @@ serve(async (req) => {
 
           await sendMsg(
             `✅ *Conta vinculada com sucesso!*\n\n` +
-            `Seu Telegram foi conectado ao InvestAI.\n` +
+            `Seu Telegram foi conectado ao T2-Simplynvest.\n` +
             `Você receberá resumos diários sobre seus investimentos.\n\n` +
             `Comandos:\n` +
             `🔐 /senha - Alterar sua senha\n` +
