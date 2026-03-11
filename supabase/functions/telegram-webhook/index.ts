@@ -96,8 +96,8 @@ serve(async (req) => {
         );
       } else {
         await sendMsg(
-          `🤖 *InvestAI Bot*\n\n` +
-          `Para vincular sua conta, acesse *Configurações > Telegram* no InvestAI e clique em *"Vincular Telegram"*.\n\n` +
+          `🤖 *T2-Simplynvest Bot*\n\n` +
+          `Para vincular sua conta, acesse *Configurações > Telegram* no T2-Simplynvest e clique em *"Vincular Telegram"*.\n\n` +
           `Você receberá um link para enviar aqui.`
         );
       }
