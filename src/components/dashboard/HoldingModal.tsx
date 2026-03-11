@@ -5,6 +5,7 @@ import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import type { HoldingRow } from '@/hooks/usePortfolio';
 import { type Asset } from '@/lib/mockData';
+import { classifyAssetType } from '@/lib/assetClassification';
 import AICopilotSignal from './AICopilotSignal';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
@@ -110,7 +111,15 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
   }, []);
 
   const handleTickerChange = (value: string) => {
-    setTicker(value.toUpperCase());
+    const upper = value.toUpperCase();
+    setTicker(upper);
+    // Auto-classify type as user types
+    if (upper.length >= 2) {
+      const detected = classifyAssetType(upper);
+      if (detected === 'Cripto') setType('Cripto');
+      else if (detected === 'FII') setType('FII');
+      else if (detected === 'ETF') setType('ETF');
+    }
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => searchTickers(value), 300);
   };
@@ -118,23 +127,29 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
   const selectSuggestion = (s: SearchResult) => {
     setTicker(s.symbol);
     setName(s.name);
-    // Auto-detect type
+    // Auto-detect type using classifyAssetType first, then exchange hints
+    const classified = classifyAssetType(s.symbol);
     const irishExchanges = ['ISE', 'LSE', 'AMS', 'MIL', 'FRA', 'ETR', 'PAR', 'SWX'];
     const usExchanges = ['NMS', 'NYQ', 'NGM', 'ASE'];
-    if (s.type === 'ETF' && irishExchanges.includes(s.exchange)) {
-      setType('ETF Internacional');
-    } else if (s.type === 'ETF') {
-      setType('ETF');
-    } else if (s.type === 'Cripto') {
+
+    if (classified === 'Cripto') {
       setType('Cripto');
+    } else if (s.type === 'ETF' && irishExchanges.includes(s.exchange)) {
+      setType('ETF Internacional');
+    } else if (s.type === 'ETF' || classified === 'ETF') {
+      setType('ETF');
+    } else if (classified === 'FII') {
+      setType('FII');
+    } else if (classified === 'BDR') {
+      setType('Ação'); // BDRs displayed as Ação in the dropdown
+    } else if (classified === 'Renda Fixa') {
+      setType('Renda Fixa');
     } else if (s.exchange === 'SAO' || s.exchange === 'BSP') {
-      // Brazilian
-      if (s.symbol.match(/\d{2}$/)) setType('FII');
-      else setType('Ação');
+      setType(classified);
     } else if (usExchanges.includes(s.exchange) || irishExchanges.includes(s.exchange)) {
       setType('Ação');
     } else {
-      setType(s.type || 'Ação');
+      setType(classified !== 'Internacional' ? classified : (s.type || 'Ação'));
     }
     // Auto-set sector from exchange
     if (irishExchanges.includes(s.exchange)) {
