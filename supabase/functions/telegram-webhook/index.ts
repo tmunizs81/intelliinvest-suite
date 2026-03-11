@@ -87,7 +87,7 @@ serve(async (req) => {
     if (text === "/start" || text === "/ajuda" || text === "/help") {
       if (tgSetting) {
         await sendMsg(
-          `🤖 *InvestAI Bot*\n\n` +
+          `🤖 *T2-Simplynvest Bot*\n\n` +
           `✅ Sua conta está vinculada.\n\n` +
           `Comandos disponíveis:\n` +
           `🔐 /senha - Receber link para alterar sua senha\n` +
