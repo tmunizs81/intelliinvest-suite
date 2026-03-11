@@ -3,6 +3,9 @@ import { Brain, Loader2, TrendingUp, TrendingDown, Minus, BarChart3 } from 'luci
 import { supabase } from '@/integrations/supabase/client';
 import { type Candle, getLatestIndicators } from '@/lib/technicalIndicators';
 
+const chartCache = new Map<string, { data: any; ts: number }>();
+const CACHE_TTL = 10 * 60 * 1000;
+
 interface ChartSummary {
   overview: string;
   trend_strength: 'forte' | 'moderada' | 'fraca';
