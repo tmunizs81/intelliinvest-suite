@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { classifyAssetType } from '@/lib/assetClassification';
 import { useSearchParams, useParams } from 'react-router-dom';
 import { Search, Loader2, RefreshCw, ArrowUpRight, ArrowDownRight, BarChart3, TrendingUp } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
