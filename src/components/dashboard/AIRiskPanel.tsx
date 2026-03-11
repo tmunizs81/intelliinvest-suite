@@ -34,7 +34,7 @@ const riskLevelColors: Record<string, string> = {
 export default function AIRiskPanel({ assets }: Props) {
   const [analysis, setAnalysis] = useState<RiskAnalysis | null>(null);
   const [loading, setLoading] = useState(false);
-  const { canCall, registerCall } = useAIRateLimit();
+  const { canCall, recordCall } = useAIRateLimit();
 
   const analyze = async () => {
     if (!canCall() || assets.length === 0) return;
