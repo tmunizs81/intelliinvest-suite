@@ -13,6 +13,7 @@ import DividendsPanel from '@/components/dashboard/DividendsPanel';
 import HoldingsTable from '@/components/dashboard/HoldingsTable';
 import AIInsightsPanel from '@/components/dashboard/AIInsightsPanel';
 import AlertsPanel from '@/components/dashboard/AlertsPanel';
+import LicenseAlert from '@/components/dashboard/LicenseAlert';
 import HoldingModal from '@/components/dashboard/HoldingModal';
 import { usePortfolio, type HoldingRow } from '@/hooks/usePortfolio';
 import { Loader2, Lock, Unlock, RotateCcw } from 'lucide-react';
