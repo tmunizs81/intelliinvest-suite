@@ -531,8 +531,9 @@ A tela de **Análise Avançada** oferece ferramentas profissionais para análise
 3. Veja o **Perfil do ativo** e **Lista de imóveis** (FIIs) automaticamente
 4. Para FIIs, clique no botão **"Checklist Buy & Hold"** para ver a avaliação completa
 5. Clique em **"Analisar notícias de mercado"** para varredura de portais
-6. Alterne entre gráficos **TradingView** e **Customizado**
-7. Consulte indicadores técnicos, fundamentalistas e análise IA nas 3 colunas
+6. Use o botão **"Limpar"** ao lado da busca para resetar a tela e fazer uma nova pesquisa
+7. Alterne entre gráficos **TradingView** e **Customizado**
+8. Consulte indicadores técnicos, fundamentalistas e análise IA nas 3 colunas
     `,
   },
   {
