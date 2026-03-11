@@ -52,7 +52,12 @@ export default function FundamentalIndicators({ ticker, type, loadDelay = 0 }: P
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchFundamentals = useCallback(async (retries = 2) => {
+  const fetchFundamentals = useCallback(async (retries = 2, skipCache = false) => {
+    const cached = fundCache.get(ticker);
+    if (!skipCache && cached && Date.now() - cached.ts < CACHE_TTL) {
+      setData(cached.data);
+      return;
+    }
     setLoading(true);
     setError(null);
     for (let attempt = 0; attempt <= retries; attempt++) {
