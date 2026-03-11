@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { ArrowUpRight, ArrowDownRight, Loader2, Plus, Pencil, Trash2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { ArrowUpRight, ArrowDownRight, Loader2, Plus, Pencil, Trash2, ChevronRight } from 'lucide-react';
 import { type Asset, formatCurrency, formatPercent } from '@/lib/mockData';
 import type { HoldingRow } from '@/hooks/usePortfolio';
 
@@ -21,6 +22,7 @@ interface Props {
 }
 
 export default function HoldingsTable({ assets, holdings, loading, onAdd, onEdit, onDelete }: Props) {
+  const navigate = useNavigate();
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const handleDelete = async (id: string) => {
@@ -92,9 +94,12 @@ export default function HoldingsTable({ assets, holdings, loading, onAdd, onEdit
                 const holdingRow = holdings.find(h => h.ticker === asset.ticker);
 
                 return (
-                  <tr key={asset.ticker} className="border-b border-border/50 hover:bg-accent/50 transition-colors">
+                  <tr key={asset.ticker} className="border-b border-border/50 hover:bg-accent/50 transition-colors cursor-pointer" onClick={() => navigate(`/asset/${asset.ticker}`)}>
                     <td className="p-4">
-                      <span className="font-semibold font-mono">{asset.ticker}</span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-semibold font-mono">{asset.ticker}</span>
+                        <ChevronRight className="h-3 w-3 text-muted-foreground" />
+                      </div>
                       <p className="text-xs text-muted-foreground">{asset.name}</p>
                     </td>
                     <td className="p-4">
@@ -126,7 +131,7 @@ export default function HoldingsTable({ assets, holdings, loading, onAdd, onEdit
                         </div>
                       ) : '—'}
                     </td>
-                    <td className="text-right p-4">
+                    <td className="text-right p-4" onClick={e => e.stopPropagation()}>
                       <div className="flex items-center justify-end gap-1">
                         {holdingRow && (
                           <>
