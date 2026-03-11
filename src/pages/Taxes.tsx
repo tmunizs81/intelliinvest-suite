@@ -403,6 +403,9 @@ export default function Taxes() {
           </div>
         </div>
 
+        {/* Monthly Tax Chart */}
+        <TaxChart monthly={annual.monthly} year={selectedYear} />
+
         {/* Tabs */}
         <div className="flex items-center gap-4 mb-4 border-b border-border">
           <button onClick={() => setTab('taxes')}
