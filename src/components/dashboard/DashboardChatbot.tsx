@@ -1,9 +1,12 @@
-import { useState, useRef, useEffect } from 'react';
-import { MessageSquare, Send, Loader2, X, Minimize2, Maximize2, Sparkles } from 'lucide-react';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { MessageSquare, Send, Loader2, X, Minimize2, Maximize2, Sparkles, History, Plus, Trash2 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 import { type Asset } from '@/lib/mockData';
 import ReactMarkdown from 'react-markdown';
 
 type Message = { role: 'user' | 'assistant'; content: string };
+type Conversation = { id: string; title: string; updated_at: string };
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/portfolio-chat`;
 
@@ -15,11 +18,15 @@ const quickQuestions = [
 ];
 
 export default function DashboardChatbot({ assets }: { assets: Asset[] }) {
+  const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [maximized, setMaximized] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [activeConvId, setActiveConvId] = useState<string | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -30,6 +37,49 @@ export default function DashboardChatbot({ assets }: { assets: Asset[] }) {
   useEffect(() => {
     if (open) inputRef.current?.focus();
   }, [open]);
+
+  // Load conversations
+  const loadConversations = useCallback(async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from('ai_conversations')
+      .select('id, title, updated_at')
+      .eq('user_id', user.id)
+      .is('analysis_type', null)
+      .order('updated_at', { ascending: false })
+      .limit(20);
+    if (data) setConversations(data);
+  }, [user]);
+
+  useEffect(() => { if (open && user) loadConversations(); }, [open, user, loadConversations]);
+
+  const loadConversation = async (convId: string) => {
+    if (!user) return;
+    const { data } = await supabase
+      .from('ai_messages')
+      .select('role, content')
+      .eq('conversation_id', convId)
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: true });
+    if (data) {
+      setMessages(data.map(m => ({ role: m.role as 'user' | 'assistant', content: m.content })));
+      setActiveConvId(convId);
+      setShowHistory(false);
+    }
+  };
+
+  const deleteConversation = async (convId: string) => {
+    if (!user) return;
+    await supabase.from('ai_conversations').delete().eq('id', convId).eq('user_id', user.id);
+    if (activeConvId === convId) { setActiveConvId(null); setMessages([]); }
+    loadConversations();
+  };
+
+  const newChat = () => {
+    setActiveConvId(null);
+    setMessages([]);
+    setShowHistory(false);
+  };
 
   const portfolio = assets.map(a => ({
     ticker: a.ticker, name: a.name, type: a.type,
@@ -45,6 +95,28 @@ export default function DashboardChatbot({ assets }: { assets: Asset[] }) {
     setMessages(allMessages);
     setInput('');
     setIsLoading(true);
+
+    // Create conversation if needed
+    let convId = activeConvId;
+    if (!convId && user) {
+      const title = text.length > 60 ? text.slice(0, 57) + '...' : text;
+      const { data } = await supabase
+        .from('ai_conversations')
+        .insert({ user_id: user.id, title })
+        .select('id')
+        .single();
+      if (data) {
+        convId = data.id;
+        setActiveConvId(convId);
+      }
+    }
+
+    // Save user message
+    if (convId && user) {
+      await supabase.from('ai_messages').insert({
+        conversation_id: convId, user_id: user.id, role: 'user', content: text.trim(),
+      });
+    }
 
     let assistantSoFar = '';
 
@@ -96,6 +168,15 @@ export default function DashboardChatbot({ assets }: { assets: Asset[] }) {
           } catch {}
         }
       }
+
+      // Save assistant message
+      if (convId && user && assistantSoFar) {
+        await supabase.from('ai_messages').insert({
+          conversation_id: convId, user_id: user.id, role: 'assistant', content: assistantSoFar,
+        });
+        await supabase.from('ai_conversations').update({ updated_at: new Date().toISOString() }).eq('id', convId);
+        loadConversations();
+      }
     } catch (err) {
       setMessages(prev => [...prev, { role: 'assistant', content: `❌ ${err instanceof Error ? err.message : 'Erro desconhecido'}` }]);
     } finally {
@@ -131,10 +212,18 @@ export default function DashboardChatbot({ assets }: { assets: Asset[] }) {
           </div>
           <div>
             <p className="text-sm font-semibold">Assistente IA</p>
-            <p className="text-[10px] text-muted-foreground">Pergunte sobre sua carteira</p>
+            <p className="text-[10px] text-muted-foreground">
+              {activeConvId ? 'Conversa salva' : 'Nova conversa'}
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-1">
+          <button onClick={newChat} className="h-7 w-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent/50" title="Nova conversa">
+            <Plus className="h-3.5 w-3.5" />
+          </button>
+          <button onClick={() => setShowHistory(!showHistory)} className={`h-7 w-7 rounded-md flex items-center justify-center hover:bg-accent/50 ${showHistory ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}`} title="Histórico">
+            <History className="h-3.5 w-3.5" />
+          </button>
           <button onClick={() => setMaximized(!maximized)} className="h-7 w-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent/50">
             {maximized ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
           </button>
@@ -143,6 +232,25 @@ export default function DashboardChatbot({ assets }: { assets: Asset[] }) {
           </button>
         </div>
       </div>
+
+      {/* History sidebar */}
+      {showHistory && (
+        <div className="border-b border-border max-h-48 overflow-y-auto p-2 space-y-1 bg-muted/30">
+          {conversations.length === 0 ? (
+            <p className="text-[11px] text-muted-foreground text-center py-3">Nenhuma conversa salva</p>
+          ) : conversations.map(c => (
+            <div key={c.id} className={`flex items-center justify-between group px-2 py-1.5 rounded-md hover:bg-accent/50 cursor-pointer ${activeConvId === c.id ? 'bg-accent/50' : ''}`}>
+              <button onClick={() => loadConversation(c.id)} className="flex-1 text-left min-w-0">
+                <p className="text-[11px] font-medium truncate">{c.title}</p>
+                <p className="text-[9px] text-muted-foreground">{new Date(c.updated_at).toLocaleDateString('pt-BR')}</p>
+              </button>
+              <button onClick={() => deleteConversation(c.id)} className="opacity-0 group-hover:opacity-100 h-5 w-5 flex items-center justify-center text-muted-foreground hover:text-loss transition-all">
+                <Trash2 className="h-3 w-3" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
