@@ -55,6 +55,8 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
       setAvgPrice(editData?.avg_price?.toString() || '');
       setSector(editData?.sector || '');
       setBroker(editData?.broker || '');
+      setYieldRate(editData?.yield_rate || '');
+      setIndexerType(editData?.indexer_type || 'Pós-fixado');
       setError('');
       setSuggestions([]);
       setShowSuggestions(false);
