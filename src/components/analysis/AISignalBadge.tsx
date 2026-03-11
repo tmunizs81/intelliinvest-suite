@@ -3,6 +3,7 @@ import { Brain, Loader2, TrendingUp, TrendingDown, Minus, RefreshCw } from 'luci
 import { supabase } from '@/integrations/supabase/client';
 import { type Candle, getLatestIndicators } from '@/lib/technicalIndicators';
 import { formatCurrency } from '@/lib/mockData';
+import { enqueueAIRequest } from '@/lib/aiRequestQueue';
 
 const signalCache = new Map<string, { data: any; ts: number }>();
 const CACHE_TTL = 10 * 60 * 1000;
