@@ -42,7 +42,7 @@ async function fetchGoogleNews(query: string): Promise<Array<{ title: string; li
   return fetchRssItems(`https://news.google.com/rss/search?q=${encoded}&hl=pt-BR&gl=BR&ceid=BR:pt-419`, 5);
 }
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
