@@ -37,10 +37,11 @@ export function usePortfolio() {
     if (!user) return;
     const { data } = await supabase
       .from('cash_balance' as any)
-      .select('balance')
-      .eq('user_id', user.id)
-      .maybeSingle();
-    setCashBalance((data as any)?.balance || 0);
+      .select('id, balance, broker')
+      .eq('user_id', user.id);
+    const rows = ((data as any[]) || []).map((r: any) => ({ id: r.id, broker: r.broker, balance: Number(r.balance) }));
+    setCashBalances(rows);
+    setCashBalance(rows.reduce((s: number, r: CashBalanceRow) => s + r.balance, 0));
   }, [user]);
 
   // Load holdings from DB
