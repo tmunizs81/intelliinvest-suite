@@ -139,12 +139,19 @@ export default function Assets() {
         </div>
 
         {/* Cash balance card */}
-        <div className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-2.5 flex items-center gap-2">
+        <div className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-2.5 flex items-center gap-3">
           <Wallet className="h-4 w-4 text-primary" />
           <div>
             <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Saldo em Caixa</p>
             <p className="text-lg font-bold font-mono text-primary">{formatCurrency(cashBalance)}</p>
           </div>
+          <button
+            onClick={() => setCashModalOpen(true)}
+            className="ml-auto h-8 px-3 rounded-lg border border-primary/30 bg-primary/10 text-xs text-primary hover:bg-primary/20 transition-all font-medium"
+          >
+            <DollarSign className="h-3.5 w-3.5 inline mr-1" />
+            Gerenciar
+          </button>
         </div>
         <div className="flex items-center gap-2">
           <button
