@@ -125,6 +125,9 @@ export default function Sidebar() {
             <div className="flex items-center gap-2 px-2 py-1 text-xs text-muted-foreground truncate">
               <User className="h-3.5 w-3.5 shrink-0" />
               <span className="truncate">{user?.email}</span>
+              <div className="ml-auto">
+                <ThemeToggle />
+              </div>
             </div>
           )}
           <div className="flex items-center gap-1">
