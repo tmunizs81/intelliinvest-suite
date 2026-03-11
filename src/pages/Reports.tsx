@@ -334,6 +334,34 @@ export default function Reports() {
         ))}
       </div>
 
+      {/* Period Filter */}
+      <div className="flex items-center gap-3 mb-6">
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <Calendar className="h-3.5 w-3.5" />
+          <span>Período:</span>
+        </div>
+        <div className="flex gap-1 bg-muted rounded-lg p-0.5">
+          {PERIODS.map(p => (
+            <button
+              key={p.id}
+              onClick={() => setPeriod(p.id)}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
+                period === p.id
+                  ? 'bg-card text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+        {periodDate && (
+          <span className="text-[11px] text-muted-foreground">
+            desde {periodDate.toLocaleDateString('pt-BR')}
+          </span>
+        )}
+      </div>
+
       <div ref={reportRef}>
         {/* Overview Tab */}
         {activeTab === 'overview' && (
