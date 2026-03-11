@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Loader2, RefreshCw, Building2, TrendingUp, DollarSign, BarChart3 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { formatCurrency, formatPercent } from '@/lib/mockData';
+import { enqueueAIRequest } from '@/lib/aiRequestQueue';
 
 const fundCache = new Map<string, { data: any; ts: number }>();
 const CACHE_TTL = 10 * 60 * 1000;
