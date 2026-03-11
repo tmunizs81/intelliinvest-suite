@@ -156,13 +156,30 @@ Com base nessas notícias reais e no seu conhecimento do mercado, use a ferramen
     });
 
     if (!response.ok) {
-      if (response.status === 429) return new Response(JSON.stringify({ error: "Rate limit." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      throw new Error(`AI error: ${response.status}`);
+      if (response.status === 429) {
+        const fallback = buildFallbackOpinion(ticker, name, type, unique);
+        return new Response(JSON.stringify(fallback), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const fallback = buildFallbackOpinion(ticker, name, type, unique);
+      return new Response(JSON.stringify(fallback), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const data = await response.json();
     const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
-    if (!toolCall?.function?.arguments) throw new Error("No structured response");
+    if (!toolCall?.function?.arguments) {
+      const fallback = buildFallbackOpinion(ticker, name, type, unique);
+      return new Response(JSON.stringify(fallback), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     return new Response(toolCall.function.arguments, { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (err) {
