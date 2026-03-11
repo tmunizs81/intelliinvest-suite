@@ -316,11 +316,6 @@ const Index = () => {
                   <MonthlyReportPanel assets={assets} />
                 </DashboardPanel>
               </div>
-              <div key="brokerage-import">
-                <DashboardPanel title="Importar Nota" locked={locked}>
-                  <BrokerageImportPanel />
-                </DashboardPanel>
-              </div>
             </ResponsiveGrid>
           </div>
         )}
