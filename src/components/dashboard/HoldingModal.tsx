@@ -166,8 +166,8 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
         avg_price: parseFloat(avgPrice),
         sector: sector.trim() || null,
         broker: broker.trim() || null,
-        yield_rate: type === 'Renda Fixa' ? yieldRate.trim() || null : null,
-        indexer_type: type === 'Renda Fixa' ? indexerType : null,
+        yield_rate: FIXED_INCOME_TYPES.includes(type) ? yieldRate.trim() || null : null,
+        indexer_type: FIXED_INCOME_TYPES.includes(type) ? indexerType : null,
       };
 
       if (!data.ticker || !data.name || isNaN(data.quantity) || isNaN(data.avg_price)) {
