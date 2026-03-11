@@ -181,7 +181,7 @@ export default function Analysis() {
           </div>
 
           {/* Chart Tabs */}
-          <div className="flex items-center gap-4 mb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
             <div className="flex gap-1 bg-muted rounded-lg p-1">
               <button
                 onClick={() => setActiveTab('tradingview')}
@@ -199,12 +199,12 @@ export default function Analysis() {
                 }`}
               >
                 <BarChart3 className="h-3 w-3 inline mr-1.5" />
-                Gráfico Customizado
+                Customizado
               </button>
             </div>
 
             {activeTab === 'custom' && (
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1 flex-wrap">
                 {ranges.map(r => (
                   <button
                     key={r.value}
