@@ -372,6 +372,11 @@ const Index = () => {
                   <AssetScoringPanel assets={assets} />
                 </DashboardPanel>
               </div>
+              <div key="fixed-income">
+                <DashboardPanel title="Resumo Renda Fixa" locked={locked}>
+                  <FixedIncomePanel assets={assets} />
+                </DashboardPanel>
+              </div>
             </ResponsiveGrid>
           </div>
         )}
