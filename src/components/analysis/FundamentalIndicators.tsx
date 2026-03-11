@@ -74,6 +74,7 @@ export default function FundamentalIndicators({ ticker, type, loadDelay = 0 }: P
           if ((String(resp.error).includes('Rate limit') || String(resp.error).includes('429') || String(resp.error).includes('404')) && attempt < retries) continue;
           throw new Error(resp.error);
         }
+        fundCache.set(ticker, { data: resp, ts: Date.now() });
         setData(resp);
         setLoading(false);
         return;
