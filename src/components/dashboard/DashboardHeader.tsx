@@ -1,12 +1,18 @@
 import { Bell, Settings, RefreshCw } from 'lucide-react';
 import { useState } from 'react';
 
-export default function DashboardHeader() {
+interface Props {
+  onRefresh: () => Promise<void>;
+  lastUpdate: Date | null;
+}
+
+export default function DashboardHeader({ onRefresh, lastUpdate }: Props) {
   const [refreshing, setRefreshing] = useState(false);
 
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 1500);
+    await onRefresh();
+    setRefreshing(false);
   };
 
   return (
@@ -15,12 +21,20 @@ export default function DashboardHeader() {
         <h1 className="text-2xl font-bold tracking-tight">
           Invest<span className="text-primary">AI</span>
         </h1>
-        <p className="text-sm text-muted-foreground">Controle inteligente de investimentos</p>
+        <p className="text-sm text-muted-foreground">
+          Controle inteligente de investimentos
+          {lastUpdate && (
+            <span className="ml-2 text-xs">
+              • Atualizado {lastUpdate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+            </span>
+          )}
+        </p>
       </div>
       <div className="flex items-center gap-2">
         <button
           onClick={handleRefresh}
-          className="h-9 w-9 rounded-lg border border-border bg-card flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-primary/30 transition-all"
+          disabled={refreshing}
+          className="h-9 w-9 rounded-lg border border-border bg-card flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-primary/30 transition-all disabled:opacity-50"
         >
           <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
         </button>

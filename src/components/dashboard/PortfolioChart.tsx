@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
-import { mockPortfolioHistory, formatCurrency } from '@/lib/mockData';
+import { type Asset, mockPortfolioHistory, formatCurrency } from '@/lib/mockData';
 
 const periods = [
   { label: '7D', days: 7 },
@@ -10,9 +10,24 @@ const periods = [
   { label: '1A', days: 365 },
 ];
 
-export default function PortfolioChart() {
+interface Props {
+  assets: Asset[];
+}
+
+export default function PortfolioChart({ assets }: Props) {
   const [activePeriod, setActivePeriod] = useState(4);
-  const data = mockPortfolioHistory.slice(-periods[activePeriod].days);
+
+  // Use current portfolio total as the latest point, scale historical data proportionally
+  const currentTotal = assets.reduce((s, a) => s + a.currentPrice * a.quantity, 0);
+  const historyLast = mockPortfolioHistory[mockPortfolioHistory.length - 1]?.value || 1;
+  const scale = currentTotal > 0 ? currentTotal / historyLast : 1;
+
+  const scaledHistory = mockPortfolioHistory.map((p) => ({
+    ...p,
+    value: Math.round(p.value * scale * 100) / 100,
+  }));
+
+  const data = scaledHistory.slice(-periods[activePeriod].days);
   const first = data[0]?.value ?? 0;
   const last = data[data.length - 1]?.value ?? 0;
   const isPositive = last >= first;
@@ -23,7 +38,7 @@ export default function PortfolioChart() {
         <div>
           <h2 className="text-lg font-semibold">Evolução Patrimonial</h2>
           <p className={`text-sm font-mono ${isPositive ? 'text-gain' : 'text-loss'}`}>
-            {formatCurrency(last - first)} ({((last - first) / first * 100).toFixed(2)}%)
+            {formatCurrency(last - first)} ({first > 0 ? ((last - first) / first * 100).toFixed(2) : '0.00'}%)
           </p>
         </div>
         <div className="flex gap-1 bg-muted rounded-lg p-1">
