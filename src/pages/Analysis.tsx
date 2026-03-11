@@ -10,6 +10,7 @@ import CandlestickChart from '@/components/asset/CandlestickChart';
 import IndicatorsPanel from '@/components/asset/IndicatorsPanel';
 import AIAnalysisPanel from '@/components/asset/AIAnalysisPanel';
 import FundamentalIndicators from '@/components/analysis/FundamentalIndicators';
+import AISignalBadge from '@/components/analysis/AISignalBadge';
 
 type RangeOption = '1mo' | '3mo' | '6mo' | '1y' | '2y' | '5y' | '10y' | 'max';
 
@@ -180,7 +181,23 @@ export default function Analysis() {
             </div>
           </div>
 
-          {/* Chart Tabs */}
+          {/* AI Signal Badge */}
+          <div className="mb-4">
+            <AISignalBadge
+              ticker={ticker}
+              name={assetName || ticker}
+              type={assetType}
+              candles={candles}
+              holdingInfo={asset ? {
+                quantity: asset.quantity,
+                avgPrice: asset.avgPrice,
+                currentPrice: asset.currentPrice,
+                profitPct: profitInfo?.profitPct || 0,
+              } : undefined}
+            />
+          </div>
+
+
           <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
             <div className="flex gap-1 bg-muted rounded-lg p-1">
               <button
