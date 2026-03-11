@@ -243,17 +243,17 @@ export default function Dividends() {
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">Dividendos & Proventos</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Histórico de 5 anos, projeções e calendário de pagamentos
+            Histórico de 5 anos, projeções e calendário
           </p>
         </div>
         <button
           onClick={fetchDividends}
           disabled={loading}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border bg-card text-sm font-medium hover:bg-accent/50 transition-all"
+          className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border bg-card text-sm font-medium hover:bg-accent/50 transition-all self-start"
         >
           <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
           Atualizar
@@ -346,7 +346,7 @@ export default function Dividends() {
       )}
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-muted rounded-lg p-1">
+      <div className="flex gap-1 bg-muted rounded-lg p-1 overflow-x-auto">
         {([
           { key: 'overview' as const, label: 'Visão Geral', icon: PieChart },
           { key: 'calendar' as const, label: 'Calendário', icon: Calendar },
@@ -356,14 +356,14 @@ export default function Dividends() {
           <button
             key={t.key}
             onClick={() => setTab(t.key)}
-            className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+            className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-medium rounded-md transition-colors whitespace-nowrap min-w-fit ${
               tab === t.key
                 ? 'bg-primary text-primary-foreground'
                 : 'text-muted-foreground hover:text-foreground'
             }`}
           >
-            <t.icon className="h-4 w-4" />
-            {t.label}
+            <t.icon className="h-4 w-4 shrink-0" />
+            <span className="hidden sm:inline">{t.label}</span>
           </button>
         ))}
       </div>

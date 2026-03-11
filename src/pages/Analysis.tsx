@@ -150,7 +150,7 @@ export default function Analysis() {
       ) : (
         <>
           {/* Asset Header */}
-          <div className="flex items-center justify-between mb-4 rounded-lg border border-border bg-card p-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 rounded-lg border border-border bg-card p-4">
             <div>
               <div className="flex items-center gap-3">
                 <h2 className="text-xl font-bold font-mono">{ticker}</h2>
@@ -160,8 +160,8 @@ export default function Analysis() {
               </div>
               <p className="text-sm text-muted-foreground">{assetName || ticker}</p>
             </div>
-            <div className="text-right">
-              <div className="flex items-center gap-2 justify-end">
+            <div className="sm:text-right">
+              <div className="flex items-center gap-2 sm:justify-end">
                 <span className="text-2xl font-bold font-mono">
                   {currentPrice > 0 ? formatCurrency(currentPrice) : '—'}
                 </span>
@@ -181,7 +181,7 @@ export default function Analysis() {
           </div>
 
           {/* Chart Tabs */}
-          <div className="flex items-center gap-4 mb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
             <div className="flex gap-1 bg-muted rounded-lg p-1">
               <button
                 onClick={() => setActiveTab('tradingview')}
@@ -199,12 +199,12 @@ export default function Analysis() {
                 }`}
               >
                 <BarChart3 className="h-3 w-3 inline mr-1.5" />
-                Gráfico Customizado
+                Customizado
               </button>
             </div>
 
             {activeTab === 'custom' && (
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1 flex-wrap">
                 {ranges.map(r => (
                   <button
                     key={r.value}

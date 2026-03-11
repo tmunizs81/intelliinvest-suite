@@ -65,7 +65,7 @@ function HistorySidebar({ conversations, activeId, open, onToggle, onSelect, onD
   const grouped = groupByDate(conversations);
 
   return (
-    <div className="w-72 shrink-0 border-r border-border bg-card flex flex-col h-full overflow-hidden">
+    <div className="w-72 shrink-0 border-r border-border bg-card flex flex-col h-full overflow-hidden fixed md:relative inset-y-0 left-0 z-40 md:z-auto shadow-xl md:shadow-none">
       <div className="px-3 py-3 border-b border-border flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2">
           <Clock className="h-4 w-4 text-muted-foreground" />
@@ -247,7 +247,7 @@ function PortfolioSidebar({ assets, open, onToggle }: { assets: Asset[]; open: b
   if (!open) return null;
 
   return (
-    <div className="w-80 shrink-0 border-l border-border bg-card flex flex-col h-full overflow-hidden">
+    <div className="w-80 shrink-0 border-l border-border bg-card flex flex-col h-full overflow-hidden fixed md:relative inset-y-0 right-0 z-40 md:z-auto shadow-xl md:shadow-none">
       <div className="px-4 py-3 border-b border-border flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2">
           <Wallet className="h-4 w-4 text-primary" />
@@ -331,8 +331,8 @@ export default function AITrader() {
     loadConversation, deleteConversation,
   } = useAITrader();
   const [input, setInput] = useState('');
-  const [historyOpen, setHistoryOpen] = useState(true);
-  const [portfolioOpen, setPortfolioOpen] = useState(true);
+  const [historyOpen, setHistoryOpen] = useState(typeof window !== 'undefined' && window.innerWidth >= 768);
+  const [portfolioOpen, setPortfolioOpen] = useState(typeof window !== 'undefined' && window.innerWidth >= 768);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -363,7 +363,7 @@ export default function AITrader() {
   };
 
   return (
-    <div className="h-screen flex bg-background">
+    <div className="h-[calc(100vh-3.5rem)] md:h-screen flex bg-background">
       {/* History Sidebar */}
       <HistorySidebar
         conversations={conversations}

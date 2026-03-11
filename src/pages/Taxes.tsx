@@ -396,14 +396,14 @@ export default function Taxes() {
     <div className="min-h-screen bg-background">
       <div className="px-4 sm:px-6 lg:px-8 py-6 max-w-6xl mx-auto">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-warning/10 flex items-center justify-center">
+            <div className="h-10 w-10 rounded-xl bg-warning/10 flex items-center justify-center shrink-0">
               <Calculator className="h-5 w-5 text-warning" />
             </div>
             <div>
               <h1 className="text-xl font-bold">Automação de Impostos</h1>
-              <p className="text-xs text-muted-foreground">Cálculo automático de IR, DARFs e relatórios para declaração</p>
+              <p className="text-xs text-muted-foreground">Cálculo automático de IR, DARFs e relatórios</p>
             </div>
           </div>
           <div className="flex items-center gap-2">

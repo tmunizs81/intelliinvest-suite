@@ -156,10 +156,10 @@ export default function Assets() {
             className="w-full rounded-lg border border-input bg-card pl-9 pr-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
           />
         </div>
-        <div className="flex gap-1 bg-muted rounded-lg p-1">
+        <div className="flex gap-1 bg-muted rounded-lg p-1 overflow-x-auto">
           <button
             onClick={() => setTypeFilter('')}
-            className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+            className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap ${
               !typeFilter ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
             }`}
           >
@@ -169,7 +169,7 @@ export default function Assets() {
             <button
               key={t}
               onClick={() => setTypeFilter(typeFilter === t ? '' : t)}
-              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap ${
                 typeFilter === t ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
               }`}
             >
@@ -214,101 +214,176 @@ export default function Assets() {
             )}
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border text-muted-foreground">
-                  <th className="text-left p-4 font-medium">Ativo</th>
-                  <th className="text-left p-4 font-medium">Tipo</th>
-                  <th className="text-right p-4 font-medium">Qtd</th>
-                  <th className="text-right p-4 font-medium">PM</th>
-                  <th className="text-right p-4 font-medium">Atual</th>
-                  <th className="text-right p-4 font-medium">24h</th>
-                  <th className="text-right p-4 font-medium">Total</th>
-                  <th className="text-right p-4 font-medium">Lucro</th>
-                  <th className="text-right p-4 font-medium">Alocação</th>
-                  <th className="text-right p-4 font-medium w-24"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((asset) => {
-                  const assetTotal = asset.currentPrice * asset.quantity;
-                  const assetCost = asset.avgPrice * asset.quantity;
-                  const profit = assetTotal - assetCost;
-                  const profitPct = assetCost > 0 ? (profit / assetCost) * 100 : 0;
-                  const isPositive = asset.change24h >= 0;
-                  const isProfitable = profit >= 0;
-                  const holdingRow = holdings.find(h => h.ticker === asset.ticker);
+          <>
+            {/* Desktop Table */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border text-muted-foreground">
+                    <th className="text-left p-4 font-medium">Ativo</th>
+                    <th className="text-left p-4 font-medium">Tipo</th>
+                    <th className="text-right p-4 font-medium">Qtd</th>
+                    <th className="text-right p-4 font-medium">PM</th>
+                    <th className="text-right p-4 font-medium">Atual</th>
+                    <th className="text-right p-4 font-medium">24h</th>
+                    <th className="text-right p-4 font-medium">Total</th>
+                    <th className="text-right p-4 font-medium">Lucro</th>
+                    <th className="text-right p-4 font-medium">Alocação</th>
+                    <th className="text-right p-4 font-medium w-24"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((asset) => {
+                    const assetTotal = asset.currentPrice * asset.quantity;
+                    const assetCost = asset.avgPrice * asset.quantity;
+                    const profit = assetTotal - assetCost;
+                    const profitPct = assetCost > 0 ? (profit / assetCost) * 100 : 0;
+                    const isPositive = asset.change24h >= 0;
+                    const isProfitable = profit >= 0;
+                    const holdingRow = holdings.find(h => h.ticker === asset.ticker);
 
-                  return (
-                    <tr
-                      key={asset.ticker}
-                      className="border-b border-border/50 hover:bg-accent/50 transition-colors cursor-pointer"
-                      onClick={() => navigate(`/analysis?ticker=${asset.ticker}`)}
-                    >
-                      <td className="p-4">
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-semibold font-mono">{asset.ticker}</span>
-                          <ChevronRight className="h-3 w-3 text-muted-foreground" />
+                    return (
+                      <tr
+                        key={asset.ticker}
+                        className="border-b border-border/50 hover:bg-accent/50 transition-colors cursor-pointer"
+                        onClick={() => navigate(`/analysis?ticker=${asset.ticker}`)}
+                      >
+                        <td className="p-4">
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-semibold font-mono">{asset.ticker}</span>
+                            <ChevronRight className="h-3 w-3 text-muted-foreground" />
+                          </div>
+                          <p className="text-xs text-muted-foreground">{asset.name}</p>
+                        </td>
+                        <td className="p-4">
+                          <span className={`text-xs px-2 py-1 rounded-full font-medium ${typeBadgeClass[asset.type] || ''}`}>
+                            {asset.type}
+                          </span>
+                        </td>
+                        <td className="text-right p-4 font-mono">{asset.quantity}</td>
+                        <td className="text-right p-4 font-mono text-muted-foreground">{formatCurrency(asset.avgPrice)}</td>
+                        <td className="text-right p-4 font-mono font-medium">
+                          {asset.currentPrice > 0 ? formatCurrency(asset.currentPrice) : '—'}
+                        </td>
+                        <td className="text-right p-4">
+                          {asset.currentPrice > 0 ? (
+                            <span className={`inline-flex items-center gap-1 font-mono text-sm ${isPositive ? 'text-gain' : 'text-loss'}`}>
+                              {isPositive ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
+                              {formatPercent(asset.change24h)}
+                            </span>
+                          ) : '—'}
+                        </td>
+                        <td className="text-right p-4 font-mono font-medium">
+                          {asset.currentPrice > 0 ? formatCurrency(assetTotal) : '—'}
+                        </td>
+                        <td className="text-right p-4">
+                          {asset.currentPrice > 0 ? (
+                            <div className={`font-mono ${isProfitable ? 'text-gain' : 'text-loss'}`}>
+                              <span className="font-medium">{formatCurrency(profit)}</span>
+                              <p className="text-xs">{formatPercent(profitPct)}</p>
+                            </div>
+                          ) : '—'}
+                        </td>
+                        <td className="text-right p-4 font-mono text-muted-foreground">{asset.allocation}%</td>
+                        <td className="text-right p-4" onClick={e => e.stopPropagation()}>
+                          <div className="flex items-center justify-end gap-1">
+                            {holdingRow && (
+                              <>
+                                <button
+                                  onClick={() => { setEditingHolding(holdingRow); setModalOpen(true); }}
+                                  className="h-7 w-7 rounded flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                                >
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </button>
+                                <button
+                                  onClick={() => handleDelete(holdingRow.id)}
+                                  className="h-7 w-7 rounded flex items-center justify-center text-muted-foreground hover:text-[hsl(var(--loss-foreground))] hover:bg-[hsl(var(--loss)/0.1)] transition-colors"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile Card View */}
+            <div className="md:hidden divide-y divide-border">
+              {filtered.map((asset) => {
+                const assetTotal = asset.currentPrice * asset.quantity;
+                const assetCost = asset.avgPrice * asset.quantity;
+                const profit = assetTotal - assetCost;
+                const profitPct = assetCost > 0 ? (profit / assetCost) * 100 : 0;
+                const isPositive = asset.change24h >= 0;
+                const isProfitable = profit >= 0;
+                const holdingRow = holdings.find(h => h.ticker === asset.ticker);
+
+                return (
+                  <div
+                    key={asset.ticker}
+                    className="p-4 hover:bg-accent/30 active:bg-accent/50 transition-colors cursor-pointer"
+                    onClick={() => navigate(`/analysis?ticker=${asset.ticker}`)}
+                  >
+                    <div className="flex items-start justify-between mb-2">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold font-mono">{asset.ticker}</span>
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${typeBadgeClass[asset.type] || ''}`}>
+                            {asset.type}
+                          </span>
                         </div>
-                        <p className="text-xs text-muted-foreground">{asset.name}</p>
-                      </td>
-                      <td className="p-4">
-                        <span className={`text-xs px-2 py-1 rounded-full font-medium ${typeBadgeClass[asset.type] || ''}`}>
-                          {asset.type}
-                        </span>
-                      </td>
-                      <td className="text-right p-4 font-mono">{asset.quantity}</td>
-                      <td className="text-right p-4 font-mono text-muted-foreground">{formatCurrency(asset.avgPrice)}</td>
-                      <td className="text-right p-4 font-mono font-medium">
-                        {asset.currentPrice > 0 ? formatCurrency(asset.currentPrice) : '—'}
-                      </td>
-                      <td className="text-right p-4">
-                        {asset.currentPrice > 0 ? (
-                          <span className={`inline-flex items-center gap-1 font-mono text-sm ${isPositive ? 'text-gain' : 'text-loss'}`}>
+                        <p className="text-xs text-muted-foreground mt-0.5">{asset.name}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-mono font-semibold text-sm">
+                          {asset.currentPrice > 0 ? formatCurrency(asset.currentPrice) : '—'}
+                        </p>
+                        {asset.currentPrice > 0 && (
+                          <span className={`inline-flex items-center gap-0.5 text-xs font-mono ${isPositive ? 'text-gain' : 'text-loss'}`}>
                             {isPositive ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
                             {formatPercent(asset.change24h)}
                           </span>
-                        ) : '—'}
-                      </td>
-                      <td className="text-right p-4 font-mono font-medium">
-                        {asset.currentPrice > 0 ? formatCurrency(assetTotal) : '—'}
-                      </td>
-                      <td className="text-right p-4">
-                        {asset.currentPrice > 0 ? (
-                          <div className={`font-mono ${isProfitable ? 'text-gain' : 'text-loss'}`}>
-                            <span className="font-medium">{formatCurrency(profit)}</span>
-                            <p className="text-xs">{formatPercent(profitPct)}</p>
-                          </div>
-                        ) : '—'}
-                      </td>
-                      <td className="text-right p-4 font-mono text-muted-foreground">{asset.allocation}%</td>
-                      <td className="text-right p-4" onClick={e => e.stopPropagation()}>
-                        <div className="flex items-center justify-end gap-1">
-                          {holdingRow && (
-                            <>
-                              <button
-                                onClick={() => { setEditingHolding(holdingRow); setModalOpen(true); }}
-                                className="h-7 w-7 rounded flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                              >
-                                <Pencil className="h-3.5 w-3.5" />
-                              </button>
-                              <button
-                                onClick={() => handleDelete(holdingRow.id)}
-                                className="h-7 w-7 rounded flex items-center justify-center text-muted-foreground hover:text-[hsl(var(--loss-foreground))] hover:bg-[hsl(var(--loss)/0.1)] transition-colors"
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </button>
-                            </>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-3 text-muted-foreground">
+                        <span>{asset.quantity} un</span>
+                        <span>PM {formatCurrency(asset.avgPrice)}</span>
+                        <span>{asset.allocation}%</span>
+                      </div>
+                      {asset.currentPrice > 0 && (
+                        <span className={`font-mono font-medium ${isProfitable ? 'text-gain' : 'text-loss'}`}>
+                          {formatCurrency(profit)} ({formatPercent(profitPct)})
+                        </span>
+                      )}
+                    </div>
+                    {holdingRow && (
+                      <div className="flex items-center justify-end gap-1 mt-2" onClick={e => e.stopPropagation()}>
+                        <button
+                          onClick={() => { setEditingHolding(holdingRow); setModalOpen(true); }}
+                          className="h-7 w-7 rounded flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(holdingRow.id)}
+                          className="h-7 w-7 rounded flex items-center justify-center text-muted-foreground hover:text-[hsl(var(--loss-foreground))] hover:bg-[hsl(var(--loss)/0.1)] transition-colors"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </>
         )}
       </div>
 
