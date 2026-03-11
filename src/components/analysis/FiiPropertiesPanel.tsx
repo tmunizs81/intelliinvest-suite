@@ -59,6 +59,15 @@ export default function FiiPropertiesPanel({ ticker }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showAll, setShowAll] = useState(false);
+  const [lastTicker, setLastTicker] = useState(ticker);
+
+  if (ticker !== lastTicker) {
+    setLastTicker(ticker);
+    setData(null);
+    setError(null);
+    setLoading(false);
+    setShowAll(false);
+  }
 
   const fetchProperties = useCallback(async () => {
     setLoading(true);
