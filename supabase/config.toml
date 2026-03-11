@@ -92,3 +92,12 @@ verify_jwt = false
 
 [functions.parse-b3-extract]
 verify_jwt = false
+
+[functions.ai-copilot]
+verify_jwt = false
+
+[functions.ai-correlation]
+verify_jwt = false
+
+[functions.ai-dividend-forecast]
+verify_jwt = false
