@@ -112,7 +112,7 @@ export default function AIAnalysisPanel({ ticker, name, type, candles, holdingIn
           <h2 className="text-sm font-semibold">Análise IA</h2>
         </div>
         <button
-          onClick={() => handleAnalyze()}
+          onClick={() => handleAnalyze(3, true)}
           disabled={loading}
           className="h-8 px-3 rounded-lg bg-primary text-primary-foreground text-xs font-medium flex items-center gap-1.5 hover:opacity-90 transition-opacity disabled:opacity-50"
         >

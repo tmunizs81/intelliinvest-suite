@@ -130,7 +130,7 @@ export default function AssetProfilePanel({ ticker, name, type }: Props) {
           </div>
         </div>
         <button
-          onClick={() => fetchProfile()}
+          onClick={() => fetchProfile(3, true)}
           disabled={loading}
           className="h-7 w-7 rounded-lg border border-border flex items-center justify-center text-muted-foreground hover:text-foreground transition-all disabled:opacity-50"
         >

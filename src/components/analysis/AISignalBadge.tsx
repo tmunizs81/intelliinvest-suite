@@ -180,7 +180,7 @@ export default function AISignalBadge({ ticker, name, type, candles, loadDelay =
         </div>
 
         <button
-          onClick={() => analyze()}
+          onClick={() => analyze(3, true)}
           disabled={loading}
           className="h-8 w-8 rounded-lg border border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all"
           title="Reanalisar"
