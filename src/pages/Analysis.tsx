@@ -279,7 +279,7 @@ export default function Analysis() {
           {activeTab === 'tradingview' ? (
             <>
               <TradingViewWidget ticker={ticker} type={assetType} />
-              <AIChartSummary ticker={ticker} name={assetName || ticker} type={assetType} candles={candles} />
+              <AIChartSummary ticker={ticker} name={assetName || ticker} type={assetType} candles={candles} loadDelay={4000} />
             </>
           ) : loading && candles.length === 0 ? (
             <div className="flex items-center justify-center py-20 gap-3">
