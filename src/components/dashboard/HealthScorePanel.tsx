@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { type Asset, formatCurrency } from '@/lib/mockData';
+import { useAIRateLimit } from '@/hooks/useAIRateLimit';
 import { Heart, Loader2, RefreshCw, Sparkles, TrendingUp, TrendingDown, Shield, Lightbulb } from 'lucide-react';
 
 interface HealthDimension {
