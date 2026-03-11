@@ -49,7 +49,15 @@ export default function AssetProfilePanel({ ticker, name, type }: Props) {
     setShowAllAssets(false);
   }
 
-  const fetchProfile = useCallback(async (retries = 3) => {
+  const fetchProfile = useCallback(async (retries = 3, skipCache = false) => {
+    const cached = profileCache.get(ticker);
+    if (!skipCache && cached && Date.now() - cached.ts < CACHE_TTL) {
+      setProfile(cached.data);
+      if (cached.data.sections) {
+        setExpandedSections(new Set(cached.data.sections.map((_: any, i: number) => i)));
+      }
+      return;
+    }
     setLoading(true);
     setError(null);
     for (let attempt = 0; attempt <= retries; attempt++) {
