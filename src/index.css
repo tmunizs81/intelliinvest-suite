@@ -163,14 +163,20 @@
 
 /* React Grid Layout overrides */
 .react-grid-item.react-grid-placeholder {
-  background: hsl(var(--primary) / 0.15) !important;
-  border: 2px dashed hsl(var(--primary) / 0.4) !important;
-  border-radius: var(--radius);
+  background: hsl(var(--primary) / 0.12) !important;
+  border: 2px dashed hsl(var(--primary) / 0.35) !important;
+  border-radius: 0.75rem;
   opacity: 1 !important;
 }
 
 .react-grid-item > .react-resizable-handle::after {
-  border-color: hsl(var(--muted-foreground) / 0.4) !important;
+  border-color: hsl(var(--primary) / 0.3) !important;
+  width: 8px !important;
+  height: 8px !important;
+}
+
+.react-grid-item > .react-resizable-handle {
+  z-index: 10;
 }
 
 .react-grid-item {
@@ -179,4 +185,10 @@
 
 .react-grid-item.cssTransforms {
   transition: transform 200ms ease !important;
+}
+
+.react-grid-item.react-draggable-dragging {
+  z-index: 100 !important;
+  opacity: 0.9;
+  box-shadow: 0 20px 40px -12px hsl(var(--primary) / 0.2) !important;
 }
