@@ -23,6 +23,7 @@ const statusConfig: Record<AlertStatus, { label: string; class: string }> = {
 
 export default function AlertsPanel() {
   const { alerts, telegramSettings, addAlert, deleteAlert, toggleAlert, reactivateAlert, saveTelegramSettings } = useAlerts();
+  const { supported: pushSupported, permission: pushPermission, requestPermission } = usePushNotifications();
   const [alertModalOpen, setAlertModalOpen] = useState(false);
   const [telegramModalOpen, setTelegramModalOpen] = useState(false);
 
