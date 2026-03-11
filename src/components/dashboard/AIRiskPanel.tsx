@@ -38,7 +38,7 @@ export default function AIRiskPanel({ assets }: Props) {
 
   const analyze = async () => {
     if (!canCall() || assets.length === 0) return;
-    registerCall();
+    recordCall();
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('ai-risk-analysis', {

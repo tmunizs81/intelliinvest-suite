@@ -26,7 +26,7 @@ export default function AIAdvisorPanel({ assets, cashBalance = 0 }: Props) {
 
   const ask = async (q: string) => {
     if (!canCall() || assets.length === 0) return;
-    registerCall();
+    recordCall();
     setLoading(true);
     setResponse('');
     setQuestion(q);
