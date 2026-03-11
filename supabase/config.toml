@@ -107,3 +107,9 @@ verify_jwt = false
 
 [functions.family-portfolio]
 verify_jwt = false
+
+[functions.ai-chart-summary]
+verify_jwt = false
+
+[functions.telegram-signal-alerts]
+verify_jwt = false
