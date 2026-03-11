@@ -1,9 +1,7 @@
 import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
-import { useAutoBackup } from '@/hooks/useAutoBackup';
 
 export default function AppLayout() {
-  useAutoBackup();
   return (
     <div className="min-h-screen bg-background">
       <Sidebar />
