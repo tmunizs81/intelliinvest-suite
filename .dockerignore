@@ -2,5 +2,10 @@ node_modules
 dist
 .git
 *.md
-.env
 docker/.env
+docker/backups
+supabase/functions
+playwright.config.ts
+playwright-fixture.ts
+vitest.config.ts
+src/test
