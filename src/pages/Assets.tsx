@@ -10,6 +10,7 @@ import HoldingModal from '@/components/dashboard/HoldingModal';
 import SellModal from '@/components/dashboard/SellModal';
 import CashBalanceModal from '@/components/dashboard/CashBalanceModal';
 import BrokerageImportPanel from '@/components/dashboard/BrokerageImportPanel';
+import B3ImportPanel from '@/components/dashboard/B3ImportPanel';
 import { type Asset, formatCurrency, formatPercent } from '@/lib/mockData';
 
 const typeBadgeClass: Record<string, string> = {
