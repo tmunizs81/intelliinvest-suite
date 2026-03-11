@@ -278,6 +278,8 @@ function UsersTab() {
       setNewPassword('');
       setNewName('');
       setNewRole('user');
+      setNewBotToken('');
+      setNewChatId('');
       await loadUsers();
     } catch (err) {
       toast.error('Erro ao criar usuário. Verifique os dados.');
