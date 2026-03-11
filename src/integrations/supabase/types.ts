@@ -274,6 +274,7 @@ export type Database = {
           broker: string | null
           created_at: string
           id: string
+          indexer_type: string | null
           name: string
           quantity: number
           sector: string | null
@@ -281,12 +282,14 @@ export type Database = {
           type: string
           updated_at: string
           user_id: string
+          yield_rate: string | null
         }
         Insert: {
           avg_price: number
           broker?: string | null
           created_at?: string
           id?: string
+          indexer_type?: string | null
           name: string
           quantity: number
           sector?: string | null
@@ -294,12 +297,14 @@ export type Database = {
           type: string
           updated_at?: string
           user_id: string
+          yield_rate?: string | null
         }
         Update: {
           avg_price?: number
           broker?: string | null
           created_at?: string
           id?: string
+          indexer_type?: string | null
           name?: string
           quantity?: number
           sector?: string | null
@@ -307,6 +312,7 @@ export type Database = {
           type?: string
           updated_at?: string
           user_id?: string
+          yield_rate?: string | null
         }
         Relationships: []
       }
