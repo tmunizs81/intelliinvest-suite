@@ -3,8 +3,9 @@ import {
   Settings, Users, Key, Shield, Bell, Database, UserPlus,
   Trash2, Copy, RefreshCw, Loader2, Check, X, Download, Upload,
   Send, ChevronDown, ChevronUp, Plus, Crown, User,
-  Pause, Play, Snowflake, AlertTriangle, ShieldCheck, Clock, Calendar,
+  Pause, Play, Snowflake, AlertTriangle, ShieldCheck, Clock, Calendar, ClipboardList,
 } from 'lucide-react';
+import AuditLogPanel from '@/components/dashboard/AuditLogPanel';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useRole } from '@/hooks/useRole';
