@@ -156,7 +156,7 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
     setLoading(true);
 
     try {
-      const data = {
+      const data: any = {
         ticker: ticker.toUpperCase().trim(),
         name: name.trim(),
         type,
@@ -164,6 +164,8 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
         avg_price: parseFloat(avgPrice),
         sector: sector.trim() || null,
         broker: broker.trim() || null,
+        yield_rate: type === 'Renda Fixa' ? yieldRate.trim() || null : null,
+        indexer_type: type === 'Renda Fixa' ? indexerType : null,
       };
 
       if (!data.ticker || !data.name || isNaN(data.quantity) || isNaN(data.avg_price)) {
