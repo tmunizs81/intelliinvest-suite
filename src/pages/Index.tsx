@@ -278,6 +278,11 @@ const Index = () => {
                   <PortfolioChart assets={assets} />
                 </DashboardPanel>
               </div>
+              <div key="portfolio-history">
+                <DashboardPanel title="Histórico Patrimonial (Real)" locked={locked}>
+                  <PortfolioHistoryChart snapshots={snapshots} loading={snapshotsLoading} />
+                </DashboardPanel>
+              </div>
               <div key="allocation">
                 <DashboardPanel title="Alocação" locked={locked}>
                   <AllocationChart assets={assets} />
