@@ -22,6 +22,9 @@ O **T2-SimplyNvest** é uma plataforma inteligente de gestão de investimentos q
 - **Histórico patrimonial** real com snapshots diários
 - **Atualização automática** de preços a cada 5 minutos
 - **Comparador de ativos** com veredito IA
+- **Consultor IA** com recomendações personalizadas
+- **Análise de Risco IA** com score de diversificação
+- **Benchmark comparativo** (CDI, IBOV, Dólar)
 
 ### Requisitos do Sistema:
 - Navegador moderno (Chrome, Firefox, Edge, Safari)
