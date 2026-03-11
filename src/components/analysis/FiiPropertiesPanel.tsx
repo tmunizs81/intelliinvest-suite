@@ -123,7 +123,7 @@ export default function FiiPropertiesPanel({ ticker }: Props) {
             <p className="text-[10px] text-muted-foreground">Propriedades do fundo — fonte: Investidor10 / StatusInvest</p>
           </div>
         </div>
-        <button onClick={fetchProperties} disabled={loading}
+        <button onClick={() => fetchProperties()} disabled={loading}
           className="h-7 w-7 rounded-lg border border-border flex items-center justify-center text-muted-foreground hover:text-foreground transition-all disabled:opacity-50">
           {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
         </button>
