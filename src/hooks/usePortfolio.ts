@@ -16,6 +16,12 @@ export interface HoldingRow {
   broker: string | null;
 }
 
+export interface CashBalanceRow {
+  id: string;
+  broker: string | null;
+  balance: number;
+}
+
 export function usePortfolio() {
   const { user } = useAuth();
   const [assets, setAssets] = useState<Asset[]>([]);
