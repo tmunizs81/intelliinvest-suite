@@ -171,7 +171,7 @@ function buildYearlyStats(history: DividendEvent[], quantity: number) {
     .sort((a, b) => b.year.localeCompare(a.year));
 }
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }

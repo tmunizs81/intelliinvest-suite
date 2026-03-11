@@ -363,7 +363,7 @@ function getGoogleFinanceTicker(ticker: string, category: string): string {
   return `${ticker}:BVMF`;
 }
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
