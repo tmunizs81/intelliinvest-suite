@@ -94,9 +94,12 @@ export default function HoldingsTable({ assets, holdings, loading, onAdd, onEdit
                 const holdingRow = holdings.find(h => h.ticker === asset.ticker);
 
                 return (
-                  <tr key={asset.ticker} className="border-b border-border/50 hover:bg-accent/50 transition-colors">
+                  <tr key={asset.ticker} className="border-b border-border/50 hover:bg-accent/50 transition-colors cursor-pointer" onClick={() => navigate(`/asset/${asset.ticker}`)}>
                     <td className="p-4">
-                      <span className="font-semibold font-mono">{asset.ticker}</span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-semibold font-mono">{asset.ticker}</span>
+                        <ChevronRight className="h-3 w-3 text-muted-foreground" />
+                      </div>
                       <p className="text-xs text-muted-foreground">{asset.name}</p>
                     </td>
                     <td className="p-4">
