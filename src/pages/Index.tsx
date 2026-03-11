@@ -16,6 +16,13 @@ import CurrencyDashboard from '@/components/dashboard/CurrencyDashboard';
 import AlertsPanel from '@/components/dashboard/AlertsPanel';
 import LicenseAlert from '@/components/dashboard/LicenseAlert';
 import HoldingModal from '@/components/dashboard/HoldingModal';
+import HealthScorePanel from '@/components/dashboard/HealthScorePanel';
+import RebalancePanel from '@/components/dashboard/RebalancePanel';
+import CorrelationHeatmap from '@/components/dashboard/CorrelationHeatmap';
+import NewsPanel from '@/components/dashboard/NewsPanel';
+import SimulatorPanel from '@/components/dashboard/SimulatorPanel';
+import GoalsPanel from '@/components/dashboard/GoalsPanel';
+import DashboardChatbot from '@/components/dashboard/DashboardChatbot';
 import { usePortfolio, type HoldingRow } from '@/hooks/usePortfolio';
 import { Loader2, Lock, Unlock, RotateCcw } from 'lucide-react';
 
@@ -24,43 +31,68 @@ const STORAGE_KEY = 'investai-dashboard-layouts';
 const defaultLayouts: any = {
   lg: [
     { i: 'summary', x: 0, y: 0, w: 12, h: 3, minW: 6, minH: 3 },
-    { i: 'portfolio-chart', x: 0, y: 3, w: 8, h: 7, minW: 4, minH: 5 },
-    { i: 'allocation', x: 8, y: 3, w: 4, h: 7, minW: 3, minH: 5 },
-    { i: 'performance', x: 0, y: 10, w: 12, h: 8, minW: 6, minH: 6 },
-    { i: 'dividends', x: 0, y: 18, w: 12, h: 9, minW: 6, minH: 6 },
-    { i: 'holdings', x: 0, y: 27, w: 8, h: 10, minW: 6, minH: 6 },
-    { i: 'alerts', x: 8, y: 27, w: 4, h: 5, minW: 3, minH: 4 },
-    { i: 'currency', x: 8, y: 32, w: 4, h: 5, minW: 3, minH: 4 },
-    { i: 'ai-insights', x: 8, y: 37, w: 4, h: 5, minW: 3, minH: 4 },
+    { i: 'health-score', x: 0, y: 3, w: 4, h: 8, minW: 3, minH: 6 },
+    { i: 'portfolio-chart', x: 4, y: 3, w: 8, h: 8, minW: 4, minH: 5 },
+    { i: 'allocation', x: 0, y: 11, w: 4, h: 7, minW: 3, minH: 5 },
+    { i: 'rebalance', x: 4, y: 11, w: 4, h: 7, minW: 3, minH: 5 },
+    { i: 'correlation', x: 8, y: 11, w: 4, h: 7, minW: 3, minH: 5 },
+    { i: 'performance', x: 0, y: 18, w: 12, h: 8, minW: 6, minH: 6 },
+    { i: 'dividends', x: 0, y: 26, w: 12, h: 9, minW: 6, minH: 6 },
+    { i: 'holdings', x: 0, y: 35, w: 8, h: 10, minW: 6, minH: 6 },
+    { i: 'alerts', x: 8, y: 35, w: 4, h: 5, minW: 3, minH: 4 },
+    { i: 'currency', x: 8, y: 40, w: 4, h: 5, minW: 3, minH: 4 },
+    { i: 'simulator', x: 0, y: 45, w: 6, h: 10, minW: 4, minH: 6 },
+    { i: 'goals', x: 6, y: 45, w: 6, h: 10, minW: 4, minH: 6 },
+    { i: 'news', x: 0, y: 55, w: 8, h: 8, minW: 4, minH: 5 },
+    { i: 'ai-insights', x: 8, y: 55, w: 4, h: 8, minW: 3, minH: 4 },
   ],
   md: [
     { i: 'summary', x: 0, y: 0, w: 10, h: 3, minW: 6, minH: 3 },
-    { i: 'portfolio-chart', x: 0, y: 3, w: 6, h: 7, minW: 4, minH: 5 },
-    { i: 'allocation', x: 6, y: 3, w: 4, h: 7, minW: 3, minH: 5 },
-    { i: 'performance', x: 0, y: 10, w: 10, h: 8, minW: 6, minH: 6 },
-    { i: 'dividends', x: 0, y: 18, w: 10, h: 9, minW: 6, minH: 6 },
-    { i: 'holdings', x: 0, y: 27, w: 10, h: 10, minW: 6, minH: 6 },
-    { i: 'alerts', x: 0, y: 37, w: 5, h: 5, minW: 3, minH: 4 },
-    { i: 'currency', x: 5, y: 37, w: 5, h: 5, minW: 3, minH: 4 },
-    { i: 'ai-insights', x: 0, y: 42, w: 10, h: 5, minW: 3, minH: 4 },
+    { i: 'health-score', x: 0, y: 3, w: 4, h: 8, minW: 3, minH: 6 },
+    { i: 'portfolio-chart', x: 4, y: 3, w: 6, h: 8, minW: 4, minH: 5 },
+    { i: 'allocation', x: 0, y: 11, w: 5, h: 7, minW: 3, minH: 5 },
+    { i: 'rebalance', x: 5, y: 11, w: 5, h: 7, minW: 3, minH: 5 },
+    { i: 'correlation', x: 0, y: 18, w: 10, h: 7, minW: 6, minH: 5 },
+    { i: 'performance', x: 0, y: 25, w: 10, h: 8, minW: 6, minH: 6 },
+    { i: 'dividends', x: 0, y: 33, w: 10, h: 9, minW: 6, minH: 6 },
+    { i: 'holdings', x: 0, y: 42, w: 10, h: 10, minW: 6, minH: 6 },
+    { i: 'alerts', x: 0, y: 52, w: 5, h: 5, minW: 3, minH: 4 },
+    { i: 'currency', x: 5, y: 52, w: 5, h: 5, minW: 3, minH: 4 },
+    { i: 'simulator', x: 0, y: 57, w: 10, h: 10, minW: 6, minH: 6 },
+    { i: 'goals', x: 0, y: 67, w: 10, h: 10, minW: 6, minH: 6 },
+    { i: 'news', x: 0, y: 77, w: 10, h: 8, minW: 6, minH: 5 },
+    { i: 'ai-insights', x: 0, y: 85, w: 10, h: 5, minW: 3, minH: 4 },
   ],
   sm: [
     { i: 'summary', x: 0, y: 0, w: 6, h: 4, minW: 6, minH: 3 },
-    { i: 'portfolio-chart', x: 0, y: 4, w: 6, h: 7, minW: 6, minH: 5 },
-    { i: 'allocation', x: 0, y: 11, w: 6, h: 7, minW: 6, minH: 5 },
-    { i: 'performance', x: 0, y: 18, w: 6, h: 8, minW: 6, minH: 6 },
-    { i: 'dividends', x: 0, y: 26, w: 6, h: 9, minW: 6, minH: 6 },
-    { i: 'holdings', x: 0, y: 35, w: 6, h: 10, minW: 6, minH: 6 },
-    { i: 'alerts', x: 0, y: 45, w: 6, h: 5, minW: 6, minH: 4 },
-    { i: 'currency', x: 0, y: 50, w: 6, h: 5, minW: 6, minH: 4 },
-    { i: 'ai-insights', x: 0, y: 55, w: 6, h: 5, minW: 6, minH: 4 },
+    { i: 'health-score', x: 0, y: 4, w: 6, h: 8, minW: 6, minH: 6 },
+    { i: 'portfolio-chart', x: 0, y: 12, w: 6, h: 7, minW: 6, minH: 5 },
+    { i: 'allocation', x: 0, y: 19, w: 6, h: 7, minW: 6, minH: 5 },
+    { i: 'rebalance', x: 0, y: 26, w: 6, h: 8, minW: 6, minH: 5 },
+    { i: 'correlation', x: 0, y: 34, w: 6, h: 7, minW: 6, minH: 5 },
+    { i: 'performance', x: 0, y: 41, w: 6, h: 8, minW: 6, minH: 6 },
+    { i: 'dividends', x: 0, y: 49, w: 6, h: 9, minW: 6, minH: 6 },
+    { i: 'holdings', x: 0, y: 58, w: 6, h: 10, minW: 6, minH: 6 },
+    { i: 'alerts', x: 0, y: 68, w: 6, h: 5, minW: 6, minH: 4 },
+    { i: 'currency', x: 0, y: 73, w: 6, h: 5, minW: 6, minH: 4 },
+    { i: 'simulator', x: 0, y: 78, w: 6, h: 10, minW: 6, minH: 6 },
+    { i: 'goals', x: 0, y: 88, w: 6, h: 10, minW: 6, minH: 6 },
+    { i: 'news', x: 0, y: 98, w: 6, h: 8, minW: 6, minH: 5 },
+    { i: 'ai-insights', x: 0, y: 106, w: 6, h: 5, minW: 6, minH: 4 },
   ],
 };
 
 function loadLayouts(): any {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) return JSON.parse(saved);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      // Check if saved layout has all required keys
+      const requiredKeys = defaultLayouts.lg.map((l: any) => l.i);
+      const savedKeys = (parsed.lg || []).map((l: any) => l.i);
+      const hasAll = requiredKeys.every((k: string) => savedKeys.includes(k));
+      if (hasAll) return parsed;
+    }
   } catch {}
   return defaultLayouts;
 }
@@ -108,7 +140,6 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background">
       <div className="px-4 sm:px-6 lg:px-8 space-y-4">
-        {/* License Alert */}
         <div className="pt-4">
           <LicenseAlert />
         </div>
@@ -186,6 +217,11 @@ const Index = () => {
                   <PortfolioSummary assets={assets} lastUpdate={lastUpdate} />
                 </DashboardPanel>
               </div>
+              <div key="health-score">
+                <DashboardPanel title="Saúde da Carteira" locked={locked}>
+                  <HealthScorePanel assets={assets} />
+                </DashboardPanel>
+              </div>
               <div key="portfolio-chart">
                 <DashboardPanel title="Evolução Patrimonial" locked={locked}>
                   <PortfolioChart assets={assets} />
@@ -194,6 +230,16 @@ const Index = () => {
               <div key="allocation">
                 <DashboardPanel title="Alocação" locked={locked}>
                   <AllocationChart assets={assets} />
+                </DashboardPanel>
+              </div>
+              <div key="rebalance">
+                <DashboardPanel title="Rebalanceamento IA" locked={locked}>
+                  <RebalancePanel assets={assets} />
+                </DashboardPanel>
+              </div>
+              <div key="correlation">
+                <DashboardPanel title="Correlação" locked={locked}>
+                  <CorrelationHeatmap assets={assets} />
                 </DashboardPanel>
               </div>
               <div key="performance">
@@ -223,20 +269,38 @@ const Index = () => {
                   <AlertsPanel />
                 </DashboardPanel>
               </div>
-              <div key="ai-insights">
-                <DashboardPanel title="IA Insights" locked={locked}>
-                  <AIInsightsPanel assets={assets} />
-                </DashboardPanel>
-              </div>
               <div key="currency">
                 <DashboardPanel title="Câmbio" locked={locked}>
                   <CurrencyDashboard />
+                </DashboardPanel>
+              </div>
+              <div key="simulator">
+                <DashboardPanel title="Simulador E se?" locked={locked}>
+                  <SimulatorPanel assets={assets} />
+                </DashboardPanel>
+              </div>
+              <div key="goals">
+                <DashboardPanel title="Metas" locked={locked}>
+                  <GoalsPanel assets={assets} />
+                </DashboardPanel>
+              </div>
+              <div key="news">
+                <DashboardPanel title="Notícias IA" locked={locked}>
+                  <NewsPanel assets={assets} />
+                </DashboardPanel>
+              </div>
+              <div key="ai-insights">
+                <DashboardPanel title="IA Insights" locked={locked}>
+                  <AIInsightsPanel assets={assets} />
                 </DashboardPanel>
               </div>
             </ResponsiveGrid>
           </div>
         )}
       </div>
+
+      {/* Floating AI Chatbot */}
+      <DashboardChatbot assets={assets} />
 
       <HoldingModal
         open={modalOpen}
