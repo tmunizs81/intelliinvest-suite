@@ -20,6 +20,7 @@ import Signup from "./pages/Signup";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
+import FamilyPortfolio from "./pages/FamilyPortfolio";
 import PWAInstallPrompt from "./components/PWAInstallPrompt";
 import { Loader2 } from "lucide-react";
 
