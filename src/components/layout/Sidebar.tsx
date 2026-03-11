@@ -3,7 +3,7 @@ import { useAuth } from '@/hooks/useAuth';
 import {
   LayoutDashboard, Briefcase, BarChart3, LogOut, User,
   ChevronLeft, ChevronRight, TrendingUp, Brain, Calculator, DollarSign, Settings,
-  Menu, X, FileText, Users,
+  Menu, X, FileText, Users, Book,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import ThemeToggle from '@/components/ThemeToggle';
