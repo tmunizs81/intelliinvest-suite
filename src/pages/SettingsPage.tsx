@@ -1412,7 +1412,7 @@ function BackupTab() {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `investai-holdings-${new Date().toISOString().split('T')[0]}.csv`;
+        a.download = `simplynvest-holdings-${new Date().toISOString().split('T')[0]}.csv`;
         a.click();
         URL.revokeObjectURL(url);
       }
