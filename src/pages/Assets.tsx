@@ -533,6 +533,14 @@ export default function Assets() {
         editData={editingHolding}
         onUpdate={updateHolding}
       />
+
+      <SellModal
+        open={sellOpen}
+        holding={sellingHolding}
+        currentPrice={sellingPrice}
+        onClose={() => { setSellOpen(false); setSellingHolding(null); }}
+        onSell={sellHolding}
+      />
     </div>
   );
 }
