@@ -103,8 +103,11 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="px-4 sm:px-6 lg:px-8">
-        {/* Header */}
+      <div className="px-4 sm:px-6 lg:px-8 space-y-4">
+        {/* License Alert */}
+        <div className="pt-4">
+          <LicenseAlert />
+        </div>
         <div className="flex items-center justify-between py-5">
           <div>
             <p className="text-sm text-muted-foreground">
