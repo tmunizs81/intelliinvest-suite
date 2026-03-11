@@ -16,6 +16,7 @@ const navItems = [
   { to: '/assets', label: 'Meus Ativos', icon: Briefcase },
   { to: '/reports', label: 'Relatórios', icon: FileText },
   { to: '/analysis', label: 'Análise Avançada', icon: BarChart3 },
+  { to: '/comparator', label: 'Comparador', icon: TrendingUp },
   { to: '/family', label: 'Carteira Familiar', icon: Users },
   { to: '/settings', label: 'Configurações', icon: Settings },
   { to: '/manual', label: 'Manual', icon: Book },

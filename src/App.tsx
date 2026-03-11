@@ -87,6 +87,7 @@ const App = () => (
               <Route path="/dividends" element={<Dividends />} />
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/family" element={<FamilyPortfolio />} />
+              <Route path="/comparator" element={<Comparator />} />
               <Route path="/manual" element={<Manual />} />
               <Route path="/asset/:ticker" element={<Analysis />} />
             </Route>
