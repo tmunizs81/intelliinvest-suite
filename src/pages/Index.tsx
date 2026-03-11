@@ -321,6 +321,16 @@ const Index = () => {
                   <MonthlyReportPanel assets={assets} />
                 </DashboardPanel>
               </div>
+              <div key="smart-contribution">
+                <DashboardPanel title="Aporte Inteligente" locked={locked}>
+                  <SmartContributionPanel assets={assets} />
+                </DashboardPanel>
+              </div>
+              <div key="ceiling-price">
+                <DashboardPanel title="Preço Teto (Bazin/Graham)" locked={locked}>
+                  <CeilingPricePanel assets={assets} />
+                </DashboardPanel>
+              </div>
             </ResponsiveGrid>
           </div>
         )}
