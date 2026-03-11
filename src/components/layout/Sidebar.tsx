@@ -9,6 +9,7 @@ import { useState } from 'react';
 const navItems = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/ai-trader', label: 'AI Pro Trader', icon: Brain },
+  { to: '/dividends', label: 'Dividendos', icon: DollarSign },
   { to: '/taxes', label: 'Impostos', icon: Calculator },
   { to: '/assets', label: 'Meus Ativos', icon: Briefcase },
   { to: '/analysis', label: 'Análise Avançada', icon: BarChart3 },

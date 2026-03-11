@@ -61,6 +61,7 @@ const App = () => (
               <Route path="/analysis" element={<Analysis />} />
               <Route path="/ai-trader" element={<AITrader />} />
               <Route path="/taxes" element={<Taxes />} />
+              <Route path="/dividends" element={<Dividends />} />
               <Route path="/asset/:ticker" element={<Analysis />} />
             </Route>
 
