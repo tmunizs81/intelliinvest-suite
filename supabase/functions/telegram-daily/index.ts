@@ -15,7 +15,15 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN")!;
     const adminClient = createClient(supabaseUrl, supabaseServiceKey);
+
+    if (!botToken) {
+      return new Response(JSON.stringify({ error: "Bot token not configured" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     // Get all users with telegram enabled
     const { data: telegramUsers } = await adminClient
@@ -33,7 +41,7 @@ serve(async (req) => {
 
     for (const tgUser of telegramUsers) {
       try {
-        if (!tgUser.bot_token || !tgUser.chat_id) continue;
+        if (!tgUser.chat_id) continue;
 
         // Fetch user holdings
         const { data: holdings } = await adminClient
@@ -133,7 +141,7 @@ ${assetLines.join('\n')}${dividendLine}${alertsLine}
 _Powered by InvestAI_ 🤖`;
 
         // Send to Telegram
-        const sendResp = await fetch(`https://api.telegram.org/bot${tgUser.bot_token}/sendMessage`, {
+        const sendResp = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

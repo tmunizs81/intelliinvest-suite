@@ -28,6 +28,8 @@ serve(async (req) => {
     const chatId = String(message.chat.id);
     const text = message.text.trim().toLowerCase();
 
+    const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN")!;
+
     // Find user by chat_id
     const { data: tgSetting } = await adminClient
       .from("telegram_settings")
@@ -36,14 +38,14 @@ serve(async (req) => {
       .eq("enabled", true)
       .maybeSingle();
 
-    if (!tgSetting || !tgSetting.bot_token) {
+    if (!tgSetting) {
       return new Response(JSON.stringify({ ok: true }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     const sendTelegramMessage = async (text: string) => {
-      await fetch(`https://api.telegram.org/bot${tgSetting.bot_token}/sendMessage`, {
+      await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

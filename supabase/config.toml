@@ -35,3 +35,9 @@ verify_jwt = false
 
 [functions.telegram-webhook]
 verify_jwt = false
+
+[functions.telegram-test]
+verify_jwt = false
+
+[functions.telegram-setup-webhook]
+verify_jwt = false

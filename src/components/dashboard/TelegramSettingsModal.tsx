@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { X, Loader2, Send, MessageCircle } from 'lucide-react';
 import type { TelegramSettings } from '@/hooks/useAlerts';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Props {
   open: boolean;
@@ -10,7 +11,6 @@ interface Props {
 }
 
 export default function TelegramSettingsModal({ open, onClose, settings, onSave }: Props) {
-  const [botToken, setBotToken] = useState(settings.bot_token || '');
   const [chatId, setChatId] = useState(settings.chat_id || '');
   const [enabled, setEnabled] = useState(settings.enabled);
   const [loading, setLoading] = useState(false);
@@ -21,27 +21,20 @@ export default function TelegramSettingsModal({ open, onClose, settings, onSave 
 
   const handleSave = async () => {
     setLoading(true);
-    await onSave({ bot_token: botToken || null, chat_id: chatId || null, enabled });
+    await onSave({ bot_token: null, chat_id: chatId || null, enabled });
     setLoading(false);
     onClose();
   };
 
   const handleTest = async () => {
-    if (!botToken || !chatId) return;
+    if (!chatId) return;
     setTesting(true);
     setTestResult(null);
     try {
-      const resp = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          chat_id: chatId,
-          text: '✅ InvestAI - Teste de conexão\n\nSeu bot Telegram está configurado corretamente!',
-          parse_mode: 'HTML',
-        }),
+      const { error } = await supabase.functions.invoke('telegram-test', {
+        body: { chatId },
       });
-      const data = await resp.json();
-      setTestResult(data.ok ? '✅ Mensagem enviada com sucesso!' : `❌ Erro: ${data.description}`);
+      setTestResult(error ? `❌ Erro: ${error.message}` : '✅ Mensagem enviada com sucesso!');
     } catch (err) {
       setTestResult('❌ Falha na conexão');
     }
@@ -61,22 +54,13 @@ export default function TelegramSettingsModal({ open, onClose, settings, onSave 
 
         <div className="p-5 space-y-4">
           <div className="rounded-md bg-muted/50 border border-border p-3 text-xs text-muted-foreground space-y-2">
-            <p className="font-medium text-foreground">Como configurar:</p>
+            <p className="font-medium text-foreground">Como obter seu Chat ID:</p>
             <ol className="list-decimal list-inside space-y-1">
-              <li>Abra o Telegram e busque <span className="font-mono text-primary">@BotFather</span></li>
-              <li>Envie <span className="font-mono">/newbot</span> e siga as instruções</li>
-              <li>Copie o <b>Token</b> do bot gerado</li>
-              <li>Inicie conversa com seu bot e envie qualquer mensagem</li>
-              <li>Acesse <span className="font-mono">https://api.telegram.org/bot&lt;TOKEN&gt;/getUpdates</span></li>
-              <li>Copie o <b>Chat ID</b> do resultado</li>
+              <li>Abra o Telegram e busque o bot do sistema</li>
+              <li>Envie <span className="font-mono">/start</span> para o bot</li>
+              <li>Busque <span className="font-mono text-primary">@userinfobot</span></li>
+              <li>Envie qualquer mensagem e copie seu <b>Chat ID</b></li>
             </ol>
-          </div>
-
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-muted-foreground">Bot Token</label>
-            <input value={botToken} onChange={e => setBotToken(e.target.value)}
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-              placeholder="123456789:ABCdef..." type="password" />
           </div>
 
           <div className="space-y-1">
@@ -99,7 +83,7 @@ export default function TelegramSettingsModal({ open, onClose, settings, onSave 
           )}
 
           <div className="flex gap-2">
-            <button onClick={handleTest} disabled={testing || !botToken || !chatId}
+            <button onClick={handleTest} disabled={testing || !chatId}
               className="flex-1 rounded-md border border-border bg-muted py-2.5 text-sm font-medium text-foreground hover:bg-accent disabled:opacity-50 flex items-center justify-center gap-2">
               {testing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
               Testar
