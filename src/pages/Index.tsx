@@ -41,6 +41,11 @@ import PatternDetectorPanel from '@/components/dashboard/PatternDetectorPanel';
 import IRAssistantPanel from '@/components/dashboard/IRAssistantPanel';
 import IntegrationsPanel from '@/components/dashboard/IntegrationsPanel';
 import KioskMode from '@/components/dashboard/KioskMode';
+import SectorRadarPanel from '@/components/dashboard/SectorRadarPanel';
+import EventsCalendarPanel from '@/components/dashboard/EventsCalendarPanel';
+import AchievementsPanel from '@/components/dashboard/AchievementsPanel';
+import SessionLogPanel from '@/components/dashboard/SessionLogPanel';
+import FiscalReportPanel from '@/components/dashboard/FiscalReportPanel';
 
 import { usePortfolio, type HoldingRow } from '@/hooks/usePortfolio';
 import { usePortfolioSnapshots } from '@/hooks/usePortfolioSnapshots';
@@ -238,8 +243,11 @@ function TabResumo({ assets, lastUpdate, nextUpdate, snapshots, snapshotsLoading
         <>
           <Panel title="Saúde da Carteira"><HealthScorePanel assets={assets} /></Panel>
           <Panel title="Mapa de Calor"><TreemapPanel assets={assets} /></Panel>
+          <Panel title="Concentração Setorial"><SectorRadarPanel assets={assets} /></Panel>
+          <Panel title="Calendário de Eventos"><EventsCalendarPanel assets={assets} /></Panel>
           <Panel title="Evolução Patrimonial"><PortfolioChart assets={assets} /></Panel>
           <Panel title="Histórico Patrimonial"><PortfolioHistoryChart snapshots={snapshots} loading={snapshotsLoading} /></Panel>
+          <Panel title="🏆 Conquistas"><AchievementsPanel assets={assets} /></Panel>
         </>
       ) : (
         <>
@@ -248,7 +256,12 @@ function TabResumo({ assets, lastUpdate, nextUpdate, snapshots, snapshotsLoading
             <Panel title="Evolução Patrimonial" className="lg:col-span-2"><PortfolioChart assets={assets} /></Panel>
           </div>
           <Panel title="🗺️ Mapa de Calor (Treemap)"><TreemapPanel assets={assets} /></Panel>
+          <Grid2>
+            <Panel title="📡 Concentração Setorial (Radar)"><SectorRadarPanel assets={assets} /></Panel>
+            <Panel title="📅 Calendário de Eventos"><EventsCalendarPanel assets={assets} /></Panel>
+          </Grid2>
           <Panel title="Histórico Patrimonial (Real)"><PortfolioHistoryChart snapshots={snapshots} loading={snapshotsLoading} /></Panel>
+          <Panel title="🏆 Conquistas e Badges"><AchievementsPanel assets={assets} /></Panel>
         </>
       )}
     </>
@@ -399,6 +412,8 @@ function TabMais({ assets, isMobile, snapshots, snapshotsLoading }: any) {
           <Panel title="Metas"><GoalsPanel assets={assets} /></Panel>
           <Panel title="Aporte Inteligente"><SmartContributionPanel assets={assets} /></Panel>
           <Panel title="Relatório Mensal"><MonthlyReportPanel assets={assets} /></Panel>
+          <Panel title="Relatório Fiscal"><FiscalReportPanel assets={assets} /></Panel>
+          <Panel title="Sessões Ativas"><SessionLogPanel /></Panel>
           <Panel title="Integrações"><IntegrationsPanel assets={assets} /></Panel>
         </>
       ) : (
@@ -410,6 +425,10 @@ function TabMais({ assets, isMobile, snapshots, snapshotsLoading }: any) {
           <Grid2>
             <Panel title="Aporte Inteligente"><SmartContributionPanel assets={assets} /></Panel>
             <Panel title="Relatório Mensal"><MonthlyReportPanel assets={assets} /></Panel>
+          </Grid2>
+          <Grid2>
+            <Panel title="📄 Relatório Fiscal (PDF/CSV)"><FiscalReportPanel assets={assets} /></Panel>
+            <Panel title="🔐 Sessões Ativas"><SessionLogPanel /></Panel>
           </Grid2>
           <Panel title="🔗 Integrações (Sheets, Notion, Webhook)"><IntegrationsPanel assets={assets} /></Panel>
         </>
