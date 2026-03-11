@@ -103,6 +103,8 @@ const defaultLayouts: any = {
     { i: 'monthly-report', x: 0, y: 112, w: 6, h: 7, minW: 6, minH: 5 },
     { i: 'smart-contribution', x: 0, y: 119, w: 6, h: 9, minW: 6, minH: 6 },
     { i: 'ceiling-price', x: 0, y: 128, w: 6, h: 9, minW: 6, minH: 6 },
+    { i: 'profitability', x: 0, y: 137, w: 6, h: 9, minW: 6, minH: 6 },
+    { i: 'backtesting', x: 0, y: 146, w: 6, h: 9, minW: 6, minH: 6 },
   ],
 };
 
