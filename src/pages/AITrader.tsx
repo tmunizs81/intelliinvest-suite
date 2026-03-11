@@ -247,7 +247,7 @@ function PortfolioSidebar({ assets, open, onToggle }: { assets: Asset[]; open: b
   if (!open) return null;
 
   return (
-    <div className="w-80 shrink-0 border-l border-border bg-card flex flex-col h-full overflow-hidden">
+    <div className="w-80 shrink-0 border-l border-border bg-card flex flex-col h-full overflow-hidden fixed md:relative inset-y-0 right-0 z-40 md:z-auto shadow-xl md:shadow-none">
       <div className="px-4 py-3 border-b border-border flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2">
           <Wallet className="h-4 w-4 text-primary" />
