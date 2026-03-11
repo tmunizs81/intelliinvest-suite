@@ -48,7 +48,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    // Send security alert for new login (fire and forget)
+    if (!error && data?.user) {
+      supabase.functions.invoke('telegram-security-alert', {
+        body: {
+          alertType: 'new_login',
+          userId: data.user.id,
+          details: {
+            device: navigator.userAgent.slice(0, 100),
+            timestamp: new Date().toISOString(),
+          },
+        },
+      }).catch(() => {});
+    }
     return { error: error as Error | null };
   };
 
