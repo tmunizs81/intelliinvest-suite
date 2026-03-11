@@ -12,6 +12,7 @@ import AIAnalysisPanel from '@/components/asset/AIAnalysisPanel';
 import FundamentalIndicators from '@/components/analysis/FundamentalIndicators';
 import AISignalBadge from '@/components/analysis/AISignalBadge';
 import AIChartSummary from '@/components/analysis/AIChartSummary';
+import AssetProfilePanel from '@/components/analysis/AssetProfilePanel';
 
 type RangeOption = '1mo' | '3mo' | '6mo' | '1y' | '2y' | '5y' | '10y' | 'max';
 
@@ -293,6 +294,11 @@ export default function Analysis() {
                 } : undefined}
               />
             </div>
+          </div>
+
+          {/* Asset Profile Summary */}
+          <div className="mt-6">
+            <AssetProfilePanel ticker={ticker} name={assetName || ticker} type={assetType} />
           </div>
 
           {/* Position info */}
