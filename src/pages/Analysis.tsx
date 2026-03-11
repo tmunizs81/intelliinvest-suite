@@ -308,6 +308,12 @@ export default function Analysis() {
             </div>
           </div>
 
+          {/* FII Properties List */}
+          {(assetType === 'FII' || /^[A-Z]{4}11$/i.test(ticker)) && (
+            <div className="mt-6">
+              <FiiPropertiesPanel ticker={ticker} />
+            </div>
+          )}
 
           {/* Position info */}
           {asset && profitInfo && (
