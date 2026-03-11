@@ -11,6 +11,7 @@ import Analysis from "./pages/Analysis";
 import AITrader from "./pages/AITrader";
 import Taxes from "./pages/Taxes";
 import Dividends from "./pages/Dividends";
+import SettingsPage from "./pages/SettingsPage";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import ForgotPassword from "./pages/ForgotPassword";
@@ -62,12 +63,13 @@ const App = () => (
               <Route path="/ai-trader" element={<AITrader />} />
               <Route path="/taxes" element={<Taxes />} />
               <Route path="/dividends" element={<Dividends />} />
+              <Route path="/settings" element={<SettingsPage />} />
               <Route path="/asset/:ticker" element={<Analysis />} />
             </Route>
 
             {/* Public routes */}
             <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
-            <Route path="/signup" element={<PublicRoute><Signup /></PublicRoute>} />
+            {/* Signup removed - admin creates users */}
             <Route path="/forgot-password" element={<PublicRoute><ForgotPassword /></PublicRoute>} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="*" element={<NotFound />} />

@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import {
   LayoutDashboard, Briefcase, BarChart3, LogOut, User,
-  ChevronLeft, ChevronRight, TrendingUp, Brain, Calculator, DollarSign,
+  ChevronLeft, ChevronRight, TrendingUp, Brain, Calculator, DollarSign, Settings,
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -13,6 +13,7 @@ const navItems = [
   { to: '/taxes', label: 'Impostos', icon: Calculator },
   { to: '/assets', label: 'Meus Ativos', icon: Briefcase },
   { to: '/analysis', label: 'Análise Avançada', icon: BarChart3 },
+  { to: '/settings', label: 'Configurações', icon: Settings },
 ];
 
 export default function Sidebar() {

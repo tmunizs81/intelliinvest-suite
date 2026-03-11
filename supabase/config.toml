@@ -26,3 +26,9 @@ verify_jwt = false
 
 [functions.ai-trader]
 verify_jwt = false
+
+[functions.admin-create-user]
+verify_jwt = false
+
+[functions.telegram-daily]
+verify_jwt = false
