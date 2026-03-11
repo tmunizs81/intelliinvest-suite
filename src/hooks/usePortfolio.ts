@@ -95,7 +95,7 @@ export function usePortfolio() {
         return {
           ticker: item.ticker,
           name: item.name,
-          type: item.type as Asset['type'],
+          type: classifyAssetType(item.ticker, item.type) as Asset['type'],
           quantity: item.quantity,
           avgPrice: item.avg_price,
           currentPrice: currentPriceBRL,
