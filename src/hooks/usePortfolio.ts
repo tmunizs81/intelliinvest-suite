@@ -269,22 +269,24 @@ export function usePortfolio() {
     await refresh();
   }, [user, holdings, refresh]);
 
-  // Update cash balance manually
-  const updateCashBalance = useCallback(async (amount: number) => {
+  // Update cash balance for a specific broker
+  const updateCashBalanceBroker = useCallback(async (amount: number, broker: string | null) => {
     if (!user) return;
+    const brokerVal = broker || '';
     const { data: existing } = await supabase
       .from('cash_balance' as any)
       .select('id')
       .eq('user_id', user.id)
+      .eq('broker', brokerVal)
       .maybeSingle();
 
     if (existing) {
       await supabase.from('cash_balance' as any).update({ balance: amount, updated_at: new Date().toISOString() } as any).eq('id', (existing as any).id);
     } else {
-      await supabase.from('cash_balance' as any).insert({ user_id: user.id, balance: amount } as any);
+      await supabase.from('cash_balance' as any).insert({ user_id: user.id, balance: amount, broker: broker || null } as any);
     }
-    setCashBalance(amount);
-  }, [user]);
+    await loadCashBalance();
+  }, [user, loadCashBalance]);
 
-  return { assets, holdings, cashBalance, loading, error, lastUpdate, refresh, addHolding, updateHolding, deleteHolding, sellHolding, updateCashBalance };
+  return { assets, holdings, cashBalance, cashBalances, loading, error, lastUpdate, refresh, addHolding, updateHolding, deleteHolding, sellHolding, updateCashBalance: updateCashBalanceBroker };
 }
