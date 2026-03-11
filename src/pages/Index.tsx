@@ -8,6 +8,7 @@ import 'react-resizable/css/styles.css';
 import PortfolioSummary from '@/components/dashboard/PortfolioSummary';
 import PortfolioChart from '@/components/dashboard/PortfolioChart';
 import PortfolioHistoryChart from '@/components/dashboard/PortfolioHistoryChart';
+import BenchmarkChart from '@/components/dashboard/BenchmarkChart';
 import AllocationChart from '@/components/dashboard/AllocationChart';
 import PerformanceChart from '@/components/dashboard/PerformanceChart';
 import DividendsPanel from '@/components/dashboard/DividendsPanel';
@@ -33,6 +34,8 @@ import BacktestingPanel from '@/components/dashboard/BacktestingPanel';
 import DividendForecastPanel from '@/components/dashboard/DividendForecastPanel';
 import AssetScoringPanel from '@/components/dashboard/AssetScoringPanel';
 import FixedIncomePanel from '@/components/dashboard/FixedIncomePanel';
+import AIAdvisorPanel from '@/components/dashboard/AIAdvisorPanel';
+import AIRiskPanel from '@/components/dashboard/AIRiskPanel';
 import OnboardingOverlay from '@/components/OnboardingOverlay';
 
 import { usePortfolio, type HoldingRow } from '@/hooks/usePortfolio';
@@ -68,6 +71,9 @@ const defaultLayouts: any = {
     { i: 'backtesting', x: 6, y: 83, w: 6, h: 9, minW: 4, minH: 6 },
     { i: 'asset-scoring', x: 0, y: 92, w: 6, h: 12, minW: 4, minH: 8 },
     { i: 'fixed-income', x: 6, y: 92, w: 6, h: 12, minW: 4, minH: 8 },
+    { i: 'benchmark-chart', x: 0, y: 104, w: 12, h: 8, minW: 6, minH: 6 },
+    { i: 'ai-advisor', x: 0, y: 112, w: 6, h: 12, minW: 4, minH: 8 },
+    { i: 'ai-risk', x: 6, y: 112, w: 6, h: 12, minW: 4, minH: 8 },
   ],
   md: [
     { i: 'summary', x: 0, y: 0, w: 10, h: 3, minW: 6, minH: 3 },
@@ -95,6 +101,9 @@ const defaultLayouts: any = {
     { i: 'backtesting', x: 5, y: 95, w: 5, h: 9, minW: 4, minH: 6 },
     { i: 'asset-scoring', x: 0, y: 104, w: 10, h: 12, minW: 4, minH: 8 },
     { i: 'fixed-income', x: 0, y: 116, w: 10, h: 12, minW: 4, minH: 8 },
+    { i: 'benchmark-chart', x: 0, y: 128, w: 10, h: 8, minW: 6, minH: 6 },
+    { i: 'ai-advisor', x: 0, y: 136, w: 5, h: 12, minW: 4, minH: 8 },
+    { i: 'ai-risk', x: 5, y: 136, w: 5, h: 12, minW: 4, minH: 8 },
   ],
   sm: [
     { i: 'summary', x: 0, y: 0, w: 6, h: 4, minW: 6, minH: 3 },
@@ -122,6 +131,9 @@ const defaultLayouts: any = {
     { i: 'backtesting', x: 0, y: 162, w: 6, h: 9, minW: 6, minH: 6 },
     { i: 'asset-scoring', x: 0, y: 171, w: 6, h: 12, minW: 6, minH: 8 },
     { i: 'fixed-income', x: 0, y: 183, w: 6, h: 12, minW: 6, minH: 8 },
+    { i: 'benchmark-chart', x: 0, y: 195, w: 6, h: 8, minW: 6, minH: 6 },
+    { i: 'ai-advisor', x: 0, y: 203, w: 6, h: 12, minW: 6, minH: 8 },
+    { i: 'ai-risk', x: 0, y: 215, w: 6, h: 12, minW: 6, minH: 8 },
   ],
 };
 
@@ -393,6 +405,21 @@ const Index = () => {
               <div key="fixed-income">
                 <DashboardPanel title="Resumo Renda Fixa" locked={locked}>
                   <FixedIncomePanel assets={assets} />
+                </DashboardPanel>
+              </div>
+              <div key="benchmark-chart">
+                <DashboardPanel title="Carteira vs Benchmarks (CDI/IBOV/Dólar)" locked={locked}>
+                  <BenchmarkChart snapshots={snapshots} />
+                </DashboardPanel>
+              </div>
+              <div key="ai-advisor">
+                <DashboardPanel title="Consultor IA de Investimentos" locked={locked}>
+                  <AIAdvisorPanel assets={assets} cashBalance={0} />
+                </DashboardPanel>
+              </div>
+              <div key="ai-risk">
+                <DashboardPanel title="Análise de Risco IA" locked={locked}>
+                  <AIRiskPanel assets={assets} />
                 </DashboardPanel>
               </div>
             </ResponsiveGrid>

@@ -116,3 +116,9 @@ verify_jwt = false
 
 [functions.ai-comparator-verdict]
 verify_jwt = false
+
+[functions.ai-advisor]
+verify_jwt = false
+
+[functions.ai-risk-analysis]
+verify_jwt = false
