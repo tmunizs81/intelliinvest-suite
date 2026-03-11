@@ -21,11 +21,82 @@ const COLORS = [
 
 type ReportTab = 'overview' | 'performance' | 'allocation' | 'brokers' | 'transactions';
 
+const PERIODS = [
+  { id: '1m', label: '1M', months: 1 },
+  { id: '3m', label: '3M', months: 3 },
+  { id: '6m', label: '6M', months: 6 },
+  { id: '1y', label: '1A', months: 12 },
+  { id: 'all', label: 'Total', months: 0 },
+];
+
+function getPeriodDate(months: number): Date | null {
+  if (months === 0) return null;
+  const d = new Date();
+  d.setMonth(d.getMonth() - months);
+  return d;
+}
+
+interface Transaction {
+  id: string;
+  ticker: string;
+  name: string;
+  type: string;
+  operation: string;
+  quantity: number;
+  price: number;
+  total: number;
+  fees: number;
+  date: string;
+  is_daytrade: boolean;
+  notes: string | null;
+}
+
 export default function Reports() {
   const { assets, holdings } = usePortfolio();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<ReportTab>('overview');
   const [period, setPeriod] = useState('all');
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [loadingTx, setLoadingTx] = useState(false);
   const reportRef = useRef<HTMLDivElement>(null);
+
+  const periodConfig = PERIODS.find(p => p.id === period) || PERIODS[4];
+  const periodDate = getPeriodDate(periodConfig.months);
+
+  // Load transactions
+  useEffect(() => {
+    if (!user) return;
+    const load = async () => {
+      setLoadingTx(true);
+      let query = supabase.from('transactions').select('*').eq('user_id', user.id).order('date', { ascending: false });
+      if (periodDate) {
+        query = query.gte('date', periodDate.toISOString().split('T')[0]);
+      }
+      const { data } = await query;
+      setTransactions((data as Transaction[]) || []);
+      setLoadingTx(false);
+    };
+    load();
+  }, [user, period]);
+
+  // Filter transactions by period
+  const filteredTransactions = useMemo(() => {
+    if (!periodDate) return transactions;
+    return transactions.filter(t => new Date(t.date) >= periodDate);
+  }, [transactions, periodDate]);
+
+  const txSummary = useMemo(() => {
+    const buys = filteredTransactions.filter(t => t.operation === 'buy');
+    const sells = filteredTransactions.filter(t => t.operation === 'sell');
+    return {
+      totalBuys: buys.reduce((s, t) => s + t.total, 0),
+      totalSells: sells.reduce((s, t) => s + t.total, 0),
+      totalFees: filteredTransactions.reduce((s, t) => s + t.fees, 0),
+      countBuys: buys.length,
+      countSells: sells.length,
+      count: filteredTransactions.length,
+    };
+  }, [filteredTransactions]);
 
   const total = useMemo(() => assets.reduce((s, a) => s + a.currentPrice * a.quantity, 0), [assets]);
   const cost = useMemo(() => assets.reduce((s, a) => s + a.avgPrice * a.quantity, 0), [assets]);
