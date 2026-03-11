@@ -68,3 +68,12 @@ verify_jwt = false
 
 [functions.investment-goals]
 verify_jwt = false
+
+[functions.smart-alerts]
+verify_jwt = false
+
+[functions.monthly-report]
+verify_jwt = false
+
+[functions.parse-brokerage-note]
+verify_jwt = false

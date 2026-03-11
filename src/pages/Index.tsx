@@ -23,6 +23,9 @@ import NewsPanel from '@/components/dashboard/NewsPanel';
 import SimulatorPanel from '@/components/dashboard/SimulatorPanel';
 import GoalsPanel from '@/components/dashboard/GoalsPanel';
 import DashboardChatbot from '@/components/dashboard/DashboardChatbot';
+import SmartAlertsPanel from '@/components/dashboard/SmartAlertsPanel';
+import MonthlyReportPanel from '@/components/dashboard/MonthlyReportPanel';
+import BrokerageImportPanel from '@/components/dashboard/BrokerageImportPanel';
 import { usePortfolio, type HoldingRow } from '@/hooks/usePortfolio';
 import { Loader2, Lock, Unlock, RotateCcw } from 'lucide-react';
 
@@ -45,6 +48,9 @@ const defaultLayouts: any = {
     { i: 'goals', x: 6, y: 45, w: 6, h: 10, minW: 4, minH: 6 },
     { i: 'news', x: 0, y: 55, w: 8, h: 8, minW: 4, minH: 5 },
     { i: 'ai-insights', x: 8, y: 55, w: 4, h: 8, minW: 3, minH: 4 },
+    { i: 'smart-alerts', x: 0, y: 63, w: 4, h: 8, minW: 3, minH: 5 },
+    { i: 'monthly-report', x: 4, y: 63, w: 4, h: 8, minW: 3, minH: 5 },
+    { i: 'brokerage-import', x: 8, y: 63, w: 4, h: 8, minW: 3, minH: 5 },
   ],
   md: [
     { i: 'summary', x: 0, y: 0, w: 10, h: 3, minW: 6, minH: 3 },
@@ -62,6 +68,9 @@ const defaultLayouts: any = {
     { i: 'goals', x: 0, y: 67, w: 10, h: 10, minW: 6, minH: 6 },
     { i: 'news', x: 0, y: 77, w: 10, h: 8, minW: 6, minH: 5 },
     { i: 'ai-insights', x: 0, y: 85, w: 10, h: 5, minW: 3, minH: 4 },
+    { i: 'smart-alerts', x: 0, y: 90, w: 10, h: 8, minW: 6, minH: 5 },
+    { i: 'monthly-report', x: 0, y: 98, w: 10, h: 8, minW: 6, minH: 5 },
+    { i: 'brokerage-import', x: 0, y: 106, w: 10, h: 8, minW: 6, minH: 5 },
   ],
   sm: [
     { i: 'summary', x: 0, y: 0, w: 6, h: 4, minW: 6, minH: 3 },
@@ -79,6 +88,9 @@ const defaultLayouts: any = {
     { i: 'goals', x: 0, y: 88, w: 6, h: 10, minW: 6, minH: 6 },
     { i: 'news', x: 0, y: 98, w: 6, h: 8, minW: 6, minH: 5 },
     { i: 'ai-insights', x: 0, y: 106, w: 6, h: 5, minW: 6, minH: 4 },
+    { i: 'smart-alerts', x: 0, y: 111, w: 6, h: 8, minW: 6, minH: 5 },
+    { i: 'monthly-report', x: 0, y: 119, w: 6, h: 8, minW: 6, minH: 5 },
+    { i: 'brokerage-import', x: 0, y: 127, w: 6, h: 8, minW: 6, minH: 5 },
   ],
 };
 
@@ -292,6 +304,21 @@ const Index = () => {
               <div key="ai-insights">
                 <DashboardPanel title="IA Insights" locked={locked}>
                   <AIInsightsPanel assets={assets} />
+                </DashboardPanel>
+              </div>
+              <div key="smart-alerts">
+                <DashboardPanel title="Alertas Inteligentes" locked={locked}>
+                  <SmartAlertsPanel assets={assets} />
+                </DashboardPanel>
+              </div>
+              <div key="monthly-report">
+                <DashboardPanel title="Relatório Mensal" locked={locked}>
+                  <MonthlyReportPanel assets={assets} />
+                </DashboardPanel>
+              </div>
+              <div key="brokerage-import">
+                <DashboardPanel title="Importar Nota" locked={locked}>
+                  <BrokerageImportPanel />
                 </DashboardPanel>
               </div>
             </ResponsiveGrid>
