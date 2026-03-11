@@ -37,7 +37,7 @@ Organize em seções claras com emojis para facilitar a leitura:
 🔥 para oportunidades quentes
 📈📉 para tendências`;
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
