@@ -100,7 +100,7 @@ export default function FundamentalIndicators({ ticker, type }: Props) {
           <h2 className="text-sm font-semibold">{isFII ? 'Indicadores FII' : 'Indicadores Fundamentalistas'}</h2>
         </div>
         <button
-          onClick={fetchFundamentals}
+          onClick={() => fetchFundamentals()}
           disabled={loading}
           className="h-7 w-7 rounded-lg border border-border flex items-center justify-center text-muted-foreground hover:text-foreground transition-all"
         >

@@ -109,7 +109,7 @@ export default function MarketNewsPanel({ ticker, name, type }: Props) {
       </div>
 
       {!opinion && !loading && !error && (
-        <button onClick={fetchOpinion}
+        <button onClick={() => fetchOpinion()}
           className="w-full py-10 flex flex-col items-center gap-3 text-muted-foreground hover:text-foreground transition-all">
           <Newspaper className="h-10 w-10" />
           <span className="text-sm font-medium">Analisar notícias de mercado sobre {ticker}</span>

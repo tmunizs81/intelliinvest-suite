@@ -88,7 +88,7 @@ export default function AIChartSummary({ ticker, name, type, candles }: Props) {
           <h3 className="text-sm font-semibold">Resumo IA do Gráfico</h3>
         </div>
         <button
-          onClick={analyze}
+          onClick={() => analyze()}
           disabled={loading}
           className="h-7 px-3 rounded-lg bg-primary/10 text-primary text-xs font-medium flex items-center gap-1.5 hover:bg-primary/20 transition-all disabled:opacity-50"
         >
