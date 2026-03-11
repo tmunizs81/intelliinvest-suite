@@ -23,6 +23,9 @@ import NewsPanel from '@/components/dashboard/NewsPanel';
 import SimulatorPanel from '@/components/dashboard/SimulatorPanel';
 import GoalsPanel from '@/components/dashboard/GoalsPanel';
 import DashboardChatbot from '@/components/dashboard/DashboardChatbot';
+import SmartAlertsPanel from '@/components/dashboard/SmartAlertsPanel';
+import MonthlyReportPanel from '@/components/dashboard/MonthlyReportPanel';
+import BrokerageImportPanel from '@/components/dashboard/BrokerageImportPanel';
 import { usePortfolio, type HoldingRow } from '@/hooks/usePortfolio';
 import { Loader2, Lock, Unlock, RotateCcw } from 'lucide-react';
 
