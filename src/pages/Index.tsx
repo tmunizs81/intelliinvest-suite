@@ -514,4 +514,21 @@ function DashboardPanel({ children, title, noPadding, locked }: {
   );
 }
 
+function MobilePanel({ children, title, noPadding }: {
+  children: React.ReactNode;
+  title: string;
+  noPadding?: boolean;
+}) {
+  return (
+    <div className="w-full flex flex-col rounded-xl border border-border bg-card overflow-hidden shadow-sm">
+      {title && (
+        <div className="bg-muted/60 border-b border-border px-3 py-2 shrink-0">
+          <span className="text-xs text-muted-foreground uppercase tracking-wider font-medium">{title}</span>
+        </div>
+      )}
+      <div className={`overflow-auto ${noPadding ? '' : ''}`}>{children}</div>
+    </div>
+  );
+}
+
 export default Index;
