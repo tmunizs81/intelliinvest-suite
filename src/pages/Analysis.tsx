@@ -117,14 +117,34 @@ export default function Analysis() {
 
       {/* Search */}
       <div className="flex flex-col sm:flex-row gap-4 mb-6">
-        <form onSubmit={handleSearch} className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <input
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value.toUpperCase())}
-            placeholder="Digite o ticker (ex: PETR4, HGLG11, IVVB11)"
-            className="w-full rounded-lg border border-input bg-card pl-9 pr-4 py-2.5 text-sm font-mono text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-          />
+        <form onSubmit={handleSearch} className="relative flex-1 max-w-md flex gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <input
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value.toUpperCase())}
+              placeholder="Digite o ticker (ex: PETR4, HGLG11, IVVB11)"
+              className="w-full rounded-lg border border-input bg-card pl-9 pr-4 py-2.5 text-sm font-mono text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+          </div>
+          {ticker && (
+            <button
+              type="button"
+              onClick={() => {
+                setSearchInput('');
+                setTicker('');
+                setCandles([]);
+                setAssetName('');
+                setCurrentPrice(0);
+                setPreviousClose(0);
+                setError(null);
+                setSearchParams({});
+              }}
+              className="px-4 py-2.5 rounded-lg border border-border bg-card text-sm font-medium text-muted-foreground hover:text-foreground hover:border-destructive/50 hover:bg-destructive/10 transition-all"
+            >
+              Limpar
+            </button>
+          )}
         </form>
 
         {/* Quick access from portfolio */}
