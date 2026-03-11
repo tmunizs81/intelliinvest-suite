@@ -21,7 +21,7 @@ export default function AIAdvisorPanel({ assets, cashBalance = 0 }: Props) {
   const [response, setResponse] = useState('');
   const [loading, setLoading] = useState(false);
   const [question, setQuestion] = useState('');
-  const { canCall, registerCall } = useAIRateLimit();
+  const { canCall, recordCall } = useAIRateLimit();
   const abortRef = useRef<AbortController | null>(null);
 
   const ask = async (q: string) => {
