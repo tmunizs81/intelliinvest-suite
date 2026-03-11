@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import DashboardHeader from '@/components/dashboard/DashboardHeader';
+
 import PortfolioSummary from '@/components/dashboard/PortfolioSummary';
 import PortfolioChart from '@/components/dashboard/PortfolioChart';
 import AllocationChart from '@/components/dashboard/AllocationChart';
