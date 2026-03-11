@@ -130,7 +130,7 @@ export default function FiiPropertiesPanel({ ticker }: Props) {
       </div>
 
       {!data && !loading && !error && (
-        <button onClick={fetchProperties}
+        <button onClick={() => fetchProperties()}
           className="w-full py-10 flex flex-col items-center gap-3 text-muted-foreground hover:text-foreground transition-all">
           <Map className="h-10 w-10" />
           <span className="text-sm font-medium">Carregar lista de imóveis do {ticker}</span>
