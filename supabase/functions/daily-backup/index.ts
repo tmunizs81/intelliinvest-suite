@@ -81,7 +81,7 @@ Deno.serve(async (req) => {
           file_path: filePath,
           size_bytes: new TextEncoder().encode(jsonStr).length,
           status: "completed",
-          backup_type: targetUserId ? "manual" : "auto",
+          backup_type: "auto",
         });
 
         // Clean old backups - keep last 30
