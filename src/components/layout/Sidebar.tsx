@@ -48,7 +48,7 @@ export default function Sidebar() {
           >
             <Menu className="h-5 w-5" />
           </button>
-          <TrendingUp className="h-5 w-5 text-primary" />
+          <img src="/pwa-icon-192.png" alt="T2" className="h-6 w-6 rounded" />
           <span className="text-base font-bold tracking-tight">
             T2-<span className="text-primary">Simplynvest</span>
           </span>
