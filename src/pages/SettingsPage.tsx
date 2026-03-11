@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   Settings, Users, Key, Shield, Bell, Database, UserPlus,
-  Trash2, Copy, RefreshCw, Loader2, Check, X, Download,
+  Trash2, Copy, RefreshCw, Loader2, Check, X, Download, Upload,
   Send, ChevronDown, ChevronUp, Plus, Crown, User,
-  Pause, Play, Snowflake, AlertTriangle, ShieldCheck,
+  Pause, Play, Snowflake, AlertTriangle, ShieldCheck, Clock, Calendar,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
