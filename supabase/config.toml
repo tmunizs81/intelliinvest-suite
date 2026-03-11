@@ -113,3 +113,6 @@ verify_jwt = false
 
 [functions.telegram-signal-alerts]
 verify_jwt = false
+
+[functions.ai-comparator-verdict]
+verify_jwt = false

@@ -1,9 +1,11 @@
 import { useState, useCallback } from 'react';
-import { Search, Loader2, Plus, X, Brain, TrendingUp, TrendingDown, Minus, BarChart3, DollarSign } from 'lucide-react';
+import { Search, Loader2, Plus, X, Brain, TrendingUp, TrendingDown, BarChart3, DollarSign, Trophy, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { usePortfolio } from '@/hooks/usePortfolio';
 import { formatCurrency, formatPercent } from '@/lib/mockData';
 import { type Candle, getLatestIndicators } from '@/lib/technicalIndicators';
+import ReactMarkdown from 'react-markdown';
+import { toast } from 'sonner';
 
 interface AssetComparison {
   ticker: string;
@@ -38,6 +40,8 @@ export default function Comparator() {
   const { holdings } = usePortfolio();
   const [assets, setAssets] = useState<AssetComparison[]>([]);
   const [searchInput, setSearchInput] = useState('');
+  const [verdict, setVerdict] = useState<string | null>(null);
+  const [verdictLoading, setVerdictLoading] = useState(false);
 
   const addAsset = useCallback(async (ticker: string) => {
     if (assets.length >= 3 || assets.find(a => a.ticker === ticker)) return;
@@ -59,7 +63,6 @@ export default function Comparator() {
     setAssets(prev => [...prev, newAsset]);
 
     try {
-      // Fetch history, fundamentals and AI in parallel
       const [histRes, fundRes] = await Promise.all([
         supabase.functions.invoke('yahoo-finance-history', {
           body: { ticker, range: '1y', interval: '1d' },
@@ -74,7 +77,6 @@ export default function Comparator() {
       const candles: Candle[] = histData?.candles || [];
       const indicators = candles.length >= 20 ? getLatestIndicators(candles) : null;
 
-      // Get AI signal
       let aiSignal = null;
       if (candles.length >= 20) {
         try {
@@ -118,6 +120,7 @@ export default function Comparator() {
 
   const removeAsset = (ticker: string) => {
     setAssets(prev => prev.filter(a => a.ticker !== ticker));
+    setVerdict(null);
   };
 
   const handleSearch = (e: React.FormEvent) => {
@@ -128,6 +131,47 @@ export default function Comparator() {
       setSearchInput('');
     }
   };
+
+  const fetchVerdict = async () => {
+    const ready = assets.filter(a => !a.loading);
+    if (ready.length < 2) {
+      toast.error('Adicione pelo menos 2 ativos carregados para comparar');
+      return;
+    }
+
+    setVerdictLoading(true);
+    setVerdict(null);
+
+    try {
+      const payload = ready.map(a => ({
+        ticker: a.ticker,
+        name: a.name,
+        type: a.type,
+        currentPrice: a.currentPrice,
+        change24h: a.change24h,
+        aiSignal: a.aiSignal,
+        indicators: a.indicators,
+        fundamentals: a.fundamentals,
+        dividendYield: a.dividendYield,
+      }));
+
+      const { data, error } = await supabase.functions.invoke('ai-comparator-verdict', {
+        body: { assets: payload },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      setVerdict(data.verdict);
+    } catch (err: any) {
+      console.error('Verdict error:', err);
+      toast.error(err.message || 'Erro ao gerar veredito');
+    } finally {
+      setVerdictLoading(false);
+    }
+  };
+
+  const loadedCount = assets.filter(a => !a.loading).length;
 
   return (
     <div className="min-h-screen bg-background px-4 sm:px-6 lg:px-8 py-6">
@@ -173,135 +217,173 @@ export default function Comparator() {
           <p className="text-muted-foreground text-center">Selecione até 3 ativos para comparar</p>
         </div>
       ) : (
-        <div className={`grid gap-6 ${assets.length === 1 ? 'grid-cols-1 max-w-lg' : assets.length === 2 ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1 lg:grid-cols-3'}`}>
-          {assets.map(asset => (
-            <div key={asset.ticker} className="rounded-xl border border-border bg-card overflow-hidden">
-              {/* Header */}
-              <div className="p-4 border-b border-border flex items-center justify-between">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-lg font-bold font-mono">{asset.ticker}</h3>
-                    {asset.type && (
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">{asset.type}</span>
-                    )}
-                  </div>
-                  <p className="text-xs text-muted-foreground truncate max-w-[200px]">{asset.name}</p>
-                </div>
-                <button onClick={() => removeAsset(asset.ticker)} className="h-7 w-7 rounded-lg border border-border flex items-center justify-center text-muted-foreground hover:text-loss hover:border-loss/30 transition-all">
-                  <X className="h-3.5 w-3.5" />
-                </button>
-              </div>
-
-              {asset.loading ? (
-                <div className="p-8 flex items-center justify-center gap-3">
-                  <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                  <span className="text-sm text-muted-foreground">Carregando...</span>
-                </div>
-              ) : (
-                <div className="p-4 space-y-4">
-                  {/* Price */}
-                  <div className="flex items-center justify-between">
-                    <span className="text-2xl font-bold font-mono">{asset.currentPrice > 0 ? formatCurrency(asset.currentPrice) : '—'}</span>
-                    <span className={`text-sm font-mono font-medium flex items-center gap-1 ${asset.change24h >= 0 ? 'text-gain' : 'text-loss'}`}>
-                      {asset.change24h >= 0 ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
-                      {formatPercent(asset.change24h)}
-                    </span>
-                  </div>
-
-                  {/* AI Signal */}
-                  {asset.aiSignal && (
-                    <div className={`rounded-lg border p-3 ${
-                      asset.aiSignal.recommendation.includes('compra') ? 'bg-gain/5 border-gain/20' :
-                      asset.aiSignal.recommendation.includes('venda') ? 'bg-loss/5 border-loss/20' :
-                      'bg-warning/5 border-warning/20'
-                    }`}>
-                      <div className="flex items-center justify-between mb-1">
-                        <div className="flex items-center gap-1.5">
-                          <Brain className="h-3.5 w-3.5 text-primary" />
-                          <span className={`text-xs font-bold ${recConfig[asset.aiSignal.recommendation]?.color || 'text-foreground'}`}>
-                            {recConfig[asset.aiSignal.recommendation]?.emoji} {recConfig[asset.aiSignal.recommendation]?.label}
-                          </span>
-                        </div>
-                        <span className="text-[10px] text-muted-foreground">{asset.aiSignal.confidence}%</span>
-                      </div>
-                      <p className="text-[11px] text-muted-foreground">{asset.aiSignal.summary}</p>
-                      {(asset.aiSignal.targetPrice || asset.aiSignal.stopLoss) && (
-                        <div className="flex gap-3 mt-2">
-                          {asset.aiSignal.targetPrice && (
-                            <span className="text-[10px] text-gain">Alvo: {formatCurrency(asset.aiSignal.targetPrice)}</span>
-                          )}
-                          {asset.aiSignal.stopLoss && (
-                            <span className="text-[10px] text-loss">Stop: {formatCurrency(asset.aiSignal.stopLoss)}</span>
-                          )}
-                        </div>
+        <>
+          <div className={`grid gap-6 ${assets.length === 1 ? 'grid-cols-1 max-w-lg' : assets.length === 2 ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1 lg:grid-cols-3'}`}>
+            {assets.map(asset => (
+              <div key={asset.ticker} className="rounded-xl border border-border bg-card overflow-hidden">
+                {/* Header */}
+                <div className="p-4 border-b border-border flex items-center justify-between">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-lg font-bold font-mono">{asset.ticker}</h3>
+                      {asset.type && (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">{asset.type}</span>
                       )}
                     </div>
-                  )}
-
-                  {/* Indicators */}
-                  {asset.indicators && (
-                    <div className="space-y-2">
-                      <h4 className="text-[10px] text-muted-foreground uppercase font-semibold">Indicadores Técnicos</h4>
-                      <div className="grid grid-cols-2 gap-2">
-                        <div className="rounded-lg bg-muted/40 p-2">
-                          <p className="text-[10px] text-muted-foreground">RSI (14)</p>
-                          <p className={`text-sm font-mono font-bold ${
-                            asset.indicators.rsi > 70 ? 'text-loss' : asset.indicators.rsi < 30 ? 'text-gain' : 'text-foreground'
-                          }`}>{asset.indicators.rsi?.toFixed(1)}</p>
-                        </div>
-                        <div className="rounded-lg bg-muted/40 p-2">
-                          <p className="text-[10px] text-muted-foreground">MACD</p>
-                          <p className={`text-sm font-mono font-bold ${
-                            asset.indicators.macd?.histogram > 0 ? 'text-gain' : 'text-loss'
-                          }`}>{asset.indicators.macd?.histogram?.toFixed(3)}</p>
-                        </div>
-                        <div className="rounded-lg bg-muted/40 p-2">
-                          <p className="text-[10px] text-muted-foreground">EMA 9</p>
-                          <p className="text-sm font-mono font-bold">{asset.indicators.ema9?.toFixed(2)}</p>
-                        </div>
-                        <div className="rounded-lg bg-muted/40 p-2">
-                          <p className="text-[10px] text-muted-foreground">SMA 20</p>
-                          <p className="text-sm font-mono font-bold">{asset.indicators.sma20?.toFixed(2)}</p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Fundamentals */}
-                  {asset.fundamentals && (
-                    <div className="space-y-2">
-                      <h4 className="text-[10px] text-muted-foreground uppercase font-semibold">Fundamentalista</h4>
-                      <div className="grid grid-cols-2 gap-2">
-                        {asset.fundamentals.pe != null && (
-                          <div className="rounded-lg bg-muted/40 p-2">
-                            <p className="text-[10px] text-muted-foreground">P/L</p>
-                            <p className="text-sm font-mono font-bold">{Number(asset.fundamentals.pe).toFixed(1)}</p>
-                          </div>
-                        )}
-                        {asset.fundamentals.pb != null && (
-                          <div className="rounded-lg bg-muted/40 p-2">
-                            <p className="text-[10px] text-muted-foreground">P/VP</p>
-                            <p className="text-sm font-mono font-bold">{Number(asset.fundamentals.pb).toFixed(2)}</p>
-                          </div>
-                        )}
-                        {(asset.dividendYield || asset.fundamentals.dividendYield) && (
-                          <div className="rounded-lg bg-muted/40 p-2 col-span-2">
-                            <p className="text-[10px] text-muted-foreground flex items-center gap-1">
-                              <DollarSign className="h-3 w-3" /> Dividend Yield
-                            </p>
-                            <p className="text-sm font-mono font-bold text-gain">
-                              {formatPercent(asset.dividendYield || asset.fundamentals.dividendYield || 0)}
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
+                    <p className="text-xs text-muted-foreground truncate max-w-[200px]">{asset.name}</p>
+                  </div>
+                  <button onClick={() => removeAsset(asset.ticker)} className="h-7 w-7 rounded-lg border border-border flex items-center justify-center text-muted-foreground hover:text-loss hover:border-loss/30 transition-all">
+                    <X className="h-3.5 w-3.5" />
+                  </button>
                 </div>
+
+                {asset.loading ? (
+                  <div className="p-8 flex items-center justify-center gap-3">
+                    <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                    <span className="text-sm text-muted-foreground">Carregando...</span>
+                  </div>
+                ) : (
+                  <div className="p-4 space-y-4">
+                    {/* Price */}
+                    <div className="flex items-center justify-between">
+                      <span className="text-2xl font-bold font-mono">{asset.currentPrice > 0 ? formatCurrency(asset.currentPrice) : '—'}</span>
+                      <span className={`text-sm font-mono font-medium flex items-center gap-1 ${asset.change24h >= 0 ? 'text-gain' : 'text-loss'}`}>
+                        {asset.change24h >= 0 ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
+                        {formatPercent(asset.change24h)}
+                      </span>
+                    </div>
+
+                    {/* AI Signal */}
+                    {asset.aiSignal && (
+                      <div className={`rounded-lg border p-3 ${
+                        asset.aiSignal.recommendation.includes('compra') ? 'bg-gain/5 border-gain/20' :
+                        asset.aiSignal.recommendation.includes('venda') ? 'bg-loss/5 border-loss/20' :
+                        'bg-warning/5 border-warning/20'
+                      }`}>
+                        <div className="flex items-center justify-between mb-1">
+                          <div className="flex items-center gap-1.5">
+                            <Brain className="h-3.5 w-3.5 text-primary" />
+                            <span className={`text-xs font-bold ${recConfig[asset.aiSignal.recommendation]?.color || 'text-foreground'}`}>
+                              {recConfig[asset.aiSignal.recommendation]?.emoji} {recConfig[asset.aiSignal.recommendation]?.label}
+                            </span>
+                          </div>
+                          <span className="text-[10px] text-muted-foreground">{asset.aiSignal.confidence}%</span>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground">{asset.aiSignal.summary}</p>
+                        {(asset.aiSignal.targetPrice || asset.aiSignal.stopLoss) && (
+                          <div className="flex gap-3 mt-2">
+                            {asset.aiSignal.targetPrice && (
+                              <span className="text-[10px] text-gain">Alvo: {formatCurrency(asset.aiSignal.targetPrice)}</span>
+                            )}
+                            {asset.aiSignal.stopLoss && (
+                              <span className="text-[10px] text-loss">Stop: {formatCurrency(asset.aiSignal.stopLoss)}</span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Indicators */}
+                    {asset.indicators && (
+                      <div className="space-y-2">
+                        <h4 className="text-[10px] text-muted-foreground uppercase font-semibold">Indicadores Técnicos</h4>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="rounded-lg bg-muted/40 p-2">
+                            <p className="text-[10px] text-muted-foreground">RSI (14)</p>
+                            <p className={`text-sm font-mono font-bold ${
+                              asset.indicators.rsi > 70 ? 'text-loss' : asset.indicators.rsi < 30 ? 'text-gain' : 'text-foreground'
+                            }`}>{asset.indicators.rsi?.toFixed(1)}</p>
+                          </div>
+                          <div className="rounded-lg bg-muted/40 p-2">
+                            <p className="text-[10px] text-muted-foreground">MACD</p>
+                            <p className={`text-sm font-mono font-bold ${
+                              asset.indicators.macd?.histogram > 0 ? 'text-gain' : 'text-loss'
+                            }`}>{asset.indicators.macd?.histogram?.toFixed(3)}</p>
+                          </div>
+                          <div className="rounded-lg bg-muted/40 p-2">
+                            <p className="text-[10px] text-muted-foreground">EMA 9</p>
+                            <p className="text-sm font-mono font-bold">{asset.indicators.ema9?.toFixed(2)}</p>
+                          </div>
+                          <div className="rounded-lg bg-muted/40 p-2">
+                            <p className="text-[10px] text-muted-foreground">SMA 20</p>
+                            <p className="text-sm font-mono font-bold">{asset.indicators.sma20?.toFixed(2)}</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Fundamentals */}
+                    {asset.fundamentals && (
+                      <div className="space-y-2">
+                        <h4 className="text-[10px] text-muted-foreground uppercase font-semibold">Fundamentalista</h4>
+                        <div className="grid grid-cols-2 gap-2">
+                          {asset.fundamentals.pe != null && (
+                            <div className="rounded-lg bg-muted/40 p-2">
+                              <p className="text-[10px] text-muted-foreground">P/L</p>
+                              <p className="text-sm font-mono font-bold">{Number(asset.fundamentals.pe).toFixed(1)}</p>
+                            </div>
+                          )}
+                          {asset.fundamentals.pb != null && (
+                            <div className="rounded-lg bg-muted/40 p-2">
+                              <p className="text-[10px] text-muted-foreground">P/VP</p>
+                              <p className="text-sm font-mono font-bold">{Number(asset.fundamentals.pb).toFixed(2)}</p>
+                            </div>
+                          )}
+                          {(asset.dividendYield || asset.fundamentals.dividendYield) && (
+                            <div className="rounded-lg bg-muted/40 p-2 col-span-2">
+                              <p className="text-[10px] text-muted-foreground flex items-center gap-1">
+                                <DollarSign className="h-3 w-3" /> Dividend Yield
+                              </p>
+                              <p className="text-sm font-mono font-bold text-gain">
+                                {formatPercent(asset.dividendYield || asset.fundamentals.dividendYield || 0)}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Verdict Button + Result */}
+          <div className="mt-8 space-y-4">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={fetchVerdict}
+                disabled={verdictLoading || loadedCount < 2}
+                className="flex items-center gap-2 px-5 py-3 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:bg-primary/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {verdictLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Trophy className="h-4 w-4" />
+                )}
+                {verdictLoading ? 'Analisando...' : '🏆 Veredito IA — Qual o melhor ativo?'}
+              </button>
+              {verdict && (
+                <button
+                  onClick={fetchVerdict}
+                  disabled={verdictLoading}
+                  className="flex items-center gap-1.5 px-3 py-3 rounded-xl border border-border bg-card text-muted-foreground hover:text-foreground text-sm transition-all disabled:opacity-50"
+                >
+                  <RefreshCw className={`h-4 w-4 ${verdictLoading ? 'animate-spin' : ''}`} />
+                  Atualizar
+                </button>
               )}
             </div>
-          ))}
-        </div>
+
+            {verdict && (
+              <div className="rounded-xl border border-primary/20 bg-primary/5 p-6">
+                <div className="prose prose-sm prose-invert max-w-none text-foreground [&_h1]:text-foreground [&_h2]:text-foreground [&_h3]:text-foreground [&_p]:text-muted-foreground [&_li]:text-muted-foreground [&_strong]:text-foreground [&_table]:text-xs [&_th]:text-muted-foreground [&_td]:text-foreground [&_th]:border-border [&_td]:border-border [&_th]:p-2 [&_td]:p-2">
+                  <ReactMarkdown>{verdict}</ReactMarkdown>
+                </div>
+              </div>
+            )}
+          </div>
+        </>
       )}
     </div>
   );
