@@ -23,3 +23,6 @@ verify_jwt = false
 
 [functions.dividends]
 verify_jwt = false
+
+[functions.ai-trader]
+verify_jwt = false

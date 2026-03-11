@@ -2,12 +2,13 @@ import { NavLink } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import {
   LayoutDashboard, Briefcase, BarChart3, LogOut, User,
-  ChevronLeft, ChevronRight, TrendingUp,
+  ChevronLeft, ChevronRight, TrendingUp, Brain,
 } from 'lucide-react';
 import { useState } from 'react';
 
 const navItems = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
+  { to: '/ai-trader', label: 'AI Pro Trader', icon: Brain },
   { to: '/assets', label: 'Meus Ativos', icon: Briefcase },
   { to: '/analysis', label: 'Análise Avançada', icon: BarChart3 },
 ];
