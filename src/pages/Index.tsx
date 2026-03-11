@@ -73,6 +73,8 @@ const defaultLayouts: any = {
     { i: 'ai-insights', x: 6, y: 64, w: 4, h: 7, minW: 3, minH: 4 },
     { i: 'smart-alerts', x: 0, y: 71, w: 5, h: 7, minW: 3, minH: 5 },
     { i: 'monthly-report', x: 5, y: 71, w: 5, h: 7, minW: 3, minH: 5 },
+    { i: 'smart-contribution', x: 0, y: 78, w: 5, h: 9, minW: 4, minH: 6 },
+    { i: 'ceiling-price', x: 5, y: 78, w: 5, h: 9, minW: 4, minH: 6 },
   ],
   sm: [
     { i: 'summary', x: 0, y: 0, w: 6, h: 4, minW: 6, minH: 3 },
