@@ -21,10 +21,10 @@ log_err()  { echo -e "${RED}✗ $1${NC}"; }
 log_step() { echo -e "${YELLOW}[$1] $2${NC}"; }
 
 echo -e "${BLUE}"
-echo "╔══════════════════════════════════════════╗"
-echo "║     InvestAI - Instalador de Produção    ║"
-echo "║     Ubuntu 24.04 + Docker (Isolado)      ║"
-echo "╚══════════════════════════════════════════╝"
+echo "╔══════════════════════════════════════════════╗"
+echo "║   T2-Simplynvest - Instalador de Produção   ║"
+echo "║     Ubuntu 24.04 + Docker (Isolado)          ║"
+echo "╚══════════════════════════════════════════════╝"
 echo -e "${NC}"
 
 # ── 1. Verificar pré-requisitos ──
