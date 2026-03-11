@@ -154,6 +154,7 @@ function loadLayouts(): any {
 }
 
 const Index = () => {
+  const isMobile = useIsMobile();
   const { assets, holdings, loading, error, lastUpdate, nextUpdate, refresh, addHolding, updateHolding, deleteHolding } = usePortfolio();
   const { snapshots, loading: snapshotsLoading, saveSnapshot } = usePortfolioSnapshots();
 
