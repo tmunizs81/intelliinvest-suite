@@ -46,25 +46,39 @@ export default function AssetProfilePanel({ ticker, name, type }: Props) {
     setShowAllAssets(false);
   }
 
-  const fetchProfile = useCallback(async () => {
+  const fetchProfile = useCallback(async (retries = 3) => {
     setLoading(true);
     setError(null);
-    try {
-      const { data, error: fnError } = await supabase.functions.invoke('ai-asset-profile', {
-        body: { ticker, type, name },
-      });
-      if (fnError) throw new Error(fnError.message);
-      if (data.error) throw new Error(data.error);
-      setProfile(data);
-      if (data.sections) {
-        setExpandedSections(new Set(data.sections.map((_: any, i: number) => i)));
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        if (attempt > 0) {
+          await new Promise(r => setTimeout(r, 2000 * attempt));
+        }
+        const { data, error: fnError } = await supabase.functions.invoke('ai-asset-profile', {
+          body: { ticker, type, name },
+        });
+        if (fnError) {
+          if (fnError.message?.includes('429') && attempt < retries) continue;
+          throw new Error(fnError.message);
+        }
+        if (data?.error) {
+          if ((data.error.includes('Rate limit') || data.error.includes('429')) && attempt < retries) continue;
+          throw new Error(data.error);
+        }
+        setProfile(data);
+        if (data.sections) {
+          setExpandedSections(new Set(data.sections.map((_: any, i: number) => i)));
+        }
+        setLoading(false);
+        return;
+      } catch (err) {
+        if (attempt === retries) {
+          console.error('AssetProfile error:', err);
+          setError(err instanceof Error ? err.message : 'Erro ao buscar perfil');
+        }
       }
-    } catch (err) {
-      console.error('AssetProfile error:', err);
-      setError(err instanceof Error ? err.message : 'Erro ao buscar perfil');
-    } finally {
-      setLoading(false);
     }
+    setLoading(false);
   }, [ticker, type, name]);
 
   const toggleSection = (index: number) => {
