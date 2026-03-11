@@ -154,6 +154,7 @@ export type Database = {
       cash_balance: {
         Row: {
           balance: number
+          broker: string | null
           created_at: string
           id: string
           updated_at: string
@@ -161,6 +162,7 @@ export type Database = {
         }
         Insert: {
           balance?: number
+          broker?: string | null
           created_at?: string
           id?: string
           updated_at?: string
@@ -168,6 +170,7 @@ export type Database = {
         }
         Update: {
           balance?: number
+          broker?: string | null
           created_at?: string
           id?: string
           updated_at?: string
