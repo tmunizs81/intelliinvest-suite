@@ -28,7 +28,7 @@ TIPOS DE ANÁLISE:
 6. Dividendos e eventos corporativos potenciais
 7. Comparação com benchmarks (CDI, Ibovespa)`;
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
