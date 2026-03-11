@@ -1,6 +1,7 @@
-import { Brain, AlertTriangle, Lightbulb, BarChart3, Sparkles } from 'lucide-react';
+import { Brain, AlertTriangle, Lightbulb, BarChart3, Sparkles, Loader2, RefreshCw } from 'lucide-react';
 import { type Asset, type AIInsight, formatCurrency, formatPercent } from '@/lib/mockData';
-import { useMemo } from 'react';
+import { useAIInsights } from '@/hooks/useAIInsights';
+import { useEffect, useMemo } from 'react';
 
 const iconMap = {
   alert: AlertTriangle,
@@ -15,9 +16,9 @@ const severityStyles = {
 };
 
 function InsightCard({ insight }: { insight: AIInsight }) {
-  const Icon = iconMap[insight.type];
+  const Icon = iconMap[insight.type] || BarChart3;
   return (
-    <div className={`rounded-lg border p-4 ${severityStyles[insight.severity]} transition-all hover:scale-[1.01]`}>
+    <div className={`rounded-lg border p-4 ${severityStyles[insight.severity] || severityStyles.info} transition-all hover:scale-[1.01]`}>
       <div className="flex items-start gap-3">
         <div className="mt-0.5">
           <Icon className={`h-4 w-4 ${
@@ -27,9 +28,9 @@ function InsightCard({ insight }: { insight: AIInsight }) {
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
-            <h3 className="text-sm font-semibold truncate">{insight.title}</h3>
+            <h3 className="text-sm font-semibold">{insight.title}</h3>
             {insight.ticker && (
-              <span className="text-xs font-mono bg-muted px-2 py-0.5 rounded">{insight.ticker}</span>
+              <span className="text-xs font-mono bg-muted px-2 py-0.5 rounded shrink-0">{insight.ticker}</span>
             )}
           </div>
           <p className="text-xs text-muted-foreground leading-relaxed">{insight.description}</p>
@@ -39,120 +40,118 @@ function InsightCard({ insight }: { insight: AIInsight }) {
   );
 }
 
+// Fallback insights when AI hasn't loaded yet
+function generateFallbackInsights(assets: Asset[]): AIInsight[] {
+  if (assets.length === 0 || assets.every(a => a.currentPrice === 0)) return [];
+  const result: AIInsight[] = [];
+
+  const topGainer = assets.reduce((best, a) => a.change24h > best.change24h ? a : best, assets[0]);
+  if (topGainer && topGainer.change24h > 0) {
+    result.push({
+      id: 'fb-gainer', type: 'analysis',
+      title: `${topGainer.ticker} lidera as altas`,
+      description: `Alta de ${formatPercent(topGainer.change24h)} hoje.`,
+      severity: 'info', ticker: topGainer.ticker, timestamp: new Date().toISOString(),
+    });
+  }
+
+  const topLoser = assets.reduce((w, a) => a.change24h < w.change24h ? a : w, assets[0]);
+  if (topLoser && topLoser.change24h < -0.5) {
+    result.push({
+      id: 'fb-loser', type: 'alert',
+      title: `${topLoser.ticker} em queda`,
+      description: `Variação de ${formatPercent(topLoser.change24h)} hoje.`,
+      severity: 'warning', ticker: topLoser.ticker, timestamp: new Date().toISOString(),
+    });
+  }
+
+  return result;
+}
+
 interface Props {
   assets: Asset[];
 }
 
 export default function AIInsightsPanel({ assets }: Props) {
-  // Generate dynamic insights based on real data
-  const insights = useMemo<AIInsight[]>(() => {
-    const result: AIInsight[] = [];
+  const { insights: aiInsights, summary, loading, error, lastGenerated, generateInsights } = useAIInsights();
 
-    // Find top gainer
-    const topGainer = assets.reduce((best, a) => a.change24h > best.change24h ? a : best, assets[0]);
-    if (topGainer && topGainer.change24h > 0) {
-      result.push({
-        id: 'gainer',
-        type: 'analysis',
-        title: `${topGainer.ticker} é o destaque do dia`,
-        description: `Alta de ${formatPercent(topGainer.change24h)} hoje. Posição vale ${formatCurrency(topGainer.currentPrice * topGainer.quantity)}.`,
-        severity: 'info',
-        ticker: topGainer.ticker,
-        timestamp: new Date().toISOString(),
-      });
+  // Auto-generate on first load when assets are available
+  useEffect(() => {
+    if (assets.length > 0 && assets.some(a => a.currentPrice > 0) && !lastGenerated && !loading) {
+      generateInsights(assets);
     }
+  }, [assets, lastGenerated, loading, generateInsights]);
 
-    // Find top loser
-    const topLoser = assets.reduce((worst, a) => a.change24h < worst.change24h ? a : worst, assets[0]);
-    if (topLoser && topLoser.change24h < -1) {
-      result.push({
-        id: 'loser',
-        type: 'alert',
-        title: `${topLoser.ticker} em queda acentuada`,
-        description: `Variação de ${formatPercent(topLoser.change24h)} hoje. Monitore suportes e considere ajustar stop loss.`,
-        severity: 'warning',
-        ticker: topLoser.ticker,
-        timestamp: new Date().toISOString(),
-      });
-    }
-
-    // Concentration alert
-    const maxAlloc = assets.reduce((best, a) => a.allocation > best.allocation ? a : best, assets[0]);
-    if (maxAlloc && maxAlloc.allocation > 20) {
-      result.push({
-        id: 'concentration',
-        type: 'recommendation',
-        title: 'Concentração elevada detectada',
-        description: `${maxAlloc.ticker} representa ${maxAlloc.allocation.toFixed(1)}% da carteira. Considere diversificar para reduzir risco.`,
-        severity: 'warning',
-        ticker: maxAlloc.ticker,
-        timestamp: new Date().toISOString(),
-      });
-    }
-
-    // Portfolio performance
-    const totalValue = assets.reduce((s, a) => s + a.currentPrice * a.quantity, 0);
-    const totalCost = assets.reduce((s, a) => s + a.avgPrice * a.quantity, 0);
-    const totalReturn = totalCost > 0 ? ((totalValue - totalCost) / totalCost) * 100 : 0;
-    if (totalReturn > 10) {
-      result.push({
-        id: 'performance',
-        type: 'analysis',
-        title: 'Carteira com performance sólida',
-        description: `Retorno total de ${formatPercent(totalReturn)} sobre o custo. Patrimônio atual: ${formatCurrency(totalValue)}.`,
-        severity: 'info',
-        timestamp: new Date().toISOString(),
-      });
-    }
-
-    // Sector grouping insight
-    const sectors = assets.reduce<Record<string, number>>((acc, a) => {
-      const s = a.sector || 'Outros';
-      acc[s] = (acc[s] || 0) + a.allocation;
-      return acc;
-    }, {});
-    const topSector = Object.entries(sectors).sort((a, b) => b[1] - a[1])[0];
-    if (topSector && topSector[1] > 25) {
-      result.push({
-        id: 'sector',
-        type: 'recommendation',
-        title: `Exposição alta em ${topSector[0]}`,
-        description: `Setor de ${topSector[0]} representa ${topSector[1].toFixed(1)}% da carteira. Diversifique setorialmente para melhor gestão de risco.`,
-        severity: 'info',
-        timestamp: new Date().toISOString(),
-      });
-    }
-
-    return result.length > 0 ? result : [{
-      id: 'ok',
-      type: 'analysis',
-      title: 'Carteira equilibrada',
-      description: 'Nenhum alerta crítico no momento. Continue monitorando.',
-      severity: 'info',
-      timestamp: new Date().toISOString(),
-    }];
-  }, [assets]);
+  const fallbackInsights = useMemo(() => generateFallbackInsights(assets), [assets]);
+  const displayInsights = aiInsights.length > 0 ? aiInsights : fallbackInsights;
 
   return (
     <div className="rounded-lg border border-border bg-card overflow-hidden glow-ai animate-fade-in">
-      <div className="p-5 border-b border-border flex items-center gap-3">
-        <div className="h-8 w-8 rounded-lg gradient-ai flex items-center justify-center">
-          <Brain className="h-4 w-4 text-ai-foreground" />
+      <div className="p-5 border-b border-border">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="h-8 w-8 rounded-lg gradient-ai flex items-center justify-center">
+              <Brain className="h-4 w-4 text-ai-foreground" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold flex items-center gap-2">
+                IA Insights
+                <Sparkles className="h-4 w-4 text-ai" />
+              </h2>
+              <p className="text-xs text-muted-foreground">
+                {aiInsights.length > 0 ? 'Google Gemini • Análise personalizada' : 'Análise em tempo real'}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => generateInsights(assets)}
+            disabled={loading || assets.every(a => a.currentPrice === 0)}
+            className="h-8 w-8 rounded-lg border border-border flex items-center justify-center text-muted-foreground hover:text-ai hover:border-ai/30 transition-all disabled:opacity-50"
+            title="Gerar novos insights com IA"
+          >
+            {loading ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <RefreshCw className="h-3.5 w-3.5" />
+            )}
+          </button>
         </div>
-        <div>
-          <h2 className="text-lg font-semibold flex items-center gap-2">
-            IA Insights
-            <Sparkles className="h-4 w-4 text-ai" />
-          </h2>
-          <p className="text-xs text-muted-foreground">Análise em tempo real dos seus ativos</p>
-        </div>
+
+        {summary && (
+          <div className="mt-3 px-3 py-2 rounded-md bg-ai/5 border border-ai/10">
+            <p className="text-xs text-ai-foreground font-medium">{summary}</p>
+          </div>
+        )}
       </div>
+
       <div className="p-4 space-y-3">
-        {insights.map((insight, i) => (
-          <div key={insight.id} style={{ animationDelay: `${i * 100}ms` }} className="animate-fade-in">
+        {loading && aiInsights.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-8 gap-3">
+            <div className="relative">
+              <Brain className="h-8 w-8 text-ai animate-pulse" />
+              <Sparkles className="h-4 w-4 text-ai absolute -top-1 -right-1 animate-bounce" />
+            </div>
+            <p className="text-sm text-muted-foreground">Gemini analisando sua carteira...</p>
+          </div>
+        )}
+
+        {error && (
+          <div className="rounded-lg border border-loss/20 bg-loss/5 p-3 text-xs text-loss-foreground">
+            ⚠️ {error}
+          </div>
+        )}
+
+        {displayInsights.map((insight, i) => (
+          <div key={insight.id} style={{ animationDelay: `${i * 80}ms` }} className="animate-fade-in">
             <InsightCard insight={insight} />
           </div>
         ))}
+
+        {lastGenerated && (
+          <p className="text-[10px] text-muted-foreground text-center pt-2">
+            Gerado em {lastGenerated.toLocaleTimeString('pt-BR')} via Google Gemini
+          </p>
+        )}
       </div>
     </div>
   );
