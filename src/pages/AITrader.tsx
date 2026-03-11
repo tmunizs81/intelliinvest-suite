@@ -10,6 +10,7 @@ import {
   Plus, MessageSquare, Clock, MoreVertical, X,
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+import { PieChart as RechartsPie, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 
 const analysisOptions: { type: AnalysisType; label: string; icon: React.ElementType; description: string; prompt: string }[] = [
   {
