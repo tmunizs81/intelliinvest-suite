@@ -838,6 +838,19 @@ function TelegramTab() {
           </ul>
         </div>
 
+        <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 space-y-2">
+          <p className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+            🔐 Comandos do Bot
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Após configurar, o usuário pode enviar comandos ao bot no Telegram:
+          </p>
+          <ul className="text-xs text-muted-foreground space-y-1 font-mono">
+            <li><span className="text-primary">/senha</span> — Receber link para alterar a senha</li>
+            <li><span className="text-primary">/ajuda</span> — Ver comandos disponíveis</li>
+          </ul>
+        </div>
+
         <div className="flex gap-2">
           <button onClick={save} disabled={saving} className="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium disabled:opacity-50 flex items-center gap-2">
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
@@ -846,6 +859,10 @@ function TelegramTab() {
           <button onClick={testConnection} disabled={testing} className="px-4 py-2 rounded-md border border-border text-sm font-medium flex items-center gap-2 hover:bg-accent/50">
             {testing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             Testar Conexão
+          </button>
+          <button onClick={setupWebhook} disabled={settingWebhook || !botToken} className="px-4 py-2 rounded-md border border-border text-sm font-medium flex items-center gap-2 hover:bg-accent/50 disabled:opacity-50">
+            {settingWebhook ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+            Ativar Webhook
           </button>
         </div>
       </div>
