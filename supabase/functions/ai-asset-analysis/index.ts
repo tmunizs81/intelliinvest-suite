@@ -18,7 +18,7 @@ REGRAS:
 - Dê uma conclusão clara (compra, venda, manter)
 - Use os indicadores técnicos fornecidos na análise`;
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
