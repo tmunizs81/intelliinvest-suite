@@ -31,6 +31,7 @@ import ProfitabilityPanel from '@/components/dashboard/ProfitabilityPanel';
 import BacktestingPanel from '@/components/dashboard/BacktestingPanel';
 import DividendForecastPanel from '@/components/dashboard/DividendForecastPanel';
 import AssetScoringPanel from '@/components/dashboard/AssetScoringPanel';
+import FixedIncomePanel from '@/components/dashboard/FixedIncomePanel';
 import OnboardingOverlay from '@/components/OnboardingOverlay';
 
 import { usePortfolio, type HoldingRow } from '@/hooks/usePortfolio';
@@ -63,6 +64,7 @@ const defaultLayouts: any = {
     { i: 'profitability', x: 0, y: 75, w: 6, h: 9, minW: 4, minH: 6 },
     { i: 'backtesting', x: 6, y: 75, w: 6, h: 9, minW: 4, minH: 6 },
     { i: 'asset-scoring', x: 0, y: 84, w: 6, h: 12, minW: 4, minH: 8 },
+    { i: 'fixed-income', x: 6, y: 84, w: 6, h: 12, minW: 4, minH: 8 },
   ],
   md: [
     { i: 'summary', x: 0, y: 0, w: 10, h: 3, minW: 6, minH: 3 },
@@ -88,6 +90,7 @@ const defaultLayouts: any = {
     { i: 'profitability', x: 0, y: 87, w: 5, h: 9, minW: 4, minH: 6 },
     { i: 'backtesting', x: 5, y: 87, w: 5, h: 9, minW: 4, minH: 6 },
     { i: 'asset-scoring', x: 0, y: 96, w: 10, h: 12, minW: 4, minH: 8 },
+    { i: 'fixed-income', x: 0, y: 108, w: 10, h: 12, minW: 4, minH: 8 },
   ],
   sm: [
     { i: 'summary', x: 0, y: 0, w: 6, h: 4, minW: 6, minH: 3 },
@@ -113,6 +116,7 @@ const defaultLayouts: any = {
     { i: 'profitability', x: 0, y: 145, w: 6, h: 9, minW: 6, minH: 6 },
     { i: 'backtesting', x: 0, y: 154, w: 6, h: 9, minW: 6, minH: 6 },
     { i: 'asset-scoring', x: 0, y: 163, w: 6, h: 12, minW: 6, minH: 8 },
+    { i: 'fixed-income', x: 0, y: 175, w: 6, h: 12, minW: 6, minH: 8 },
   ],
 };
 
@@ -366,6 +370,11 @@ const Index = () => {
               <div key="asset-scoring">
                 <DashboardPanel title="Scoring IA de Ativos" locked={locked}>
                   <AssetScoringPanel assets={assets} />
+                </DashboardPanel>
+              </div>
+              <div key="fixed-income">
+                <DashboardPanel title="Resumo Renda Fixa" locked={locked}>
+                  <FixedIncomePanel assets={assets} />
                 </DashboardPanel>
               </div>
             </ResponsiveGrid>
