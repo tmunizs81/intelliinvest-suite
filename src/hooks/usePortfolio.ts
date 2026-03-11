@@ -244,11 +244,13 @@ export function usePortfolio() {
       await supabase.from('holdings').update({ quantity: remainingQty } as any).eq('id', holdingId).eq('user_id', user.id);
     }
 
-    // Update cash balance
+    // Update cash balance (use holding's broker)
+    const holdingBroker = holding.broker || '';
     const { data: existing } = await supabase
       .from('cash_balance' as any)
       .select('id, balance')
       .eq('user_id', user.id)
+      .eq('broker', holdingBroker)
       .maybeSingle();
 
     if (existing) {
@@ -260,6 +262,7 @@ export function usePortfolio() {
       await supabase.from('cash_balance' as any).insert({
         user_id: user.id,
         balance: netTotal,
+        broker: holdingBroker || null,
       } as any);
     }
 
