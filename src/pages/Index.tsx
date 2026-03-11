@@ -220,26 +220,30 @@ const Index = () => {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => setLocked(!locked)}
-              className={`h-8 px-3 rounded-lg border text-xs font-medium flex items-center gap-1.5 transition-all ${
-                locked
-                  ? 'border-border bg-card text-muted-foreground hover:text-foreground'
-                  : 'border-primary/30 bg-primary/10 text-primary'
-              }`}
-              title={locked ? 'Desbloquear layout' : 'Bloquear layout'}
-            >
-              {locked ? <Lock className="h-3.5 w-3.5" /> : <Unlock className="h-3.5 w-3.5" />}
-              {locked ? 'Editar Layout' : 'Editando'}
-            </button>
-            {!locked && (
-              <button
-                onClick={resetLayout}
-                className="h-8 px-3 rounded-lg border border-border bg-card text-xs font-medium text-muted-foreground hover:text-foreground flex items-center gap-1.5 transition-all"
-              >
-                <RotateCcw className="h-3.5 w-3.5" />
-                Reset
-              </button>
+            {!isMobile && (
+              <>
+                <button
+                  onClick={() => setLocked(!locked)}
+                  className={`h-8 px-3 rounded-lg border text-xs font-medium flex items-center gap-1.5 transition-all ${
+                    locked
+                      ? 'border-border bg-card text-muted-foreground hover:text-foreground'
+                      : 'border-primary/30 bg-primary/10 text-primary'
+                  }`}
+                  title={locked ? 'Desbloquear layout' : 'Bloquear layout'}
+                >
+                  {locked ? <Lock className="h-3.5 w-3.5" /> : <Unlock className="h-3.5 w-3.5" />}
+                  {locked ? 'Editar Layout' : 'Editando'}
+                </button>
+                {!locked && (
+                  <button
+                    onClick={resetLayout}
+                    className="h-8 px-3 rounded-lg border border-border bg-card text-xs font-medium text-muted-foreground hover:text-foreground flex items-center gap-1.5 transition-all"
+                  >
+                    <RotateCcw className="h-3.5 w-3.5" />
+                    Reset
+                  </button>
+                )}
+              </>
             )}
             <button
               onClick={() => refresh()}
