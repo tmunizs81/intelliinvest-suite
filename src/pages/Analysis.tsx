@@ -11,6 +11,7 @@ import IndicatorsPanel from '@/components/asset/IndicatorsPanel';
 import AIAnalysisPanel from '@/components/asset/AIAnalysisPanel';
 import FundamentalIndicators from '@/components/analysis/FundamentalIndicators';
 import AISignalBadge from '@/components/analysis/AISignalBadge';
+import AIChartSummary from '@/components/analysis/AIChartSummary';
 
 type RangeOption = '1mo' | '3mo' | '6mo' | '1y' | '2y' | '5y' | '10y' | 'max';
 
@@ -254,14 +255,20 @@ export default function Analysis() {
 
           {/* Chart */}
           {activeTab === 'tradingview' ? (
-            <TradingViewWidget ticker={ticker} type={assetType} />
+            <>
+              <TradingViewWidget ticker={ticker} type={assetType} />
+              <AIChartSummary ticker={ticker} name={assetName || ticker} type={assetType} candles={candles} />
+            </>
           ) : loading && candles.length === 0 ? (
             <div className="flex items-center justify-center py-20 gap-3">
               <Loader2 className="h-6 w-6 animate-spin text-primary" />
               <span className="text-muted-foreground">Carregando dados históricos...</span>
             </div>
           ) : (
-            <CandlestickChart candles={candles} />
+            <>
+              <CandlestickChart candles={candles} />
+              <AIChartSummary ticker={ticker} name={assetName || ticker} type={assetType} candles={candles} />
+            </>
           )}
 
           {/* Indicators Grid */}

@@ -605,6 +605,17 @@ export default function Dividends() {
                           <p className="text-xs text-muted-foreground">DY 12m</p>
                           <p className="font-mono font-bold text-gain">{formatPercent(asset.yieldPct)}</p>
                         </div>
+                        <div className="hidden sm:block">
+                          <p className="text-xs text-muted-foreground">YoC</p>
+                          <p className="font-mono font-bold text-primary">
+                            {(() => {
+                              const h = holdings.find(hh => hh.ticker === asset.ticker);
+                              const avgP = h?.avg_price || 0;
+                              const yoc = avgP > 0 ? (asset.totalPerShare12m / avgP * 100) : 0;
+                              return formatPercent(yoc);
+                            })()}
+                          </p>
+                        </div>
                         <div>
                           <p className="text-xs text-muted-foreground">Renda Anual</p>
                           <p className="font-mono font-bold">{formatCurrency(asset.annualIncome)}</p>
