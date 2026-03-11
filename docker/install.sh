@@ -176,12 +176,12 @@ if [ $RETRY -eq $MAX_RETRIES ]; then
     echo ""
     echo -e "${YELLOW}  ── Diagnóstico ──${NC}"
     echo -e "  Container status:"
-    docker ps -a --filter "name=investai-app" --format "  {{.Status}}" 2>/dev/null
+    docker ps -a --filter "name=simplynvest-app" --format "  {{.Status}}" 2>/dev/null
     echo ""
     echo -e "  Últimos logs:"
-    docker logs investai-app --tail 30 2>&1 | sed 's/^/  /'
+    docker logs simplynvest-app --tail 30 2>&1 | sed 's/^/  /'
     echo ""
-    echo -e "${YELLOW}  Tente: docker logs investai-app${NC}"
+    echo -e "${YELLOW}  Tente: docker logs simplynvest-app${NC}"
     exit 1
 fi
 
