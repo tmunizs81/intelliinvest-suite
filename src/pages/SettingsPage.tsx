@@ -262,7 +262,14 @@ function UsersTab() {
     try {
       // Create user via edge function (admin-create-user)
       const { data, error } = await supabase.functions.invoke('admin-create-user', {
-        body: { email: newEmail, password: newPassword, displayName: newName, role: newRole },
+        body: {
+          email: newEmail,
+          password: newPassword,
+          displayName: newName,
+          role: newRole,
+          telegramBotToken: newBotToken || undefined,
+          telegramChatId: newChatId || undefined,
+        },
       });
       if (error) throw error;
       toast.success(`Usuário ${newEmail} criado com sucesso`);
