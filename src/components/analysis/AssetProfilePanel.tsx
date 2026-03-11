@@ -6,6 +6,9 @@ import {
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 
+const profileCache = new Map<string, { data: any; ts: number }>();
+const CACHE_TTL = 10 * 60 * 1000;
+
 interface AssetProfile {
   description: string;
   administrator?: string | null;
