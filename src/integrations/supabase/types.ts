@@ -217,6 +217,60 @@ export type Database = {
         }
         Relationships: []
       }
+      transactions: {
+        Row: {
+          created_at: string
+          date: string
+          fees: number
+          id: string
+          is_daytrade: boolean
+          name: string
+          notes: string | null
+          operation: string
+          price: number
+          quantity: number
+          ticker: string
+          total: number
+          type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          fees?: number
+          id?: string
+          is_daytrade?: boolean
+          name: string
+          notes?: string | null
+          operation: string
+          price: number
+          quantity: number
+          ticker: string
+          total: number
+          type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          fees?: number
+          id?: string
+          is_daytrade?: boolean
+          name?: string
+          notes?: string | null
+          operation?: string
+          price?: number
+          quantity?: number
+          ticker?: string
+          total?: number
+          type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
