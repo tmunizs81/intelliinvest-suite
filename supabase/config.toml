@@ -3,8 +3,23 @@ project_id = "qysofdyyumoggkptxxuf"
 [functions.yahoo-finance]
 verify_jwt = false
 
+[functions.yahoo-finance-history]
+verify_jwt = false
+
+[functions.yahoo-finance-fundamentals]
+verify_jwt = false
+
 [functions.ai-insights]
 verify_jwt = false
 
+[functions.ai-asset-analysis]
+verify_jwt = false
+
 [functions.check-alerts]
+verify_jwt = false
+
+[functions.benchmarks]
+verify_jwt = false
+
+[functions.dividends]
 verify_jwt = false
