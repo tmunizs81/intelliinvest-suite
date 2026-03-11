@@ -88,6 +88,7 @@ export default function SettingsPage() {
       {tab === 'family' && <FamilyTab />}
       {tab === 'telegram' && <TelegramTab />}
       {tab === 'backup' && <BackupTab />}
+      {tab === 'audit' && <AuditLogPanel />}
     </div>
   );
 }
