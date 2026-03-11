@@ -22,9 +22,12 @@ const typeBadgeClass: Record<string, string> = {
 
 export default function Assets() {
   const navigate = useNavigate();
-  const { assets, holdings, loading, refresh, addHolding, updateHolding, deleteHolding } = usePortfolio();
+  const { assets, holdings, cashBalance, loading, refresh, addHolding, updateHolding, deleteHolding, sellHolding } = usePortfolio();
   const [modalOpen, setModalOpen] = useState(false);
   const [editingHolding, setEditingHolding] = useState<HoldingRow | null>(null);
+  const [sellOpen, setSellOpen] = useState(false);
+  const [sellingHolding, setSellingHolding] = useState<HoldingRow | null>(null);
+  const [sellingPrice, setSellingPrice] = useState(0);
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('');
   const [importOpen, setImportOpen] = useState(false);
@@ -33,6 +36,12 @@ export default function Assets() {
   const [importError, setImportError] = useState('');
   const [brokerageOpen, setBrokerageOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleSell = (holdingRow: HoldingRow, asset: Asset) => {
+    setSellingHolding(holdingRow);
+    setSellingPrice(asset.currentPrice);
+    setSellOpen(true);
+  };
 
   const filtered = assets.filter(a => {
     const matchSearch = !search || a.ticker.toLowerCase().includes(search.toLowerCase()) || a.name.toLowerCase().includes(search.toLowerCase());
