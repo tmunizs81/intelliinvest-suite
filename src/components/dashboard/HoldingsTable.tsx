@@ -22,6 +22,7 @@ interface Props {
 }
 
 export default function HoldingsTable({ assets, holdings, loading, onAdd, onEdit, onDelete }: Props) {
+  const navigate = useNavigate();
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const handleDelete = async (id: string) => {
