@@ -4,7 +4,9 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
+import { useLicense } from "@/hooks/useLicense";
 import AppLayout from "@/components/layout/AppLayout";
+import BlockedScreen from "@/components/BlockedScreen";
 import Index from "./pages/Index";
 import Assets from "./pages/Assets";
 import Analysis from "./pages/Analysis";
@@ -23,7 +25,9 @@ const queryClient = new QueryClient();
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
-  if (loading) {
+  const { status, loading: licenseLoading, isBlocked } = useLicense();
+
+  if (loading || licenseLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -31,6 +35,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     );
   }
   if (!user) return <Navigate to="/login" replace />;
+  if (isBlocked) return <BlockedScreen status={status} />;
   return <>{children}</>;
 }
 
