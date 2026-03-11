@@ -633,6 +633,18 @@ O sistema pode enviar notificações em tempo real para seu Telegram.
    - **Notificar via Telegram**: Sim/Não
 4. Clique em **"Criar Alerta"**
 
+### Canais de Notificação:
+
+#### 🔔 Push Notifications (navegador)
+- Clique no ícone **🔔** no painel de alertas para ativar
+- O navegador pedirá permissão para enviar notificações
+- Funciona mesmo com o app minimizado (quando instalado como PWA)
+- Não precisa de Telegram configurado
+
+#### 📱 Telegram
+- Configure em **Configurações → Telegram**
+- Receba alertas diretamente no celular via bot
+
 ### Status dos Alertas:
 - 🟢 **Ativo**: Monitorando em tempo real
 - 🟡 **Disparado**: Condição atingida
