@@ -292,6 +292,7 @@ export default function Reports() {
     { id: 'performance', label: 'Performance', icon: TrendingUp },
     { id: 'allocation', label: 'Alocação', icon: PieChart },
     { id: 'brokers', label: 'Corretoras', icon: BarChart3 },
+    { id: 'transactions', label: 'Transações', icon: Calendar },
   ];
 
   return (
