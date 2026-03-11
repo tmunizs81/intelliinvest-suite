@@ -95,7 +95,7 @@ if [ ! -f "$ENV_FILE" ]; then
 
     # Perguntar porta
     echo ""
-    read -r -p "Porta para o InvestAI (padrão 3080): " CUSTOM_PORT
+    read -r -p "Porta para o T2-Simplynvest (padrão 3080): " CUSTOM_PORT
     CUSTOM_PORT=${CUSTOM_PORT:-3080}
 
     # Validar que é um número
