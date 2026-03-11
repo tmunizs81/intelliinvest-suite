@@ -80,6 +80,7 @@ export default function SettingsPage() {
       </div>
 
       {tab === 'general' && <GeneralTab />}
+      {tab === 'license' && <LicenseTab />}
       {tab === 'users' && isAdmin && <UsersTab />}
       {tab === 'keys' && isAdmin && <SerialKeysTab />}
       {tab === 'family' && <FamilyTab />}
