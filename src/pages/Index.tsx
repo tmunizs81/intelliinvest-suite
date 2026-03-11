@@ -71,6 +71,9 @@ const defaultLayouts: any = {
     { i: 'backtesting', x: 6, y: 83, w: 6, h: 9, minW: 4, minH: 6 },
     { i: 'asset-scoring', x: 0, y: 92, w: 6, h: 12, minW: 4, minH: 8 },
     { i: 'fixed-income', x: 6, y: 92, w: 6, h: 12, minW: 4, minH: 8 },
+    { i: 'benchmark-chart', x: 0, y: 104, w: 12, h: 8, minW: 6, minH: 6 },
+    { i: 'ai-advisor', x: 0, y: 112, w: 6, h: 12, minW: 4, minH: 8 },
+    { i: 'ai-risk', x: 6, y: 112, w: 6, h: 12, minW: 4, minH: 8 },
   ],
   md: [
     { i: 'summary', x: 0, y: 0, w: 10, h: 3, minW: 6, minH: 3 },
