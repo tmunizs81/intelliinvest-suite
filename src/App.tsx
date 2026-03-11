@@ -24,6 +24,7 @@ import FamilyPortfolio from "./pages/FamilyPortfolio";
 import Manual from "./pages/Manual";
 import Comparator from "./pages/Comparator";
 import PWAInstallPrompt from "./components/PWAInstallPrompt";
+import SessionExpiredModal from "./components/SessionExpiredModal";
 import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient();
