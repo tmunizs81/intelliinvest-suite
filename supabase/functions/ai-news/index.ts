@@ -1,4 +1,4 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -42,7 +42,7 @@ async function fetchGoogleNews(query: string): Promise<Array<{ title: string; li
   return fetchRssItems(`https://news.google.com/rss/search?q=${encoded}&hl=pt-BR&gl=BR&ceid=BR:pt-419`, 5);
 }
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
@@ -105,7 +105,7 @@ Use a ferramenta para retornar as notícias classificadas. Mantenha os títulos 
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: "Você classifica notícias financeiras reais para investidores brasileiros. Mantenha os títulos das notícias originais. Avalie o impacto real nos ativos do investidor." },
           { role: "user", content: prompt },
