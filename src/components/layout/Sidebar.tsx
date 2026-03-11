@@ -16,6 +16,7 @@ const navItems = [
   { to: '/assets', label: 'Meus Ativos', icon: Briefcase },
   { to: '/reports', label: 'Relatórios', icon: FileText },
   { to: '/analysis', label: 'Análise Avançada', icon: BarChart3 },
+  { to: '/family', label: 'Carteira Familiar', icon: Users },
   { to: '/settings', label: 'Configurações', icon: Settings },
 ];
 
