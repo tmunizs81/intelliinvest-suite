@@ -69,12 +69,20 @@ log_ok "Docker Compose: $(docker compose version --short 2>/dev/null)"
 # ── 3. Clonar repositório ──
 log_step "3/6" "Baixando código do GitHub..."
 if [ -d "$INSTALL_DIR" ]; then
-    log_warn "Diretório $INSTALL_DIR já existe. Atualizando..."
-    cd "$INSTALL_DIR"
-    git fetch --all
-    git reset --hard origin/main 2>/dev/null || git reset --hard origin/master
-    git pull
-    log_ok "Código atualizado"
+    if [ -d "$INSTALL_DIR/.git" ]; then
+        log_warn "Diretório já existe. Atualizando via git pull..."
+        cd "$INSTALL_DIR"
+        git fetch --all
+        git reset --hard origin/main 2>/dev/null || git reset --hard origin/master
+        git pull
+        log_ok "Código atualizado"
+    else
+        log_warn "Diretório existe mas não é repositório Git. Removendo e clonando novamente..."
+        rm -rf "$INSTALL_DIR"
+        git clone "$REPO_URL" "$INSTALL_DIR"
+        cd "$INSTALL_DIR"
+        log_ok "Código clonado em $INSTALL_DIR"
+    fi
 else
     git clone "$REPO_URL" "$INSTALL_DIR"
     cd "$INSTALL_DIR"
