@@ -6,6 +6,7 @@ import {
   Menu, X, FileText,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import ThemeToggle from '@/components/ThemeToggle';
 
 const navItems = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
