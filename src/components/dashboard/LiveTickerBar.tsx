@@ -84,7 +84,7 @@ export default function LiveTickerBar({ assets, onPricesUpdate }: Props) {
           Cotações ao Vivo
         </span>
         <span className="text-[9px] text-muted-foreground ml-auto">
-          {paused ? 'Pausado' : `Atualiza em ${countdown}s`}
+          {paused ? 'Pausado' : countdown >= 60 ? `Atualiza em ${Math.ceil(countdown / 60)}min` : `Atualiza em ${countdown}s`}
         </span>
         <button
           onClick={() => setPaused(!paused)}

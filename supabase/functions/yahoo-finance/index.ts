@@ -872,11 +872,12 @@ async function fetchQuoteWithFallback(ticker: string): Promise<QuoteResult> {
   const yahooResult = await fetchYahooQuote(ticker);
   if (yahooResult && yahooResult.currentPrice > 0) return yahooResult;
 
-  return {
+  const fallbackResult: QuoteResult = {
     ticker, currentPrice: 0, change24h: 0, previousClose: 0, name: ticker,
     source: "none", currency: "BRL", currentPriceBRL: 0, exchangeRate: 1,
     error: "All sources failed",
   };
+  return fallbackResult;
 }
 
 Deno.serve(async (req) => {
