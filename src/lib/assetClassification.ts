@@ -461,11 +461,20 @@ export function classifyAssetType(ticker: string, explicitType?: string): string
   // 3d. ETF suíço (SIX Swiss Exchange)
   if (CH_ETF_TICKERS.has(t)) return 'ETF Internacional';
 
+  // 3e. ETF de Hong Kong (HKEX)
+  if (HK_ETF_TICKERS.has(t)) return 'ETF Internacional';
+
+  // 3f. ETF japonês (TSE)
+  if (JP_ETF_TICKERS.has(t)) return 'ETF Internacional';
+
+  // 3g. ETF australiano (ASX)
+  if (AU_ETF_TICKERS.has(t)) return 'ETF Internacional';
+
   // 4. REIT americano
   if (REIT_TICKERS.has(t)) return 'REIT';
 
-  // 5. ETF Internacional europeu (sufixo .L, .DE, .AS, .PA, .MI, .SW, .IR)
-  if (/\.(L|DE|AS|PA|MI|SW|IR)$/.test(t)) return 'ETF Internacional';
+  // 5. ETF Internacional (sufixo .L, .DE, .AS, .PA, .MI, .SW, .IR, .HK, .T, .AX)
+  if (/\.(L|DE|AS|PA|MI|SW|IR|HK|T|AX)$/.test(t)) return 'ETF Internacional';
 
   // 6. FII (padrão XXXX11)
   if (/^[A-Z]{4}11$/.test(t)) return 'FII';
