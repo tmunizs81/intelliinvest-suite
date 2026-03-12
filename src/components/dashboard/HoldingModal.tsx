@@ -209,7 +209,12 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
       }
       onClose();
     } catch (err: any) {
-      setError(err?.message || 'Erro ao salvar');
+      const msg = err?.message || 'Erro ao salvar';
+      if (msg.includes('holdings_user_id_ticker_key') || msg.includes('duplicate key')) {
+        setError(`Você já possui "${ticker.toUpperCase().trim()}" na carteira. Edite o ativo existente para alterar quantidade ou preço médio.`);
+      } else {
+        setError(msg);
+      }
     } finally {
       setLoading(false);
     }
