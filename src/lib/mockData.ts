@@ -1,7 +1,7 @@
 export interface Asset {
   ticker: string;
   name: string;
-  type: 'Ação' | 'FII' | 'ETF' | 'ETF Internacional' | 'Cripto' | 'Renda Fixa';
+  type: 'Ação' | 'FII' | 'ETF' | 'ETF Internacional' | 'Cripto' | 'Renda Fixa' | 'BDR' | 'Internacional' | 'Stock';
   quantity: number;
   avgPrice: number;
   currentPrice: number;
