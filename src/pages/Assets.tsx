@@ -610,6 +610,13 @@ export default function Assets() {
         onConfirm={updateCashBalance}
         loadMovements={loadCashMovements}
       />
+
+      <CustodyModal
+        open={custodyOpen}
+        onClose={() => setCustodyOpen(false)}
+        holdings={holdings}
+        assets={assets}
+      />
     </div>
   );
 }
