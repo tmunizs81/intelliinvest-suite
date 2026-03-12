@@ -169,7 +169,15 @@ export default function Assets() {
             </div>
           )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={() => setCustodyOpen(true)}
+            disabled={holdings.length === 0}
+            className="h-9 px-3 rounded-lg border border-[hsl(270,70%,60%)]/30 bg-[hsl(270,70%,60%)]/10 text-sm text-[hsl(270,70%,85%)] hover:bg-[hsl(270,70%,60%)]/20 flex items-center gap-2 transition-all disabled:opacity-50"
+          >
+            <Building2 className="h-4 w-4" />
+            Custódia
+          </button>
           <button
             onClick={() => setB3ImportOpen(true)}
             className="h-9 px-3 rounded-lg border border-gain/30 bg-gain/10 text-sm text-gain hover:bg-gain/20 flex items-center gap-2 transition-all"
