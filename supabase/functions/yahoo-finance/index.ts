@@ -386,7 +386,20 @@ async function fetchYahooQuote(ticker: string): Promise<QuoteResult | null> {
     if (!result) return null;
 
     const meta = result.meta;
-    const currentPrice = meta.regularMarketPrice ?? 0;
+    
+    // Use actual OHLC close data for accurate price (matches Yahoo website)
+    const closes = result.indicators?.quote?.[0]?.close;
+    let currentPrice = meta.regularMarketPrice ?? 0;
+    if (closes && closes.length > 0) {
+      // Get the last valid close price from chart data
+      for (let i = closes.length - 1; i >= 0; i--) {
+        if (closes[i] !== null && closes[i] !== undefined) {
+          currentPrice = closes[i];
+          break;
+        }
+      }
+    }
+    
     const previousClose = meta.chartPreviousClose ?? meta.previousClose ?? currentPrice;
     const change24h = previousClose > 0 ? ((currentPrice - previousClose) / previousClose) * 100 : 0;
 
