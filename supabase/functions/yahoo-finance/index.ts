@@ -767,6 +767,20 @@ async function fetchYahooQuote(ticker: string): Promise<QuoteResult | null> {
 
 // ─── Multi-source fetch with fallback ───
 async function fetchQuoteWithFallback(ticker: string): Promise<QuoteResult> {
+  // Ondo GM tokens: fetch underlying stock/ETF price from Yahoo Finance
+  const ondoUnderlying = getOndoGMUnderlying(ticker);
+  if (ondoUnderlying) {
+    const yahooResult = await fetchYahooQuote(ondoUnderlying);
+    if (yahooResult && yahooResult.currentPrice > 0) {
+      return { ...yahooResult, ticker, name: `${ondoUnderlying} (Ondo Tokenized)`, source: "yahoo-ondo-gm" };
+    }
+    // Fallback to Brapi
+    const brapiResult = await fetchBrapiQuote(ondoUnderlying);
+    if (brapiResult && brapiResult.currentPrice > 0) {
+      return { ...brapiResult, ticker, name: `${ondoUnderlying} (Ondo Tokenized)`, source: "brapi-ondo-gm" };
+    }
+  }
+
   // Try CoinGecko first for known crypto
   if (COINGECKO_IDS[ticker]) {
     const cgResults = await fetchCoinGeckoQuotes([ticker]);
