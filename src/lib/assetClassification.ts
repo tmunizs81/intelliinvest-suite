@@ -44,7 +44,10 @@ export function classifyAssetType(ticker: string, explicitType?: string): string
   // 2. ETF brasileiro específico
   if (ETF_TICKERS_BR.has(t)) return 'ETF';
 
-  // 3. FII (padrão XXXX11)
+  // 3. ETF Internacional (sufixo .L, .DE, .AS, etc.)
+  if (/\.(L|DE|AS|PA|MI|SW)$/.test(t)) return 'ETF Internacional';
+
+  // 4. FII (padrão XXXX11)
   if (/^[A-Z]{4}11$/.test(t)) return 'FII';
 
   // 4. BDR (padrão XXXX34, XXXX35, XXXX39)
