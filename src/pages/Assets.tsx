@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   Plus, Upload, Download, Search, Pencil, Trash2, ArrowUpRight,
   ArrowDownRight, ChevronRight, Loader2, FileSpreadsheet, X, AlertTriangle, FileUp,
-  Wallet, DollarSign,
+  Wallet, DollarSign, Building2,
 } from 'lucide-react';
 import { usePortfolio, type HoldingRow } from '@/hooks/usePortfolio';
 import HoldingModal from '@/components/dashboard/HoldingModal';
