@@ -849,11 +849,15 @@ async function fetchQuoteWithFallback(ticker: string): Promise<QuoteResult> {
   if (ondoUnderlying) {
     const yahooResult = await fetchYahooQuote(ondoUnderlying);
     if (yahooResult && yahooResult.currentPrice > 0) {
-      return { ...yahooResult, ticker, name: `${ondoUnderlying} (Ondo Tokenized)`, source: "yahoo-ondo-gm" };
+      const r = { ...yahooResult, ticker, name: `${ondoUnderlying} (Ondo Tokenized)`, source: "yahoo-ondo-gm" };
+      setCachedQuote(ticker, r);
+      return r;
     }
     const brapiResult = await fetchBrapiQuote(ondoUnderlying);
     if (brapiResult && brapiResult.currentPrice > 0) {
-      return { ...brapiResult, ticker, name: `${ondoUnderlying} (Ondo Tokenized)`, source: "brapi-ondo-gm" };
+      const r = { ...brapiResult, ticker, name: `${ondoUnderlying} (Ondo Tokenized)`, source: "brapi-ondo-gm" };
+      setCachedQuote(ticker, r);
+      return r;
     }
   }
 
@@ -861,16 +865,17 @@ async function fetchQuoteWithFallback(ticker: string): Promise<QuoteResult> {
   if (COINGECKO_IDS[ticker]) {
     const cgResults = await fetchCoinGeckoQuotes([ticker]);
     if (cgResults[ticker] && cgResults[ticker].currentPrice > 0) {
+      setCachedQuote(ticker, cgResults[ticker]);
       return cgResults[ticker];
     }
   }
 
   // For all assets: try Brapi first (good for Brazilian), then Yahoo (good for international)
   const brapiResult = await fetchBrapiQuote(ticker);
-  if (brapiResult && brapiResult.currentPrice > 0) return brapiResult;
+  if (brapiResult && brapiResult.currentPrice > 0) { setCachedQuote(ticker, brapiResult); return brapiResult; }
 
   const yahooResult = await fetchYahooQuote(ticker);
-  if (yahooResult && yahooResult.currentPrice > 0) return yahooResult;
+  if (yahooResult && yahooResult.currentPrice > 0) { setCachedQuote(ticker, yahooResult); return yahooResult; }
 
   const fallbackResult: QuoteResult = {
     ticker, currentPrice: 0, change24h: 0, previousClose: 0, name: ticker,
