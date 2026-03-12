@@ -62,15 +62,41 @@ const ONDO_GM_SET = new Set([
   'VZon','Von','WDCon','WFCon','WMTon','WMon','WULFon','XOMon','XYZon',
 ]);
 
-function mapToYahooTicker(ticker: string): string {
+// Dynamic DB lookup for new Ondo GM tokens
+let dynamicOndoHistCache: Map<string, string> | null = null;
+let dynamicOndoHistCacheTime = 0;
+
+async function getDynamicOndoUnderlying(ticker: string): Promise<string | null> {
+  if (!dynamicOndoHistCache || Date.now() - dynamicOndoHistCacheTime > 600000) {
+    try {
+      const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+      const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+      const resp = await fetch(
+        `${supabaseUrl}/rest/v1/ondo_gm_tokens?select=symbol,underlying_ticker`,
+        { headers: { Authorization: `Bearer ${anonKey}`, apikey: anonKey }, signal: AbortSignal.timeout(5000) }
+      );
+      if (resp.ok) {
+        const rows = await resp.json();
+        dynamicOndoHistCache = new Map(rows.map((r: { symbol: string; underlying_ticker: string }) => [r.symbol.toUpperCase(), r.underlying_ticker]));
+        dynamicOndoHistCacheTime = Date.now();
+      }
+    } catch (err) { console.warn("Failed to load dynamic Ondo tokens:", err); }
+  }
+  return dynamicOndoHistCache?.get(ticker.toUpperCase()) || null;
+}
+
+async function mapToYahooTicker(ticker: string): Promise<string> {
   const t = ticker.toUpperCase();
-  // Ondo GM: use underlying stock/ETF ticker
+  // Ondo GM: use underlying stock/ETF ticker (hardcoded)
   if (ONDO_GM_SET.has(ticker)) return ticker.replace(/on$/, '');
   const ondoMatch = [...ONDO_GM_SET].find(gm => gm.toUpperCase() === t);
   if (ondoMatch) return ondoMatch.replace(/on$/, '');
+  // Ondo GM: dynamic DB fallback
+  const dynamicUnderlying = await getDynamicOndoUnderlying(ticker);
+  if (dynamicUnderlying) return dynamicUnderlying;
   // Crypto
   if (CRYPTO_SET.has(t)) return `${t}-USD`;
-  // Brazilian assets: letters + numbers ending in digits (e.g. PETR4, HGLG11, 5MVL3, BOVA11)
+  // Brazilian assets
   if (/^[A-Z0-9]{4,6}\d{1,2}$/.test(t) && !t.includes("-")) return `${t}.SA`;
   return ticker;
 }
