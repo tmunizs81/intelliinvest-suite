@@ -164,7 +164,8 @@ Deno.serve(async (req) => {
     const { open, high, low, close, volume } = quote;
 
     // Get USD/BRL rate for crypto conversion
-    const usdBrl = isCrypto ? await getUsdBrlRate() : 1;
+    const needsUsdConversion = isCrypto || isOndoGM;
+    const usdBrl = needsUsdConversion ? await getUsdBrlRate() : 1;
 
     const candles = timestamps.map((ts: number, i: number) => ({
       date: new Date(ts * 1000).toISOString().split("T")[0],
