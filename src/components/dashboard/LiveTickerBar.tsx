@@ -16,7 +16,7 @@ export default function LiveTickerBar({ assets, onPricesUpdate }: Props) {
   const [countdown, setCountdown] = useState(30);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const REFRESH_INTERVAL = 30_000; // 30 seconds
+  const REFRESH_INTERVAL = 5 * 60_000; // 5 minutes
 
   const fetchPrices = useCallback(async () => {
     if (assets.length === 0) return;
