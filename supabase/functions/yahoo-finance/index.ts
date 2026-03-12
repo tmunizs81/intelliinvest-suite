@@ -497,6 +497,98 @@ const INTERNATIONAL_ETFS: Record<string, string> = {
   JBGOCA: "JBGOCA.SW", JBSICA: "JBSICA.SW",
   // Swiss Real Estate ETFs
   SRFCHA: "SRFCHA.SW", SRECHA: "SRECHA.SW", SWIIT: "SWIIT.SW", SREGA: "SREGA.SW",
+
+  // === Hong Kong Stock Exchange (.HK) ===
+  // Tracker Fund / Hang Seng
+  "2800": "2800.HK", "2833": "2833.HK", "3033": "3033.HK", "3067": "3067.HK",
+  "3037": "3037.HK", "2828": "2828.HK", "2836": "2836.HK",
+  // iShares HK
+  "2801": "2801.HK", "2802": "2802.HK", "2804": "2804.HK", "2805": "2805.HK",
+  "2823": "2823.HK", "2827": "2827.HK", "2832": "2832.HK", "2840": "2840.HK",
+  "3008": "3008.HK", "3010": "3010.HK", "3012": "3012.HK", "3015": "3015.HK",
+  "3020": "3020.HK", "3040": "3040.HK", "3050": "3050.HK", "3060": "3060.HK",
+  "3110": "3110.HK", "3115": "3115.HK", "3120": "3120.HK", "3122": "3122.HK",
+  "3127": "3127.HK", "3130": "3130.HK", "3132": "3132.HK", "3141": "3141.HK",
+  "3143": "3143.HK", "3145": "3145.HK", "3160": "3160.HK", "3162": "3162.HK",
+  "3165": "3165.HK",
+  // CSOP HK
+  "3188": "3188.HK", "3005": "3005.HK", "3006": "3006.HK", "3007": "3007.HK",
+  "3029": "3029.HK", "3174": "3174.HK", "3175": "3175.HK", "3176": "3176.HK",
+  "3177": "3177.HK", "3178": "3178.HK", "3193": "3193.HK", "3194": "3194.HK",
+  // China AMC HK
+  "3100": "3100.HK", "3101": "3101.HK", "3102": "3102.HK", "3103": "3103.HK",
+  "3104": "3104.HK", "3106": "3106.HK", "3108": "3108.HK", "3109": "3109.HK",
+  "3118": "3118.HK", "3119": "3119.HK", "3121": "3121.HK", "3125": "3125.HK",
+  "3147": "3147.HK", "3148": "3148.HK", "3149": "3149.HK",
+  // Leveraged & Inverse HK
+  "7200": "7200.HK", "7300": "7300.HK", "7226": "7226.HK", "7326": "7326.HK",
+  "7228": "7228.HK", "7328": "7328.HK", "7233": "7233.HK", "7333": "7333.HK",
+  "7288": "7288.HK", "7388": "7388.HK",
+  // Sector HK
+  "2820": "2820.HK", "2845": "2845.HK", "3003": "3003.HK", "3004": "3004.HK",
+  "3024": "3024.HK", "3034": "3034.HK", "3036": "3036.HK", "3039": "3039.HK",
+
+  // === Tokyo Stock Exchange (.T) ===
+  // TOPIX
+  "1305": "1305.T", "1306": "1306.T", "1308": "1308.T", "1348": "1348.T",
+  "1473": "1473.T", "1475": "1475.T", "2524": "2524.T",
+  // Nikkei 225
+  "1321": "1321.T", "1329": "1329.T", "1330": "1330.T", "1346": "1346.T",
+  "1369": "1369.T", "1397": "1397.T", "1489": "1489.T", "2525": "2525.T",
+  // S&P 500 / US from Japan
+  "1547": "1547.T", "1557": "1557.T", "1655": "1655.T", "2521": "2521.T",
+  "2558": "2558.T", "2633": "2633.T", "2634": "2634.T",
+  // Global / EM from Japan
+  "1550": "1550.T", "1554": "1554.T", "1559": "1559.T", "1656": "1656.T",
+  "1657": "1657.T", "1658": "1658.T", "2513": "2513.T", "2514": "2514.T",
+  // Japan Sector
+  "1591": "1591.T", "1592": "1592.T", "1593": "1593.T", "1594": "1594.T",
+  "1615": "1615.T", "1617": "1617.T", "1618": "1618.T", "1619": "1619.T",
+  "1620": "1620.T", "1621": "1621.T", "1622": "1622.T", "1623": "1623.T",
+  "1624": "1624.T", "1625": "1625.T", "1626": "1626.T", "1627": "1627.T",
+  // REIT Japan
+  "1343": "1343.T", "1345": "1345.T", "1476": "1476.T", "1488": "1488.T",
+  "1495": "1495.T", "2515": "2515.T", "2517": "2517.T",
+  // Bond Japan
+  "1677": "1677.T", "1678": "1678.T", "2510": "2510.T", "2511": "2511.T", "2512": "2512.T",
+  // Dividend Japan
+  "1494": "1494.T", "1499": "1499.T", "1577": "1577.T", "1651": "1651.T", "1698": "1698.T",
+  // Leveraged & Inverse Japan
+  "1357": "1357.T", "1358": "1358.T", "1365": "1365.T", "1366": "1366.T",
+  "1459": "1459.T", "1568": "1568.T", "1569": "1569.T", "1570": "1570.T", "1571": "1571.T",
+  // Commodities Japan
+  "1326": "1326.T", "1328": "1328.T", "1540": "1540.T", "1541": "1541.T",
+  "1542": "1542.T", "1543": "1543.T", "1671": "1671.T", "1672": "1672.T",
+
+  // === Australian Securities Exchange (.AX) ===
+  // Vanguard Australia
+  VAS: "VAS.AX", VGS: "VGS.AX", VTS: "VTS.AX", VEU: "VEU.AX",
+  VHY: "VHY.AX", VAP: "VAP.AX", VAF: "VAF.AX", VIF: "VIF.AX", VGB: "VGB.AX",
+  VDHG: "VDHG.AX", VDGR: "VDGR.AX", VDBA: "VDBA.AX", VDCO: "VDCO.AX",
+  VESG: "VESG.AX", VETH: "VETH.AX", VBLD: "VBLD.AX", VISM: "VISM.AX",
+  VSO: "VSO.AX", VVLU: "VVLU.AX", VGAD: "VGAD.AX", VMIN: "VMIN.AX", VLC: "VLC.AX",
+  // iShares Australia
+  IOZ: "IOZ.AX", IVV_AX: "IVV.AX", IEM: "IEM.AX", IAA: "IAA.AX", IAF: "IAF.AX",
+  IHD: "IHD.AX", ILB: "ILB.AX", ISO: "ISO.AX", IXJ: "IXJ.AX", IOO: "IOO.AX",
+  IHVV: "IHVV.AX", IHWL: "IHWL.AX", IWLD: "IWLD.AX", IHEB: "IHEB.AX", ICOR: "ICOR.AX",
+  // BetaShares
+  A200: "A200.AX", NDQ: "NDQ.AX", DHHF: "DHHF.AX", ETHI: "ETHI.AX",
+  HNDQ: "HNDQ.AX", DIVI: "DIVI.AX", QOZ: "QOZ.AX",
+  GGUS: "GGUS.AX", BGBL: "BGBL.AX", DBBF: "DBBF.AX",
+  ATEC: "ATEC.AX", FOOD: "FOOD.AX", ERTH: "ERTH.AX", CRYP: "CRYP.AX", BNKS: "BNKS.AX",
+  AAA: "AAA.AX", QPON: "QPON.AX", CRED: "CRED.AX", HBRD: "HBRD.AX",
+  BEAR: "BEAR.AX", BBOZ: "BBOZ.AX", BBUS: "BBUS.AX", LNAS: "LNAS.AX",
+  YMAX: "YMAX.AX", UMAX: "UMAX.AX", QMAX: "QMAX.AX", IMAX_AX: "IMAX.AX",
+  // SPDR Australia
+  STW: "STW.AX", WDIV: "WDIV.AX", WXOZ: "WXOZ.AX", WEMG: "WEMG.AX",
+  OZBD: "OZBD.AX", SLF: "SLF.AX", SYI: "SYI.AX",
+  // VanEck Australia
+  MVW: "MVW.AX", MVS: "MVS.AX", MVE: "MVE.AX", MVA: "MVA.AX",
+  MOAT: "MOAT.AX", IFRA: "IFRA.AX", SEMI_AX: "SEMI.AX", CNEW: "CNEW.AX", DFND: "DFND.AX",
+  // Magellan
+  MGE: "MGE.AX", MHHT: "MHHT.AX", MHG: "MHG.AX",
+  // Global X Australia
+  ACDC: "ACDC.AX", FANG: "FANG.AX", WIRE: "WIRE.AX", CURE: "CURE.AX",
 };
 
 // ─── Source 2: Yahoo Finance (global fallback) ───

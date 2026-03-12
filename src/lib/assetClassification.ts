@@ -298,6 +298,111 @@ const CH_ETF_TICKERS = new Set([
   'SRFCHA', 'SRECHA', 'SWIIT', 'SREGA',
 ]);
 
+// ETFs de Hong Kong (HKEX .HK)
+const HK_ETF_TICKERS = new Set([
+  // Tracker Fund / Hang Seng
+  '2800', '2833', '3033', '3067', '3037', '2828', '2836',
+  // iShares Hong Kong
+  '2801', '2802', '2804', '2805', '2823', '2827', '2832', '2840',
+  '3008', '3010', '3012', '3015', '3020', '3040', '3050', '3060',
+  '3110', '3115', '3120', '3122', '3127', '3130', '3132', '3141',
+  '3143', '3145', '3160', '3162', '3165',
+  // CSOP
+  '3188', '3067', '3033', '3005', '3006', '3007', '3029', '3037',
+  '3174', '3175', '3176', '3177', '3178', '3193', '3194',
+  // China AMC
+  '3100', '3101', '3102', '3103', '3104', '3106', '3108', '3109',
+  '3118', '3119', '3121', '3125', '3147', '3148', '3149',
+  // Hang Seng Investment
+  '2800', '2833', '3012', '3015', '3077', '3078',
+  // Samsung / Mirae / Premia
+  '3086', '3091', '3096', '3097', '3173', '3181', '3198', '3199',
+  // Leveraged & Inverse HK
+  '7200', '7300', '7226', '7326', '7228', '7328', '7230', '7330',
+  '7233', '7333', '7248', '7348', '7252', '7352', '7261', '7361',
+  '7266', '7366', '7288', '7388',
+  // Bond & Money Market HK
+  '3079', '3080', '3081', '3082', '3199',
+  // Sector HK
+  '2820', '2845', '3003', '3004', '3024', '3034', '3036', '3039',
+]);
+
+// ETFs japoneses (Tokyo Stock Exchange .T)
+const JP_ETF_TICKERS = new Set([
+  // TOPIX
+  '1305', '1306', '1308', '1348', '1473', '1475', '2524',
+  // Nikkei 225
+  '1321', '1329', '1330', '1346', '1369', '1397', '1489', '2525',
+  // MSCI / Global
+  '1550', '1554', '1557', '1559', '1655', '1656', '1657', '1658',
+  '2513', '2514', '2518', '2520', '2521', '2522',
+  // S&P 500 / US
+  '1547', '1557', '1655', '2521', '2558', '2633', '2634',
+  // Emerging Markets
+  '1658', '1681', '2520',
+  // Japan Sector
+  '1591', '1592', '1593', '1594', '1595', '1596', '1597', '1598',
+  '1615', '1617', '1618', '1619', '1620', '1621', '1622', '1623',
+  '1624', '1625', '1626', '1627', '1628', '1629', '1630', '1631',
+  '1632', '1633',
+  // REIT Japan
+  '1343', '1345', '1476', '1488', '1495', '1597', '2515', '2517',
+  // Bond Japan
+  '1677', '1678', '2510', '2511', '2512',
+  // Dividend Japan
+  '1489', '1494', '1499', '1577', '1651', '1698', '2529',
+  // ESG Japan
+  '1653', '1654', '2518', '2520',
+  // Leveraged & Inverse
+  '1357', '1358', '1365', '1366', '1459', '1568', '1569', '1570', '1571',
+  '1572', '1573', '1579', '1580', '2033', '2035', '2036', '2037',
+  // Commodities Japan
+  '1326', '1328', '1540', '1541', '1542', '1543', '1671', '1672',
+  // Currency Hedged
+  '2513', '2514', '2521', '2522',
+  // Thematic Japan
+  '2641', '2642', '2643', '2644',
+]);
+
+// ETFs australianos (ASX .AX)
+const AU_ETF_TICKERS = new Set([
+  // Vanguard Australia
+  'VAS', 'VGS', 'VTS', 'VEU', 'VHY', 'VAP', 'VAF', 'VIF', 'VGB',
+  'VDHG', 'VDGR', 'VDBA', 'VDCO',
+  'VESG', 'VETH', 'VBLD', 'VISM', 'VLGA', 'VLC',
+  'VSO', 'VVLU', 'VGAD', 'VMIN',
+  // iShares Australia
+  'IOZ', 'IVV_AX', 'IVE', 'IEM', 'IAA', 'IAF', 'IHD', 'ILB', 'ISO',
+  'IJH_AX', 'IJR_AX', 'IXJ', 'IXI', 'IOO', 'IHVV', 'IHWL', 'IWLD',
+  'IHEB', 'ICOR', 'IBAL',
+  // BetaShares Australia
+  'A200', 'NDQ', 'DHHF', 'ETHI', 'HNDQ', 'DIVI', 'QOZ',
+  'GGUS', 'BGBL', 'DBBF', 'DRIV_AX',
+  'HACK_AX', 'ATEC', 'FOOD', 'ERTH', 'CRYP', 'BNKS',
+  'CLDD', 'CLNE', 'FAIR', 'HETH',
+  'AAA', 'QPON', 'CRED', 'HBRD', 'FLOT_AX', 'GCAP',
+  'BEAR', 'BBOZ', 'BBUS', 'LNAS', 'GEARED',
+  'YMAX', 'UMAX', 'QMAX', 'IMAX',
+  // SPDR Australia
+  'STW', 'SPY_AX', 'WDIV', 'WXOZ', 'WEMG', 'OZBD', 'GOVT_AX',
+  'SLF', 'SYI', 'SSO_AX',
+  // VanEck Australia
+  'MVW', 'MVS', 'MVE', 'MVA', 'MOAT', 'QUAL_AX', 'ESGI', 'IFRA',
+  'FLOT_VE', 'PLUS', 'GCAP_VE', 'SEMI', 'CNEW', 'DFND', 'GDX_AX',
+  'GOLD_AX', 'BANK', 'REIT_AX',
+  // Magellan Australia
+  'MGE', 'MHHT', 'MHG', 'MICH',
+  // Global X / ETF Securities Australia
+  'ETHI_GX', 'ACDC', 'FANG', 'SEMI_GX', 'ROBO_AX', 'TECH_AX',
+  'WIRE', 'ATOM_AX', 'CURE', 'GXHQ',
+  // Active / Thematic Australia
+  'AQLT', 'EINC', 'EIGA', 'FINO',
+  // Australian Bond
+  'VGB', 'VAF', 'VIF', 'IAF', 'ILB', 'OZBD', 'QPON',
+  // Australian Property
+  'VAP', 'SLF', 'MVA', 'REIT_AX',
+]);
+
 // REITs americanos
 const REIT_TICKERS = new Set([
   // Diversified
@@ -356,11 +461,20 @@ export function classifyAssetType(ticker: string, explicitType?: string): string
   // 3d. ETF suíço (SIX Swiss Exchange)
   if (CH_ETF_TICKERS.has(t)) return 'ETF Internacional';
 
+  // 3e. ETF de Hong Kong (HKEX)
+  if (HK_ETF_TICKERS.has(t)) return 'ETF Internacional';
+
+  // 3f. ETF japonês (TSE)
+  if (JP_ETF_TICKERS.has(t)) return 'ETF Internacional';
+
+  // 3g. ETF australiano (ASX)
+  if (AU_ETF_TICKERS.has(t)) return 'ETF Internacional';
+
   // 4. REIT americano
   if (REIT_TICKERS.has(t)) return 'REIT';
 
-  // 5. ETF Internacional europeu (sufixo .L, .DE, .AS, .PA, .MI, .SW, .IR)
-  if (/\.(L|DE|AS|PA|MI|SW|IR)$/.test(t)) return 'ETF Internacional';
+  // 5. ETF Internacional (sufixo .L, .DE, .AS, .PA, .MI, .SW, .IR, .HK, .T, .AX)
+  if (/\.(L|DE|AS|PA|MI|SW|IR|HK|T|AX)$/.test(t)) return 'ETF Internacional';
 
   // 6. FII (padrão XXXX11)
   if (/^[A-Z]{4}11$/.test(t)) return 'FII';
