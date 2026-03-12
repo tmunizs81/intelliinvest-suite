@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   Plus, Upload, Download, Search, Pencil, Trash2, ArrowUpRight,
   ArrowDownRight, ChevronRight, Loader2, FileSpreadsheet, X, AlertTriangle, FileUp,
-  Wallet, DollarSign,
+  Wallet, DollarSign, Building2,
 } from 'lucide-react';
 import { usePortfolio, type HoldingRow } from '@/hooks/usePortfolio';
 import HoldingModal from '@/components/dashboard/HoldingModal';
@@ -12,6 +12,7 @@ import CashBalanceModal from '@/components/dashboard/CashBalanceModal';
 import BrokerageImportPanel from '@/components/dashboard/BrokerageImportPanel';
 import B3ImportPanel from '@/components/dashboard/B3ImportPanel';
 import { type Asset, formatCurrency, formatPercent } from '@/lib/mockData';
+import CustodyModal from '@/components/dashboard/CustodyModal';
 
 const typeBadgeClass: Record<string, string> = {
   'Ação': 'bg-primary/10 text-primary',
@@ -40,6 +41,7 @@ export default function Assets() {
   const [b3ImportOpen, setB3ImportOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [cashModalOpen, setCashModalOpen] = useState(false);
+  const [custodyOpen, setCustodyOpen] = useState(false);
 
   const handleSell = (holdingRow: HoldingRow, asset: Asset) => {
     setSellingHolding(holdingRow);
@@ -167,7 +169,15 @@ export default function Assets() {
             </div>
           )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={() => setCustodyOpen(true)}
+            disabled={holdings.length === 0}
+            className="h-9 px-3 rounded-lg border border-[hsl(270,70%,60%)]/30 bg-[hsl(270,70%,60%)]/10 text-sm text-[hsl(270,70%,85%)] hover:bg-[hsl(270,70%,60%)]/20 flex items-center gap-2 transition-all disabled:opacity-50"
+          >
+            <Building2 className="h-4 w-4" />
+            Custódia
+          </button>
           <button
             onClick={() => setB3ImportOpen(true)}
             className="h-9 px-3 rounded-lg border border-gain/30 bg-gain/10 text-sm text-gain hover:bg-gain/20 flex items-center gap-2 transition-all"
@@ -599,6 +609,13 @@ export default function Assets() {
         totalBalance={cashBalance}
         onConfirm={updateCashBalance}
         loadMovements={loadCashMovements}
+      />
+
+      <CustodyModal
+        open={custodyOpen}
+        onClose={() => setCustodyOpen(false)}
+        holdings={holdings}
+        assets={assets}
       />
     </div>
   );
