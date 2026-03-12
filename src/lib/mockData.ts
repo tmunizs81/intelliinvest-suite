@@ -12,6 +12,7 @@ export interface Asset {
   currency?: string;        // Original currency (BRL, USD, EUR, GBP)
   currentPriceBRL?: number;  // Price converted to BRL
   exchangeRate?: number;     // Exchange rate used
+  originalPrice?: number;    // Price in original currency (from API directly)
 }
 
 export interface PortfolioSnapshot {

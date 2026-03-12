@@ -87,8 +87,8 @@ export function usePortfolio() {
       const enriched = h.map((item) => {
         const quote = quotes[item.ticker];
         const currency = quote?.currency || 'BRL';
-        const currentPrice = quote?.currentPrice || 0;
-        const currentPriceBRL = quote?.currentPriceBRL || currentPrice;
+        const originalPrice = quote?.currentPrice || 0;
+        const currentPriceBRL = quote?.currentPriceBRL || originalPrice;
         const exchangeRate = quote?.exchangeRate || 1;
         const value = currentPriceBRL * item.quantity;
         totalValue += value;
@@ -106,6 +106,7 @@ export function usePortfolio() {
           currency,
           currentPriceBRL,
           exchangeRate,
+          originalPrice,
         };
       });
 
