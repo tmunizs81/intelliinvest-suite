@@ -241,12 +241,85 @@ O Dashboard é **totalmente personalizável**:
 3. Preencha os campos:
    - **Ticker**: Código do ativo (ex: PETR4, HGLG11, IVVB11)
    - **Nome**: Nome descritivo
-   - **Tipo**: Ação, FII, ETF, Cripto ou Renda Fixa
+   - **Tipo**: Ação, FII, ETF, ETF Internacional, BDR, Cripto ou Renda Fixa
    - **Quantidade**: Número de cotas/ações
    - **Preço Médio**: Preço médio de aquisição
-   - **Corretora**: (Opcional) Nome da corretora
+   - **Corretora**: (Opcional) Nome da corretora — suporta XTB, Webull, Interactive Brokers, eToro, DEGIRO, Trading 212 e todas as principais corretoras brasileiras
    - **Setor**: (Opcional) Setor do ativo
 4. Clique em **"Salvar"**
+
+> 💡 **Busca inteligente**: Ao digitar o ticker, o sistema busca automaticamente no Yahoo Finance e sugere ativos de todas as bolsas do mundo. Basta selecionar o resultado desejado.
+
+---
+
+## ETFs Internacionais e Bolsas Europeias
+
+O SimplyNvest oferece suporte completo a **ETFs internacionais** negociados nas principais bolsas europeias, com cotações em tempo real e conversão automática para BRL.
+
+### Bolsas Suportadas
+
+| Bolsa | Sufixo | Moeda | Exemplos |
+|-------|--------|-------|----------|
+| **London Stock Exchange** | .L | USD/GBP | CSPX, IWDA, VWRA, VUSA, EQQQ |
+| **XETRA (Alemanha)** | .DE | EUR | SXR8, EUNL, VWCE, QDVE, IS3N |
+| **Euronext Amsterdam** | .AS | EUR | VWRL, IWDA |
+| **Euronext Paris** | .PA | EUR | CW8, EWLD, PANX |
+| **Borsa Italiana** | .MI | EUR | SWDA, VWCE |
+| **SIX Swiss Exchange** | .SW | CHF | ETFs suíços |
+
+### ETFs Populares por Categoria
+
+#### 🌍 Global / All-World
+- **VWCE.DE** — Vanguard FTSE All-World (Acc, EUR)
+- **VWRA.L** — Vanguard FTSE All-World (Acc, USD)
+- **VWRL.L** — Vanguard FTSE All-World (Dist, USD)
+- **IWDA.L** — iShares Core MSCI World (Acc, USD)
+- **EUNL.DE** — iShares Core MSCI World (Acc, EUR)
+- **XDWD.DE** — Xtrackers MSCI World (Acc, EUR)
+
+#### 🇺🇸 S&P 500
+- **CSPX.L** — iShares Core S&P 500 (Acc, USD)
+- **SXR8.DE** — iShares Core S&P 500 (Acc, EUR)
+- **VUAA.L** — Vanguard S&P 500 (Acc, USD)
+- **VUSA.L** — Vanguard S&P 500 (Dist, USD)
+- **SPY5.L** — SPDR S&P 500 (Dist, USD)
+
+#### 💻 Tecnologia / NASDAQ
+- **EQQQ.L** — Invesco NASDAQ-100 (Dist, USD)
+- **QDVE.DE** — iShares S&P 500 IT Sector (Acc, EUR)
+- **CSNDX.DE** — iShares NASDAQ 100 (Acc, EUR)
+- **EXXT.DE** — iShares TecDAX (Acc, EUR)
+
+#### 🌏 Mercados Emergentes
+- **EIMI.L** — iShares Core MSCI EM (Acc, USD)
+- **IS3N.DE** — iShares Core MSCI EM (Acc, EUR)
+- **VFEM.L** — Vanguard FTSE Emerging Markets (Dist, USD)
+- **XMME.DE** — Xtrackers MSCI Emerging Markets (Acc, EUR)
+
+#### 🏠 Imobiliário / REITs
+- **IQQH.DE** — iShares Developed Markets Property Yield (Acc, EUR)
+
+#### ⚡ Temáticos
+- **INRG.L** — iShares Global Clean Energy (Dist, USD)
+- **2B76.DE** — iShares Automation & Robotics (Acc, EUR)
+- **2B77.DE** — iShares Ageing Population (Acc, EUR)
+
+### Corretoras Internacionais Suportadas
+- **XTB** — 1.900+ ETFs europeus sem comissão
+- **Interactive Brokers** — Acesso global a todas as bolsas
+- **Webull** — ETFs americanos e europeus
+- **eToro** — Investimento social com ETFs
+- **DEGIRO** — ETFs europeus com taxas reduzidas
+- **Trading 212** — ETFs sem comissão
+- **Avenue Securities** / **Nomad** — Acesso a mercados americanos
+
+### Como Adicionar um ETF Internacional
+1. Clique em **"+ Adicionar"** no Dashboard
+2. Digite o ticker (ex: VWCE, CSPX, SXR8)
+3. Selecione o resultado correto na lista de sugestões
+4. O tipo será definido automaticamente como **"ETF Internacional"**
+5. Preencha quantidade, preço médio e corretora
+6. A cotação será buscada automaticamente com conversão para BRL
 
 ### Importar da B3
 
