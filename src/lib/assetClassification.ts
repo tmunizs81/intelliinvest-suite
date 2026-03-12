@@ -350,6 +350,12 @@ export function classifyAssetType(ticker: string, explicitType?: string): string
   // 3b. ETF alemão (XETRA / Frankfurt)
   if (DE_ETF_TICKERS.has(t)) return 'ETF Internacional';
 
+  // 3c. ETF irlandês (Euronext Dublin)
+  if (IE_ETF_TICKERS.has(t)) return 'ETF Internacional';
+
+  // 3d. ETF suíço (SIX Swiss Exchange)
+  if (CH_ETF_TICKERS.has(t)) return 'ETF Internacional';
+
   // 4. REIT americano
   if (REIT_TICKERS.has(t)) return 'REIT';
 
