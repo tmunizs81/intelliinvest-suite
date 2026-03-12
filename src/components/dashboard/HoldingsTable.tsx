@@ -8,8 +8,12 @@ const typeBadgeClass: Record<string, string> = {
   'Ação': 'bg-primary/10 text-primary',
   'FII': 'bg-ai/10 text-ai-foreground',
   'ETF': 'bg-warning/10 text-warning-foreground',
+  'ETF Internacional': 'bg-chart-4/10 text-chart-4',
   'Cripto': 'bg-gain/10 text-gain-foreground',
   'Renda Fixa': 'bg-secondary text-secondary-foreground',
+  'BDR': 'bg-chart-5/10 text-chart-5',
+  'Internacional': 'bg-chart-3/10 text-chart-3',
+  'Stock': 'bg-chart-2/10 text-chart-2',
 };
 
 interface Props {
