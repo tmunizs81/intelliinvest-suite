@@ -125,6 +125,89 @@ const US_ETF_TICKERS = new Set([
   'ETHA', 'ETHV', 'FETH', 'ETHE',
 ]);
 
+// ETFs alemães (XETRA / Frankfurt .DE)
+const DE_ETF_TICKERS = new Set([
+  // iShares Core (XETRA)
+  'SXR8', 'EUNL', 'IS3N', 'SXRV', 'IUSA', 'IUSN', 'IUSQ', 'IQQH',
+  'QDVE', 'SXRJ', 'SXRT', 'SXRS', 'IBC0', 'IBCI', 'EXX5',
+  'CSNDX', 'EXXT', 'EXV6', 'EXH1', 'EXHE', 'EXSA', 'EXS1',
+  // iShares Sector & Thematic (XETRA)
+  'IQQW', 'IQQQ', 'IQQP', 'IQQ0', 'IQQL', 'IQQM', 'IQQE',
+  'IS3S', 'IS3C', 'IS3R', 'IS3Q', 'IS3U', 'IS3L', 'IS3V',
+  'SXRG', 'SXRH', 'SXRI', 'SXRK', 'SXRL', 'SXRM', 'SXRN',
+  'QDVK', 'QDVJ', 'QDVI', 'QDVH', 'QDVG', 'QDVF',
+  // iShares Bond (XETRA)
+  'IBGS', 'IBGM', 'IBGL', 'IBTS', 'IBTM', 'IBTL',
+  'EUN5', 'EUNR', 'EUNS', 'EUN4', 'EUN8', 'EUN9',
+  'EUNH', 'EUNB', 'EUNC', 'EUND',
+  'IGES', 'IGEL', 'IGEM',
+  'IHYG', 'IBC0', 'IBCI', 'IBCE', 'IB01',
+  'IUSP', 'IUSV', 'IUSW',
+  // iShares Regional (XETRA)
+  'IS3S', 'IBC6', 'IUSD', 'IUSE', 'IUSF',
+  'IQQB', 'IQQA', 'IQQC', 'IQQD',
+  // Vanguard (XETRA)
+  'VWCE', 'VGWL', 'VUSA', 'VUAA', 'V3AA', 'V3AB',
+  'VFEM', 'VDEM', 'VDPX', 'VDJP', 'VDEU',
+  'VGOV', 'VGEM', 'VAGU', 'VAGP', 'VDTY', 'VUTY',
+  'VUCP', 'VUCE', 'VETY', 'VECP',
+  'VHYL', 'VGEL', 'VDNR',
+  'V80A', 'V60A', 'V40A', 'V20A',
+  // Xtrackers / DWS (XETRA)
+  'DBXD', 'XDWD', 'XDWL', 'XMME', 'XDEM', 'XDEW',
+  'DBXJ', 'DBXE', 'XDJP', 'XDPD', 'XQUI',
+  'XD9U', 'XDWT', 'XDWS', 'XDWM', 'XDWH', 'XDWG',
+  'XDEB', 'XDEE', 'XDEP', 'XDES', 'XDET',
+  'DBZB', 'DBXG', 'DBXH', 'DBXN', 'DBXF',
+  'XCS6', 'XCHA', 'XDWF', 'XDWI',
+  'XSGI', 'XSGL', 'XSGM', 'XSGN',
+  'XACT', 'XAUS', 'XDAX', 'XMTD', 'XMTG', 'XMTH',
+  // Amundi / Lyxor (XETRA)
+  'LYMS', 'LYP6', 'LYPS', 'LYPQ',
+  'LYYA', 'LYYB', 'LYYC', 'LYYD', 'LYYE',
+  'L100', 'LCWD', 'LMWE', 'LMWI', 'LMWP',
+  'C060', 'C070', 'C080', 'C090',
+  'AEEM', 'AEMD', 'AEXK', 'AMEW', 'AMEM', 'AMEU',
+  '18MK', '18M2', '10AJ',
+  // SPDR (XETRA)
+  'SPPW', 'SPY4', 'SPY5', 'SPYD', 'SPPE', 'SPPS', 'SPPJ',
+  'SYBS', 'SYBQ', 'SYBJ', 'SYBM', 'SYBW', 'SYBF',
+  'ZPRS', 'ZPRE', 'ZPRX', 'ZPRV', 'ZPRG',
+  // Invesco (XETRA)
+  'EQQQ', 'MQUS', 'MXUS', 'MXWO', 'MXFS',
+  'SMCX', 'SMLX', 'S500', 'SPXP',
+  // WisdomTree (XETRA)
+  'PHAU', 'PHAG', 'PHPT', 'PHPM',
+  'WGLD', 'WSLV', 'WCOB', 'WCRB',
+  'WT5G', 'WTAI', 'WTCH', 'WTEC',
+  // VanEck (XETRA)
+  'TDIV', 'TGET', 'TGBT', 'TSMM', 'TSWE', 'TRET',
+  'SMGW', 'SMHG', 'SMHI', 'SMHJ', 'SMHK',
+  // Deka (XETRA)
+  'EL4A', 'EL4B', 'EL4C', 'EL4D', 'EL4E', 'EL4F', 'EL4G',
+  'EL4X', 'EL4Z', 'ETFL01', 'ETFL02', 'ETFL07', 'ETFL23',
+  // ComStage / BNP Paribas (XETRA)
+  'CBSX', 'CBDX', 'CBEF', 'CBES', 'CBEM',
+  // UBS (XETRA)
+  'UIM6', 'UIM2', 'UIM5', 'UIM1', 'UBSG',
+  // Commodities / Crypto ETP (XETRA)
+  'BTCE', 'BTHE', 'BTCS', 'ETHW', 'SOLW',
+  'XGLD', 'XSLV', '4GLD', 'EUWX', 'PPFB',
+  // DAX / MDAX / SDAX Index ETFs
+  'DBXD', 'EXSA', 'EXS1', 'DAXEX', 'MDAX', 'SDAX',
+  'EXSC', 'EXSD', 'EXSB',
+  // ESG / Climate (XETRA)
+  'IS3S', 'IS3C', 'IS3R', 'SXRG',
+  'XZMU', 'XZMG', 'XZEM', 'XZEP',
+  'XMLD', 'XMLE', 'XMLF',
+  // Multi-Factor (XETRA)
+  'IS3Q', 'IS3U', 'IS3V', 'IQQL',
+  'XDEM', 'XDEW', 'XQUI',
+  // Dividends (XETRA)
+  'TDIV', 'ISPA', 'EXXT', 'ZPRX', 'ZPRE',
+  'SPYD', 'VHYL',
+]);
+
 // REITs americanos
 const REIT_TICKERS = new Set([
   // Diversified
@@ -173,6 +256,9 @@ export function classifyAssetType(ticker: string, explicitType?: string): string
 
   // 3. ETF americano (NYSE, NASDAQ, ARCA, CBOE)
   if (US_ETF_TICKERS.has(t)) return 'ETF Internacional';
+
+  // 3b. ETF alemão (XETRA / Frankfurt)
+  if (DE_ETF_TICKERS.has(t)) return 'ETF Internacional';
 
   // 4. REIT americano
   if (REIT_TICKERS.has(t)) return 'REIT';
