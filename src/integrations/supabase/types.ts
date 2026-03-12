@@ -319,6 +319,42 @@ export type Database = {
         }
         Relationships: []
       }
+      ondo_gm_tokens: {
+        Row: {
+          chain_id: number | null
+          created_at: string
+          id: string
+          logo_uri: string | null
+          name: string
+          symbol: string
+          synced_at: string
+          token_address: string | null
+          underlying_ticker: string
+        }
+        Insert: {
+          chain_id?: number | null
+          created_at?: string
+          id?: string
+          logo_uri?: string | null
+          name: string
+          symbol: string
+          synced_at?: string
+          token_address?: string | null
+          underlying_ticker: string
+        }
+        Update: {
+          chain_id?: number | null
+          created_at?: string
+          id?: string
+          logo_uri?: string | null
+          name?: string
+          symbol?: string
+          synced_at?: string
+          token_address?: string | null
+          underlying_ticker?: string
+        }
+        Relationships: []
+      }
       portfolio_snapshots: {
         Row: {
           assets_count: number
