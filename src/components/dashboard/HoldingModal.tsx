@@ -211,7 +211,7 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
     } catch (err: any) {
       const msg = err?.message || 'Erro ao salvar';
       if (msg.includes('holdings_user_id_ticker_key') || msg.includes('duplicate key')) {
-        setError(`Você já possui "${data.ticker}" na carteira. Edite o ativo existente para alterar quantidade ou preço médio.`);
+        setError(`Você já possui "${ticker.toUpperCase().trim()}" na carteira. Edite o ativo existente para alterar quantidade ou preço médio.`);
       } else {
         setError(msg);
       }
