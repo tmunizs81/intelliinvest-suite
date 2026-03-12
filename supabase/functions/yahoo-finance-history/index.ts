@@ -14,6 +14,18 @@ const CRYPTO_SET = new Set([
   "ENS","LDO","RPL","IMX","RUNE","BLUR","WLD","PENDLE","JUP","PYTH",
   "ONDO","ENA","STRK","MANTA","DYM","XLM","TRX","EOS","NEO","ZEC","XMR",
   "DASH","BCH","ETC","USDT","USDC","DAI",
+  // Ondo Finance RWA
+  "OUSG","USDY","OMMF","ROUSG",
+  // xStocks by Backed Finance
+  "CRCLX","GOOGLX","NVDAX","MSTRX","SPYX","AAPLX","COINX","HOODX",
+  "MCDX","AMZNX","TBLLX","IEMGX","IWMX","KRAQX","COPXX","PALLX",
+  "AMDX","BTGOX","BMNRX","OPENX","LLYX","NFLXX","GSX","TQQQX",
+  "LINX","TMOX","GLDX","APPX","CRWDX","MSFTX","HDX","AVGOX","VTIX",
+  "UNHX","JPMX","INTCX","BACX","IBMX","JNJX","HONX","ABBVX","ACNX",
+  "CVXX","CRMX","CMCSAX","DHRX","PMX","PEPX","ORCLX","PFEX","XOMX",
+  "PLTRX","PGX","TONXX","GMEX","MRKX","ABTX","AZNX","MRVLX","MDTX",
+  "CSCOX","KOX","NVOX","DFDVX","AMBRX","MAX","WMTX","SCHFX","BTBTX",
+  "IJRX","PPLTX","VX",
 ]);
 
 function mapToYahooTicker(ticker: string): string {
