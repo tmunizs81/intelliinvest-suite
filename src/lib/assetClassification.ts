@@ -503,6 +503,9 @@ export function classifyAssetType(ticker: string, explicitType?: string): string
 
   const t = ticker.toUpperCase().trim();
 
+  // 0. Ondo Global Markets tokenized stocks/ETFs
+  if (ONDO_GM_TICKERS.has(ticker.trim())) return 'Cripto';
+
   // 1. Cripto (por nome)
   if (CRYPTO_TICKERS.has(t)) return 'Cripto';
 
