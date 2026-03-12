@@ -26,8 +26,8 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <div className="w-full max-w-md space-y-8 animate-fade-in">
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
+      <div className="w-full max-w-md space-y-8 animate-fade-in flex-1 flex flex-col justify-center">
         <div className="text-center flex flex-col items-center gap-3">
           <img src="/pwa-icon-192.png" alt="T2-Simplynvest" className="h-16 w-16 rounded-xl" />
           <h1 className="text-3xl font-bold tracking-tight">
