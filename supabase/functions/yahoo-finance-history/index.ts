@@ -131,7 +131,8 @@ Deno.serve(async (req) => {
     }
 
     const isCrypto = CRYPTO_SET.has(ticker.toUpperCase());
-    const yahooTicker = mapToYahooTicker(ticker);
+    const isOndoGM = ONDO_GM_SET.has(ticker) || !!(await getDynamicOndoUnderlying(ticker));
+    const yahooTicker = await mapToYahooTicker(ticker);
     const url = `https://query1.finance.yahoo.com/v8/finance/chart/${yahooTicker}?interval=${interval}&range=${range}`;
 
     const resp = await fetch(url, {
