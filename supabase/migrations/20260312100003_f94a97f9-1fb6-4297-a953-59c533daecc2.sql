@@ -1,0 +1,2 @@
+ALTER TABLE public.holdings DROP CONSTRAINT holdings_type_check;
+ALTER TABLE public.holdings ADD CONSTRAINT holdings_type_check CHECK (type = ANY (ARRAY['Ação'::text, 'FII'::text, 'ETF'::text, 'ETF Internacional'::text, 'Cripto'::text, 'Renda Fixa'::text, 'BDR'::text, 'Stock'::text]));
