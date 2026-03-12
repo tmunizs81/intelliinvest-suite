@@ -795,8 +795,52 @@ async function getDynamicOndoUnderlying(ticker: string): Promise<string | null> 
   return dynamicOndoCache?.get(ticker.toUpperCase()) || null;
 }
 
+// ─── Server-side quote cache ───
+interface CachedQuote {
+  data: QuoteResult;
+  cachedAt: number;
+}
+const quoteCache = new Map<string, CachedQuote>();
+
+function isMarketOpen(): boolean {
+  const now = new Date();
+  const utcHour = now.getUTCHours();
+  const utcDay = now.getUTCDay();
+  // B3: 10:00-17:00 BRT = 13:00-20:00 UTC (weekdays)
+  // US: 9:30-16:00 ET ≈ 13:30-20:00 UTC (weekdays)
+  // Consider "market hours" broadly as 13:00-21:00 UTC, Mon-Fri
+  if (utcDay === 0 || utcDay === 6) return false;
+  return utcHour >= 13 && utcHour < 21;
+}
+
+function getCacheTTL(): number {
+  return isMarketOpen() ? 5 * 60_000 : 30 * 60_000; // 5min during market, 30min off-hours
+}
+
+function getCachedQuote(ticker: string): QuoteResult | null {
+  const cached = quoteCache.get(ticker);
+  if (!cached) return null;
+  if (Date.now() - cached.cachedAt > getCacheTTL()) {
+    quoteCache.delete(ticker);
+    return null;
+  }
+  return cached.data;
+}
+
+function setCachedQuote(ticker: string, data: QuoteResult) {
+  quoteCache.set(ticker, { data, cachedAt: Date.now() });
+  // Evict old entries if cache grows too large
+  if (quoteCache.size > 200) {
+    const oldest = [...quoteCache.entries()].sort((a, b) => a[1].cachedAt - b[1].cachedAt);
+    for (let i = 0; i < 50; i++) quoteCache.delete(oldest[i][0]);
+  }
+}
+
 // ─── Multi-source fetch with fallback ───
 async function fetchQuoteWithFallback(ticker: string): Promise<QuoteResult> {
+  // Check cache first
+  const cached = getCachedQuote(ticker);
+  if (cached) return cached;
   // Ondo GM tokens: check hardcoded set first, then DB
   let ondoUnderlying = getOndoGMUnderlying(ticker);
   if (!ondoUnderlying) {
@@ -805,11 +849,15 @@ async function fetchQuoteWithFallback(ticker: string): Promise<QuoteResult> {
   if (ondoUnderlying) {
     const yahooResult = await fetchYahooQuote(ondoUnderlying);
     if (yahooResult && yahooResult.currentPrice > 0) {
-      return { ...yahooResult, ticker, name: `${ondoUnderlying} (Ondo Tokenized)`, source: "yahoo-ondo-gm" };
+      const r = { ...yahooResult, ticker, name: `${ondoUnderlying} (Ondo Tokenized)`, source: "yahoo-ondo-gm" };
+      setCachedQuote(ticker, r);
+      return r;
     }
     const brapiResult = await fetchBrapiQuote(ondoUnderlying);
     if (brapiResult && brapiResult.currentPrice > 0) {
-      return { ...brapiResult, ticker, name: `${ondoUnderlying} (Ondo Tokenized)`, source: "brapi-ondo-gm" };
+      const r = { ...brapiResult, ticker, name: `${ondoUnderlying} (Ondo Tokenized)`, source: "brapi-ondo-gm" };
+      setCachedQuote(ticker, r);
+      return r;
     }
   }
 
@@ -817,22 +865,24 @@ async function fetchQuoteWithFallback(ticker: string): Promise<QuoteResult> {
   if (COINGECKO_IDS[ticker]) {
     const cgResults = await fetchCoinGeckoQuotes([ticker]);
     if (cgResults[ticker] && cgResults[ticker].currentPrice > 0) {
+      setCachedQuote(ticker, cgResults[ticker]);
       return cgResults[ticker];
     }
   }
 
   // For all assets: try Brapi first (good for Brazilian), then Yahoo (good for international)
   const brapiResult = await fetchBrapiQuote(ticker);
-  if (brapiResult && brapiResult.currentPrice > 0) return brapiResult;
+  if (brapiResult && brapiResult.currentPrice > 0) { setCachedQuote(ticker, brapiResult); return brapiResult; }
 
   const yahooResult = await fetchYahooQuote(ticker);
-  if (yahooResult && yahooResult.currentPrice > 0) return yahooResult;
+  if (yahooResult && yahooResult.currentPrice > 0) { setCachedQuote(ticker, yahooResult); return yahooResult; }
 
-  return {
+  const fallbackResult: QuoteResult = {
     ticker, currentPrice: 0, change24h: 0, previousClose: 0, name: ticker,
     source: "none", currency: "BRL", currentPriceBRL: 0, exchangeRate: 1,
     error: "All sources failed",
   };
+  return fallbackResult;
 }
 
 Deno.serve(async (req) => {

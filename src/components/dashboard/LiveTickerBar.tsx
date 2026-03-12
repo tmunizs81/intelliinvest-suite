@@ -16,7 +16,7 @@ export default function LiveTickerBar({ assets, onPricesUpdate }: Props) {
   const [countdown, setCountdown] = useState(30);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const REFRESH_INTERVAL = 30_000; // 30 seconds
+  const REFRESH_INTERVAL = 5 * 60_000; // 5 minutes
 
   const fetchPrices = useCallback(async () => {
     if (assets.length === 0) return;
@@ -84,7 +84,7 @@ export default function LiveTickerBar({ assets, onPricesUpdate }: Props) {
           Cotações ao Vivo
         </span>
         <span className="text-[9px] text-muted-foreground ml-auto">
-          {paused ? 'Pausado' : `Atualiza em ${countdown}s`}
+          {paused ? 'Pausado' : countdown >= 60 ? `Atualiza em ${Math.ceil(countdown / 60)}min` : `Atualiza em ${countdown}s`}
         </span>
         <button
           onClick={() => setPaused(!paused)}
