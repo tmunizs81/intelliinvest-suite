@@ -254,25 +254,87 @@ O Dashboard é **totalmente personalizável**:
 
 ## ETFs Internacionais e Bolsas Europeias
 
-O SimplyNvest oferece suporte completo a **ETFs internacionais** negociados nas principais bolsas europeias, com cotações em tempo real e conversão automática para BRL.
+O SimplyNvest oferece suporte completo a **ETFs internacionais** negociados nas principais bolsas europeias, com cotações via **Google Finance** (fonte principal) e Yahoo Finance (fallback), com conversão automática para BRL.
 
 ### Bolsas Suportadas
 
 | Bolsa | Sufixo | Moeda | Exemplos |
 |-------|--------|-------|----------|
-| **London Stock Exchange** | .L | USD/GBP | CSPX, IWDA, VWRA, VUSA, EQQQ |
+| **London Stock Exchange** | .L | USD/GBP | CSPX, IWDA, VWRA, VUSA, EQQQ, ISF, SGLN |
 | **XETRA (Alemanha)** | .DE | EUR | SXR8, EUNL, VWCE, QDVE, IS3N |
 | **Euronext Amsterdam** | .AS | EUR | VWRL, IWDA |
 | **Euronext Paris** | .PA | EUR | CW8, EWLD, PANX |
 | **Borsa Italiana** | .MI | EUR | SWDA, VWCE |
 | **SIX Swiss Exchange** | .SW | CHF | ETFs suíços |
 
-### ETFs Populares por Categoria
+### Fonte de Dados
+- **Google Finance** — Fonte principal para todos os ETFs internacionais (cotações em tempo real)
+- **Yahoo Finance** — Fallback automático caso o Google Finance não responda
+
+### ETFs UK (London Stock Exchange .L)
+
+O sistema suporta **150+ ETFs** da Bolsa de Londres, incluindo:
+
+#### 📊 iShares (UK)
+- **CSPX** — S&P 500 (Acc, USD)
+- **IWDA** — MSCI World (Acc, USD)
+- **SWDA** — MSCI World (Acc, USD)
+- **EIMI** — MSCI Emerging Markets (Acc, USD)
+- **ISF** — FTSE 100 (Dist, GBP)
+- **IGLN** — Physical Gold
+- **INRG** — Global Clean Energy
+- **HEAL** — Healthcare Innovation
+- **RBOT** — Automation & Robotics
+- **DGTL** — Digitalisation
+- **ECAR** — Electric Vehicles & Driving Tech
+- **IGLT** — UK Gilts (Dist, GBP)
+- **SLXX** — GBP Corporate Bond (Dist, GBP)
+- **IHYG** — EUR High Yield Bond
+- Setoriais: IITU (Tech), IHCU (Healthcare), IUFS (Financials), IUES (Energy), IUCD (Consumer Disc.)
+- ESG: IESG, IESE, IESM, ESGU, ESGD, ESGE
+
+#### 📊 Vanguard (UK)
+- **VWRA** — FTSE All-World (Acc, USD)
+- **VWRL** — FTSE All-World (Dist, USD)
+- **VUAA** — S&P 500 (Acc, USD)
+- **VUSA** — S&P 500 (Dist, USD)
+- **VFEM** — Emerging Markets (Dist, USD)
+- **VUKE** — FTSE 100 (Dist, GBP)
+- **VMID** — FTSE 250 (Dist, GBP)
+- **VHYL** — High Dividend Yield
+- **VUAG** — S&P 500 (Acc, GBP)
+- **VGOV** — UK Gilt (Dist, GBP)
+- **VUTY** — US Treasury Bond
+- **VECP** — EUR Corporate Bond
+
+#### 📊 SPDR (UK)
+- **SPY5** — S&P 500 (Dist, USD)
+- **SPMV** — S&P 500 Low Volatility
+- **SPYD** — S&P US Dividend Aristocrats
+- **SYBQ / SYBS / SYBJ** — Bloomberg Bond ETFs
+- **GLCO** — Global Corporate Bond
+
+#### 📊 Invesco (UK)
+- **EQQQ** — NASDAQ-100 (Dist, USD)
+- **S500** — S&P 500 (Acc)
+- **SMCX** — MSCI World ESG Climate
+
+#### 📊 Commodities & Ouro (UK)
+- **PHAU** — Physical Gold (WisdomTree)
+- **SGLN** — Physical Gold (iShares)
+- **PHAG** — Physical Silver
+- **PHPT** — Physical Platinum
+- **OILB** — Brent Crude Oil
+- **COPA / COPP** — Copper
+
+#### 📊 Crypto ETPs (UK)
+- **BTCE** — Bitcoin ETP
+- **BETH** — Ether ETP
+
+### ETFs Populares (Outras Bolsas)
 
 #### 🌍 Global / All-World
 - **VWCE.DE** — Vanguard FTSE All-World (Acc, EUR)
-- **VWRA.L** — Vanguard FTSE All-World (Acc, USD)
-- **VWRL.L** — Vanguard FTSE All-World (Dist, USD)
 - **IWDA.L** — iShares Core MSCI World (Acc, USD)
 - **EUNL.DE** — iShares Core MSCI World (Acc, EUR)
 - **XDWD.DE** — Xtrackers MSCI World (Acc, EUR)
@@ -280,29 +342,16 @@ O SimplyNvest oferece suporte completo a **ETFs internacionais** negociados nas 
 #### 🇺🇸 S&P 500
 - **CSPX.L** — iShares Core S&P 500 (Acc, USD)
 - **SXR8.DE** — iShares Core S&P 500 (Acc, EUR)
-- **VUAA.L** — Vanguard S&P 500 (Acc, USD)
-- **VUSA.L** — Vanguard S&P 500 (Dist, USD)
-- **SPY5.L** — SPDR S&P 500 (Dist, USD)
 
 #### 💻 Tecnologia / NASDAQ
 - **EQQQ.L** — Invesco NASDAQ-100 (Dist, USD)
 - **QDVE.DE** — iShares S&P 500 IT Sector (Acc, EUR)
 - **CSNDX.DE** — iShares NASDAQ 100 (Acc, EUR)
-- **EXXT.DE** — iShares TecDAX (Acc, EUR)
 
 #### 🌏 Mercados Emergentes
 - **EIMI.L** — iShares Core MSCI EM (Acc, USD)
 - **IS3N.DE** — iShares Core MSCI EM (Acc, EUR)
 - **VFEM.L** — Vanguard FTSE Emerging Markets (Dist, USD)
-- **XMME.DE** — Xtrackers MSCI Emerging Markets (Acc, EUR)
-
-#### 🏠 Imobiliário / REITs
-- **IQQH.DE** — iShares Developed Markets Property Yield (Acc, EUR)
-
-#### ⚡ Temáticos
-- **INRG.L** — iShares Global Clean Energy (Dist, USD)
-- **2B76.DE** — iShares Automation & Robotics (Acc, EUR)
-- **2B77.DE** — iShares Ageing Population (Acc, EUR)
 
 ### Corretoras Internacionais Suportadas
 - **XTB** — 1.900+ ETFs europeus sem comissão
@@ -315,11 +364,11 @@ O SimplyNvest oferece suporte completo a **ETFs internacionais** negociados nas 
 
 ### Como Adicionar um ETF Internacional
 1. Clique em **"+ Adicionar"** no Dashboard
-2. Digite o ticker (ex: VWCE, CSPX, SXR8)
+2. Digite o ticker (ex: VWCE, CSPX, SXR8, VWRA)
 3. Selecione o resultado correto na lista de sugestões
 4. O tipo será definido automaticamente como **"ETF Internacional"**
 5. Preencha quantidade, preço médio e corretora
-6. A cotação será buscada automaticamente com conversão para BRL
+6. A cotação será buscada via **Google Finance** com conversão automática para BRL
 
 ### Importar da B3
 
