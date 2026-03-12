@@ -253,6 +253,214 @@ async function fetchBrapiQuote(ticker: string): Promise<QuoteResult | null> {
   }
 }
 
+// ─── International ETF ticker mappings ───
+const INTERNATIONAL_ETFS: Record<string, string> = {
+  // === London Stock Exchange (.L) - UK ETFs ===
+  // iShares Core
+  CSPX: "CSPX.L", IWDA: "IWDA.L", EIMI: "EIMI.L", SWDA: "SWDA.L",
+  ISAC: "ISAC.L", IEMA: "IEMA.L", EMIM: "EMIM.L", IUIT: "IUIT.L",
+  IUAA: "IUAA.L", IDTL: "IDTL.L", IGLN: "IGLN.L", IBTM: "IBTM.L",
+  LQDE: "LQDE.L", IWRD: "IWRD.L", IUKD: "IUKD.L", ISF: "ISF.L",
+  IJPN: "IJPN.L", IAPD: "IAPD.L", IBTS: "IBTS.L", INRG: "INRG.L",
+  ISPY: "ISPY.L", ISWD: "ISWD.L",
+  // iShares Sector & Thematic UK
+  IITU: "IITU.L", IHCU: "IHCU.L", IUFS: "IUFS.L", IUES: "IUES.L",
+  IUCD: "IUCD.L", IUCS: "IUCS.L", ICUS: "ICUS.L", IUVL: "IUVL.L",
+  IUSG: "IUSG.L", IUMO: "IUMO.L", IUSM: "IUSM.L", IUDM: "IUDM.L",
+  IUSU: "IUSU.L", IQQW: "IQQW.L", IQQQ: "IQQQ.L", IQQP: "IQQP.L",
+  HEAL: "HEAL.L", RBOT: "RBOT.L", DGTL: "DGTL.L", ECAR: "ECAR.L",
+  IEFM: "IEFM.L", IESG: "IESG.L", IESE: "IESE.L", IESM: "IESM.L",
+  // iShares Bond UK
+  IGLT: "IGLT.L", INXG: "INXG.L", SLXX: "SLXX.L", IEAA: "IEAA.L",
+  IEAC: "IEAC.L", IEGA: "IEGA.L", IEGZ: "IEGZ.L", IBGE: "IBGE.L",
+  IHYG: "IHYG.L", SHYG: "SHYG.L", ITPS: "ITPS.L", IBTL: "IBTL.L",
+  IBGM: "IBGM.L", IBGS: "IBGS.L", IDTM: "IDTM.L", IDTS: "IDTS.L",
+  IUAG: "IUAG.L", SUAG: "SUAG.L", IUSP: "IUSP.L",
+  // iShares Regional UK
+  IUKP: "IUKP.L", IUKS: "IUKS.L", MIDD: "MIDD.L", IDJG: "IDJG.L",
+  IJPH: "IJPH.L", SJPA: "SJPA.L", IEER: "IEER.L", IAPX: "IAPX.L",
+  IDVY: "IDVY.L", EUNY: "EUNY.L", IEMB: "IEMB.L", CEMB: "CEMB.L",
+  IEMS: "IEMS.L", IEUX: "IEUX.L", IMEU: "IMEU.L", MEUD: "MEUD.L",
+  // Vanguard UK
+  VWRA: "VWRA.L", VWRL: "VWRL.L", VUAA: "VUAA.L", VUSA: "VUSA.L",
+  VAGF: "VAGF.L", VERX: "VERX.L", VJPN: "VJPN.L", VAPX: "VAPX.L",
+  VFEM: "VFEM.L", VMID: "VMID.L", VUKE: "VUKE.L", VEVE: "VEVE.L",
+  VHYL: "VHYL.L", VNRT: "VNRT.L",
+  VDNR: "VDNR.L", VDEM: "VDEM.L", VDPX: "VDPX.L", VDJP: "VDJP.L",
+  VDEU: "VDEU.L", VFEG: "VFEG.L", VUAG: "VUAG.L", VERG: "VERG.L",
+  VGOV: "VGOV.L", VGEM: "VGEM.L", VAGU: "VAGU.L", VAGP: "VAGP.L",
+  VDTY: "VDTY.L", VUTY: "VUTY.L", VUCP: "VUCP.L", VUCE: "VUCE.L",
+  VETY: "VETY.L", VECP: "VECP.L",
+  // SPDR UK
+  SPY5: "SPY5.L", SPMV: "SPMV.L", SPYV: "SPYV.L", SPYD: "SPYD.L",
+  SPYG: "SPYG.L", SPPW: "SPPW.L", SPXS: "SPXS.L", SPPE: "SPPE.L",
+  SYBQ: "SYBQ.L", SYBS: "SYBS.L", SYBJ: "SYBJ.L", SYBM: "SYBM.L",
+  GLCO: "GLCO.L", GLAG: "GLAG.L", SYBW: "SYBW.L", SYBF: "SYBF.L",
+  // Invesco UK
+  EQQQ: "EQQQ.L", SMCX: "SMCX.L", SMLX: "SMLX.L", S500: "S500.L",
+  SPXP: "SPXP.L", MQUS: "MQUS.L", MXUS: "MXUS.L", MXWO: "MXWO.L",
+  MXFS: "MXFS.L", ECAR_INV: "ECAR.L",
+  // WisdomTree UK
+  PHAU: "PHAU.L", PHAG: "PHAG.L", PHPT: "PHPT.L", PHPM: "PHPM.L",
+  SGLD: "SGLD.L", BULL: "BULL.L", AIGC: "AIGC.L",
+  // Lyxor / Amundi UK
+  "100D": "100D.L", GILS: "GILS.L",
+  // Other UK
+  SGLN: "SGLN.L", AGBP: "AGBP.L",
+  XGLS: "XGLS.L", XGIG: "XGIG.L", XGSD: "XGSD.L",
+  CSP1: "CSP1.L", CSUS: "CSUS.L",
+  GBDV: "GBDV.L", UKDV: "UKDV.L",
+  HMWO: "HMWO.L", HMEF: "HMEF.L", HUKX: "HUKX.L", HUKS: "HUKS.L",
+  // Crypto ETPs UK
+  BTCE: "BTCE.L", BCHN: "BCHN.L", BETH: "BETH.L",
+  // Commodities UK
+  CMOD: "CMOD.L", AIGI: "AIGI.L", OILB: "OILB.L",
+  COPA: "COPA.L", COPP: "COPP.L",
+  // Multi-Asset UK
+  LIFE: "LIFE.L", GROW: "GROW.L",
+  // ESG / Climate UK
+  WLDS: "WLDS.L", ESGU: "ESGU.L", ESGD: "ESGD.L", ESGE: "ESGE.L",
+  SAWD: "SAWD.L", SAEM: "SAEM.L", SAUS: "SAUS.L",
+  SUWS: "SUWS.L", SUEU: "SUEU.L",
+  GGRP: "GGRP.L", GGRW: "GGRW.L",
+
+  // === XETRA / Frankfurt (.DE) ===
+  SXR8: "SXR8.DE", EUNL: "EUNL.DE", IS3N: "IS3N.DE", SXRV: "SXRV.DE",
+  IUSA: "IUSA.DE", IUSN: "IUSN.DE", IUSQ: "IUSQ.DE", IQQH: "IQQH.DE",
+  QDVE: "QDVE.DE", SXRJ: "SXRJ.DE", SXRT: "SXRT.DE", SXRS: "SXRS.DE",
+  IBC0: "IBC0.DE", IBCI: "IBCI.DE", EXX5: "EXX5.DE",
+  "2B76": "2B76.DE", "2B77": "2B77.DE", "2B78": "2B78.DE",
+  CSNDX: "CSNDX.DE", EXXT: "EXXT.DE", EXV6: "EXV6.DE",
+  EXH1: "EXH1.DE", EXHE: "EXHE.DE", EXSA: "EXSA.DE", EXS1: "EXS1.DE",
+  VWCE: "VWCE.DE", VGWL: "VGWL.DE",
+  DBXD: "DBXD.DE", XDWD: "XDWD.DE", XDWL: "XDWL.DE", XMME: "XMME.DE",
+  XDEM: "XDEM.DE", XDEW: "XDEW.DE", DBXJ: "DBXJ.DE", DBXE: "DBXE.DE",
+  XDJP: "XDJP.DE", XDPD: "XDPD.DE", XQUI: "XQUI.DE",
+  LYMS: "LYMS.DE", LYP6: "LYP6.DE", LYPS: "LYPS.DE", LYPQ: "LYPQ.DE",
+  "18MK": "18MK.DE", "18M2": "18M2.DE", "10AJ": "10AJ.DE",
+  ZPRX: "ZPRX.DE", ZPRE: "ZPRE.DE", TDIV: "TDIV.DE",
+  TL0: "TL0.DE", SAP: "SAP.DE", SIE: "SIE.DE", ALV: "ALV.DE",
+  BAS: "BAS.DE", DTE: "DTE.DE", BMW: "BMW.DE", MBG: "MBG.DE",
+
+  // === Euronext Amsterdam (.AS) ===
+  VWRL_AS: "VWRL.AS", IWDA_AS: "IWDA.AS",
+
+  // === Euronext Paris (.PA) ===
+  CW8: "CW8.PA", EWLD: "EWLD.PA", MWRD: "MWRD.PA",
+  PANX: "PANX.PA", PAEEM: "PAEEM.PA",
+
+  // === Borsa Italiana (.MI) ===
+  SWDA_MI: "SWDA.MI", VWCE_MI: "VWCE.MI",
+};
+
+// ─── Google Finance fetch for international ETFs ───
+function mapToGoogleFinance(ticker: string): { symbol: string; exchange: string } | null {
+  const mapped = INTERNATIONAL_ETFS[ticker];
+  if (mapped) {
+    const exchangeMap: Record<string, string> = {
+      ".L": "LON", ".DE": "ETR", ".AS": "AMS", ".PA": "EPA", ".MI": "BIT", ".SW": "SWX", ".IR": "ISE",
+    };
+    for (const [suffix, exchange] of Object.entries(exchangeMap)) {
+      if (mapped.endsWith(suffix)) {
+        return { symbol: mapped.replace(suffix, ""), exchange };
+      }
+    }
+  }
+  // If ticker already has dot notation
+  if (ticker.includes(".")) {
+    const exchangeMap: Record<string, string> = {
+      ".L": "LON", ".DE": "ETR", ".AS": "AMS", ".PA": "EPA", ".MI": "BIT", ".SW": "SWX",
+    };
+    for (const [suffix, exchange] of Object.entries(exchangeMap)) {
+      if (ticker.endsWith(suffix)) {
+        return { symbol: ticker.replace(suffix, ""), exchange };
+      }
+    }
+  }
+  return null;
+}
+
+async function fetchGoogleFinanceQuote(ticker: string): Promise<QuoteResult | null> {
+  const gf = mapToGoogleFinance(ticker);
+  if (!gf) return null;
+
+  try {
+    const url = `https://www.google.com/finance/quote/${gf.symbol}:${gf.exchange}`;
+    const resp = await fetch(url, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept-Language": "en-US,en;q=0.9",
+      },
+      signal: AbortSignal.timeout(10000),
+    });
+
+    if (!resp.ok) return null;
+    const html = await resp.text();
+
+    // Extract current price from Google Finance HTML
+    // Pattern: data-last-price="123.45"
+    const priceMatch = html.match(/data-last-price="([^"]+)"/);
+    if (!priceMatch) return null;
+    const currentPrice = parseFloat(priceMatch[1]);
+    if (isNaN(currentPrice) || currentPrice <= 0) return null;
+
+    // Extract change percentage
+    const changeMatch = html.match(/data-last-normal-market-timestamp[^>]*>.*?<\/div>.*?<div[^>]*>.*?<span[^>]*>.*?<\/span>.*?<span[^>]*>\(?([-+]?[\d.]+)%\)?/s)
+      || html.match(/data-last-price[^>]*>.*?(\([-+]?[\d.]+%\))/s);
+    let change24h = 0;
+    // Try alternative pattern for change
+    const changePctMatch = html.match(/data-percentage-change="([^"]+)"/);
+    if (changePctMatch) {
+      change24h = parseFloat(changePctMatch[1]) * 100;
+    }
+
+    // Extract currency
+    const currencyMatch = html.match(/data-currency-code="([^"]+)"/);
+    let currency = currencyMatch ? currencyMatch[1] : "USD";
+
+    // Extract name
+    const nameMatch = html.match(/<div[^>]*class="[^"]*zzDege[^"]*"[^>]*>([^<]+)</)
+      || html.match(/<title>([^(]+)\(/);
+    const name = nameMatch ? nameMatch[1].trim() : `${gf.symbol}`;
+
+    const previousClose = change24h !== 0 ? currentPrice / (1 + change24h / 100) : currentPrice;
+
+    // Handle GBp (pence) - Google Finance returns in main currency unit
+    let displayCurrency = currency;
+    let priceForConversion = currentPrice;
+    if (currency === "GBp" || currency === "GBX") {
+      priceForConversion = currentPrice / 100;
+      displayCurrency = "GBP";
+      currency = "GBP";
+    }
+
+    const rate = await getExchangeRate(currency);
+    const priceBRL = priceForConversion * rate;
+
+    return {
+      ticker,
+      currentPrice: priceForConversion,
+      change24h: Math.round(change24h * 100) / 100,
+      previousClose: Math.round(previousClose * 100) / 100,
+      name,
+      source: "google",
+      currency: displayCurrency,
+      currentPriceBRL: Math.round(priceBRL * 100) / 100,
+      exchangeRate: rate,
+    };
+  } catch (err) {
+    console.warn(`Google Finance failed for ${ticker}:`, err);
+    return null;
+  }
+}
+
+// ─── Detect if ticker is international ───
+function isInternationalTicker(ticker: string): boolean {
+  if (INTERNATIONAL_ETFS[ticker]) return true;
+  if (/\.(L|DE|AS|PA|MI|SW|IR)$/.test(ticker)) return true;
+  return false;
+}
+
 // ─── Source 2: Yahoo Finance (global fallback) ───
 function mapToYahooTicker(ticker: string): string {
   const cryptoMappings: Record<string, string> = {
@@ -263,67 +471,9 @@ function mapToYahooTicker(ticker: string): string {
   };
   if (cryptoMappings[ticker]) return cryptoMappings[ticker];
 
-  const internationalEtfs: Record<string, string> = {
-    // === London Stock Exchange (.L) ===
-    // iShares
-    CSPX: "CSPX.L", IWDA: "IWDA.L", EIMI: "EIMI.L", SWDA: "SWDA.L",
-    ISAC: "ISAC.L", IEMA: "IEMA.L", EMIM: "EMIM.L", IUIT: "IUIT.L",
-    IUAA: "IUAA.L", IDTL: "IDTL.L", IGLN: "IGLN.L", IBTM: "IBTM.L",
-    LQDE: "LQDE.L", IWRD: "IWRD.L", IUKD: "IUKD.L", ISF: "ISF.L",
-    IJPN: "IJPN.L", IAPD: "IAPD.L", IBTS: "IBTS.L", INRG: "INRG.L",
-    ISPY: "ISPY.L", ISWD: "ISWD.L",
-    // Vanguard
-    VWRA: "VWRA.L", VWRL: "VWRL.L", VUAA: "VUAA.L", VUSA: "VUSA.L",
-    VAGF: "VAGF.L", VERX: "VERX.L", VJPN: "VJPN.L", VAPX: "VAPX.L",
-    VFEM: "VFEM.L", VMID: "VMID.L", VUKE: "VUKE.L", VEVE: "VEVE.L",
-    VHYL: "VHYL.L", VNRT: "VNRT.L",
-    // SPDR
-    SPY5: "SPY5.L", SPMV: "SPMV.L", SPYV: "SPYV.L", SPYD: "SPYD.L",
-    // Invesco
-    EQQQ: "EQQQ.L",
-    // Other London
-    SGLN: "SGLN.L", PHAU: "PHAU.L", AGBP: "AGBP.L", MEUD: "MEUD.L",
-    // Lyxor London
-    "100D": "100D.L",
-
-    // === XETRA / Frankfurt (.DE) - Popular na XTB ===
-    // iShares XETRA
-    SXR8: "SXR8.DE", EUNL: "EUNL.DE", IS3N: "IS3N.DE", SXRV: "SXRV.DE",
-    IUSA: "IUSA.DE", IUSN: "IUSN.DE", IUSQ: "IUSQ.DE", IQQH: "IQQH.DE",
-    QDVE: "QDVE.DE", SXRJ: "SXRJ.DE", SXRT: "SXRT.DE", SXRS: "SXRS.DE",
-    IBC0: "IBC0.DE", IBCI: "IBCI.DE", EXX5: "EXX5.DE",
-    "2B76": "2B76.DE", "2B77": "2B77.DE", "2B78": "2B78.DE",
-    CSNDX: "CSNDX.DE", EXXT: "EXXT.DE", EXV6: "EXV6.DE",
-    EXH1: "EXH1.DE", EXHE: "EXHE.DE", EXSA: "EXSA.DE", EXS1: "EXS1.DE",
-    // Vanguard XETRA
-    VWCE: "VWCE.DE", VGWL: "VGWL.DE",
-    // Xtrackers
-    DBXD: "DBXD.DE", XDWD: "XDWD.DE", XDWL: "XDWL.DE", XMME: "XMME.DE",
-    XDEM: "XDEM.DE", XDEW: "XDEW.DE", DBXJ: "DBXJ.DE", DBXE: "DBXE.DE",
-    XDJP: "XDJP.DE", XDPD: "XDPD.DE", XQUI: "XQUI.DE",
-    // Amundi / Lyxor XETRA
-    LYMS: "LYMS.DE", LYP6: "LYP6.DE", LYPS: "LYPS.DE", LYPQ: "LYPQ.DE",
-    "18MK": "18MK.DE", "18M2": "18M2.DE", "10AJ": "10AJ.DE",
-    // SPDR XETRA
-    ZPRX: "ZPRX.DE", ZPRE: "ZPRE.DE", TDIV: "TDIV.DE",
-    // Ações alemãs populares
-    TL0: "TL0.DE", SAP: "SAP.DE", SIE: "SIE.DE", ALV: "ALV.DE",
-    BAS: "BAS.DE", DTE: "DTE.DE", BMW: "BMW.DE", MBG: "MBG.DE",
-
-    // === Euronext Amsterdam (.AS) ===
-    VWRL_AS: "VWRL.AS", IWDA_AS: "IWDA.AS",
-
-    // === Euronext Paris (.PA) ===
-    CW8: "CW8.PA", EWLD: "EWLD.PA", MWRD: "MWRD.PA",
-    PANX: "PANX.PA", PAEEM: "PAEEM.PA",
-
-    // === Borsa Italiana (.MI) ===
-    SWDA_MI: "SWDA.MI", VWCE_MI: "VWCE.MI",
-  };
-  if (internationalEtfs[ticker]) return internationalEtfs[ticker];
+  if (INTERNATIONAL_ETFS[ticker]) return INTERNATIONAL_ETFS[ticker];
 
   if (ticker.includes(".")) return ticker;
-  // Brazilian assets: letters/numbers ending in digits (e.g. PETR4, HGLG11, 5MVL3)
   if (/^[A-Z0-9]{4,6}\d{1,2}$/.test(ticker) && !ticker.includes("-")) return `${ticker}.SA`;
   return ticker;
 }
