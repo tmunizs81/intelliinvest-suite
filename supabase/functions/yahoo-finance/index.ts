@@ -555,6 +555,22 @@ async function fetchQuoteWithFallback(ticker: string): Promise<QuoteResult> {
     }
   }
 
+  // For international ETFs: Google Finance first, then Yahoo as fallback
+  if (isInternationalTicker(ticker)) {
+    const googleResult = await fetchGoogleFinanceQuote(ticker);
+    if (googleResult && googleResult.currentPrice > 0) return googleResult;
+
+    const yahooResult = await fetchYahooQuote(ticker);
+    if (yahooResult && yahooResult.currentPrice > 0) return yahooResult;
+
+    return {
+      ticker, currentPrice: 0, change24h: 0, previousClose: 0, name: ticker,
+      source: "none", currency: "BRL", currentPriceBRL: 0, exchangeRate: 1,
+      error: "All sources failed",
+    };
+  }
+
+  // Brazilian assets: Brapi first, Yahoo fallback
   const brapiResult = await fetchBrapiQuote(ticker);
   if (brapiResult && brapiResult.currentPrice > 0) return brapiResult;
 
