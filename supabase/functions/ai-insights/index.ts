@@ -71,6 +71,9 @@ TIPOS DE ANÁLISE:
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
+  const rateLimited = checkRateLimit(req);
+  if (rateLimited) return rateLimited;
+
   try {
     const { portfolio } = await req.json();
     if (!portfolio || !Array.isArray(portfolio)) return new Response(JSON.stringify({ error: "portfolio array required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });

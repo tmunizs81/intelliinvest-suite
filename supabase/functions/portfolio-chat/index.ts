@@ -62,6 +62,9 @@ REGRAS:
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
+  const rateLimited = checkRateLimit(req);
+  if (rateLimited) return rateLimited;
+
   try {
     const { messages, portfolio } = await req.json();
     if (!messages || !Array.isArray(messages)) return new Response(JSON.stringify({ error: "messages array required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
