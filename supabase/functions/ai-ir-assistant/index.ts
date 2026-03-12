@@ -50,6 +50,9 @@ async function callAI(body: any): Promise<Response> {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
+  const rateLimited = checkRateLimit(req);
+  if (rateLimited) return rateLimited;
+
   try {
     const { assets, year } = await req.json();
 

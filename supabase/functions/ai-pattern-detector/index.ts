@@ -50,6 +50,9 @@ async function callAI(body: any): Promise<Response> {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
+  const rateLimited = checkRateLimit(req);
+  if (rateLimited) return rateLimited;
+
   try {
     const { tickers, assets } = await req.json();
     const assetsInfo = (assets || []).map((a: any) => `${a.ticker} (${a.name}): R$${a.currentPrice?.toFixed(2)}, variação ${a.change24h?.toFixed(2)}%`).join('\n');
