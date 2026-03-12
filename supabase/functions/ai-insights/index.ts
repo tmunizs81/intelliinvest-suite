@@ -48,6 +48,8 @@ async function callAI(body: any): Promise<Response> {
   });
 }
 
+const SYSTEM_PROMPT = `Você é um consultor de investimentos AI de elite, especialista no mercado brasileiro (B3), criptomoedas, renda fixa e fundos imobiliários.
+
 Você recebe dados da carteira do usuário com cotações reais do Yahoo Finance. Sua função é analisar e gerar insights acionáveis.
 
 REGRAS:
