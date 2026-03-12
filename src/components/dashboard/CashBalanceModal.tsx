@@ -10,12 +10,13 @@ import { type CashBalanceRow } from '@/hooks/usePortfolio';
 const BROKERS = [
   'XP Investimentos', 'Clear Corretora', 'Rico Investimentos', 'BTG Pactual',
   'Itaú Corretora', 'Bradesco Corretora', 'Banco do Brasil Investimentos',
-  'NuInvest (Easynvest)', 'Inter Invest', 'Ágora Investimentos', 'Genial Investimentos',
-  'Modal Mais', 'Guide Investimentos', 'Órama', 'Toro Investimentos',
-  'C6 Invest', 'Warren', 'Mercado Bitcoin', 'Binance', 'Foxbit',
+  'NuInvest', 'Genial Investimentos', 'Modal Mais', 'Ágora Investimentos',
+  'Toro Investimentos', 'Guide Investimentos', 'Órama', 'Warren',
+  'Mercado Bitcoin', 'Binance', 'Foxbit', 'NovaDAX', 'Coinbase',
   'Terra Investimentos', 'Safra Corretora', 'Santander Corretora',
   'Avenue Securities', 'Nomad', 'Stake', 'Passfolio',
   'Interactive Brokers', 'Charles Schwab', 'TD Ameritrade',
+  'XTB', 'Webull', 'eToro', 'DEGIRO', 'Trading 212',
 ];
 
 interface CashMovement {

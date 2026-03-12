@@ -449,12 +449,13 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
 const BROKERS = [
   'XP Investimentos', 'Clear Corretora', 'Rico Investimentos', 'BTG Pactual',
   'Itaú Corretora', 'Bradesco Corretora', 'Banco do Brasil Investimentos',
-  'NuInvest (Easynvest)', 'Inter Invest', 'Genial Investimentos',
-  'Modal Mais', 'Ágora Investimentos', 'Guide Investimentos', 'Órama',
-  'Toro Investimentos', 'CM Capital', 'Mirae Asset', 'Necton',
+  'NuInvest', 'Genial Investimentos', 'Modal Mais', 'Ágora Investimentos',
+  'Toro Investimentos', 'Guide Investimentos', 'Órama', 'Warren',
+  'Mercado Bitcoin', 'Binance', 'Foxbit', 'NovaDAX', 'Coinbase',
   'Terra Investimentos', 'Safra Corretora', 'Santander Corretora',
   'Avenue Securities', 'Nomad', 'Stake', 'Passfolio',
   'Interactive Brokers', 'Charles Schwab', 'TD Ameritrade',
+  'XTB', 'Webull', 'eToro', 'DEGIRO', 'Trading 212',
 ];
 
 function BrokerAutocomplete({ value, onChange }: { value: string; onChange: (v: string) => void }) {
