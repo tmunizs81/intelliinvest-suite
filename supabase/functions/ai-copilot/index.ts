@@ -53,34 +53,23 @@ Preço atual de mercado: R$${(currentPrice || 0).toFixed(2)}
 Valor da operação: R$${operationValue.toFixed(2)}
 ${portfolioContext}
 
-Avalie: preço vs média, momento do ativo, impacto na diversificação, e dê um veredito.`;
+Avalie: preço vs média, momento do ativo, impacto na diversificação, e dê um veredito.
+
+Responda APENAS com JSON válido neste formato exato:
+{
+  "signal": "green" ou "yellow" ou "red",
+  "title": "veredito em até 60 caracteres",
+  "reasons": ["razão 1", "razão 2"],
+  "suggestion": "sugestão acionável em até 120 caracteres",
+  "confidence": 7
+}`;
 
     const response = await callAI({
-      model: "google/gemini-2.5-flash-lite",
+      model: "google/gemini-2.5-flash",
       messages: [
-        { role: "system", content: "Você é um copilot de investimentos. Analise operações e dê sinais rápidos: verde (favorável), amarelo (atenção), vermelho (desfavorável). Seja conciso e direto." },
+        { role: "system", content: "Você é um copilot de investimentos. Analise operações e dê sinais rápidos: verde (favorável), amarelo (atenção), vermelho (desfavorável). Responda APENAS com JSON válido, sem markdown." },
         { role: "user", content: prompt },
       ],
-      tools: [{
-        type: "function",
-        function: {
-          name: "operation_signal",
-          description: "Return operation analysis signal",
-          parameters: {
-            type: "object",
-            properties: {
-              signal: { type: "string", enum: ["green", "yellow", "red"] },
-              title: { type: "string", description: "One-line verdict (max 60 chars)" },
-              reasons: { type: "array", items: { type: "string" }, description: "2-4 key reasons" },
-              suggestion: { type: "string", description: "Brief actionable suggestion (max 120 chars)" },
-              confidence: { type: "number", description: "Confidence 1-10" },
-            },
-            required: ["signal", "title", "reasons", "suggestion", "confidence"],
-            additionalProperties: false,
-          },
-        },
-      }],
-      tool_choice: { type: "function", function: { name: "operation_signal" } },
     });
 
     if (!response.ok) {
@@ -90,10 +79,14 @@ Avalie: preço vs média, momento do ativo, impacto na diversificação, e dê u
     }
 
     const data = await response.json();
-    const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
-    if (!toolCall?.function?.arguments) throw new Error("No structured response");
+    const content = data.choices?.[0]?.message?.content || "";
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error("No structured response from AI");
+    const result = JSON.parse(jsonMatch[0]);
 
-    return new Response(toolCall.function.arguments, { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    if (!result.signal || !result.title) throw new Error("Invalid AI response structure");
+
+    return new Response(JSON.stringify(result), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (err) {
     console.error("ai-copilot error:", err);
     return new Response(JSON.stringify({ error: err instanceof Error ? err.message : "Unknown error" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
