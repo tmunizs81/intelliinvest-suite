@@ -208,6 +208,96 @@ const DE_ETF_TICKERS = new Set([
   'SPYD', 'VHYL',
 ]);
 
+// ETFs irlandeses (Euronext Dublin / Irish Stock Exchange .IR)
+const IE_ETF_TICKERS = new Set([
+  // iShares Core (Dublin-domiciled, UCITS)
+  'CSPX_IR', 'IWDA_IR', 'EIMI_IR', 'SWDA_IR', 'ISAC_IR',
+  'IEMA_IR', 'EMIM_IR', 'IWRD_IR',
+  // iShares S&P 500
+  'IUSA_IR', 'IUAA_IR', 'IUIT_IR', 'IUSG_IR', 'IUSV_IR',
+  // iShares MSCI World
+  'SWRD', 'SSAC', 'SMMD', 'WSML',
+  // iShares Bond
+  'IGLA', 'DTLA', 'IDTL_IR', 'LQDA', 'SUOA', 'IGLO',
+  'AGGA', 'AGGU', 'IEAA_IR', 'IEAC_IR',
+  'IEGA_IR', 'IEGZ_IR', 'IHYA', 'SHYA',
+  'IUAA_IR', 'IUAB', 'IUAC',
+  // iShares Sector
+  'IUIT_IR', 'IUHC', 'IUFS_IR', 'IUES_IR',
+  'IUCD_IR', 'IUCS_IR', 'ICUS_IR',
+  // iShares ESG
+  'SAWD_IR', 'SAEM_IR', 'SAUS_IR', 'SUWS_IR', 'SUEU_IR',
+  // iShares Thematic
+  'DGTL_IR', 'HEAL_IR', 'RBOT_IR', 'ECAR_IR',
+  'INRG_IR', 'ISPY_IR',
+  // Vanguard (Ireland-domiciled)
+  'VWRA_IR', 'VWRL_IR', 'VUAA_IR', 'VUSA_IR',
+  'VFEM_IR', 'VDEM_IR', 'VEVE_IR', 'VHYL_IR',
+  'VAGF_IR', 'VERX_IR', 'VJPN_IR', 'VAPX_IR',
+  'VDNR_IR', 'VDPX_IR', 'VDJP_IR', 'VDEU_IR',
+  'VGOV_IR', 'VGEM_IR', 'VAGU_IR', 'VAGP_IR',
+  'VUAG_IR', 'VERG_IR',
+  // SPDR (Ireland-domiciled)
+  'SPY5_IR', 'SPMV_IR', 'SPPW_IR',
+  'SYBQ_IR', 'SYBS_IR', 'SYBJ_IR', 'SYBM_IR',
+  'GLCO_IR', 'GLAG_IR',
+  // Invesco (Ireland)
+  'EQQQ_IR', 'S500_IR', 'SPXP_IR',
+  // Amundi (Ireland)
+  'IWQU', 'MWRD_IR', 'LCUW', 'PRAW', 'PRAU',
+  // Goldman Sachs
+  'GSPY', 'GSDE', 'GSEU', 'GSEM',
+  // JPMorgan
+  'JEGA', 'JEGP', 'JPGL', 'JPEI', 'JPEA',
+  // HSBC
+  'HMWO_IR', 'HMEF_IR', 'HPRO', 'HPRD',
+  // First Trust
+  'FTUQ', 'FTEC', 'FTAL',
+]);
+
+// ETFs suíços (SIX Swiss Exchange .SW)
+const CH_ETF_TICKERS = new Set([
+  // iShares (SIX)
+  'CSSPX', 'CSSMI', 'CSSMIM', 'CSINDU', 'CSNDX_SW', 'CSEMUS',
+  'CHSPI', 'CSSX5E', 'CSMIB', 'CSDAX', 'CSBGAG',
+  'CSEMAS', 'CSESGC', 'CSESGM',
+  // UBS ETFs (SIX - major Swiss provider)
+  'UBSG_SW', 'UBSN', 'SPICHA', 'SMIMCHA', 'SMCHA',
+  'SMMCHA', 'SLICHA', 'CHFCHA', 'SBIDOM', 'SBIDOC',
+  'CHCORP', 'CHGOVT', 'UCHIMF',
+  'UIMR', 'UIMS', 'UIMP', 'UIMQ', 'UIMW',
+  'UEFR', 'UEFS', 'UEFP', 'UEFQ',
+  'EMMCHA', 'ACWISG', 'MSCISG',
+  'USEQSG', 'EURQSG', 'JAPQSG', 'PACQSG', 'CANQSG',
+  // Vanguard (SIX)
+  'VWRL_SW', 'VUAA_SW', 'VUSA_SW', 'VWCE_SW',
+  'VFEM_SW', 'VHYL_SW', 'VEVE_SW',
+  'VGOV_SW', 'VAGU_SW', 'VUTY_SW',
+  // Xtrackers (SIX)
+  'XSMI', 'XMTD_SW', 'XDWD_SW', 'XDWL_SW',
+  'XMME_SW', 'XDEW_SW', 'XDEM_SW',
+  // Amundi (SIX)
+  'SWMCI', 'SUSA_SW', 'SESG', 'SMSG',
+  // Invesco (SIX)
+  'EQQQ_SW', 'S500_SW', 'SPXS_SW',
+  // WisdomTree (SIX)
+  'WTCH_SW', 'WGLD_SW', 'PHAU_SW', 'PHAG_SW',
+  // ZKB (Zürcher Kantonalbank - Swiss-specific)
+  'ZKBGO', 'ZKBSI', 'ZKBSM', 'ZKBSW', 'ZKBSP',
+  'ZKBEN', 'ZKBEW', 'ZKBEM',
+  // Swisscanto
+  'SWICHA', 'SWIESG', 'SWICAS', 'SWICAU',
+  // Julius Baer
+  'JBSMF', 'JBGLF', 'JBCHF',
+  // SPI / SMI Index ETFs
+  'SPIEX', 'SMIEX', 'SMMEX', 'SLIEX',
+  // Swiss Commodities
+  'ZGLD', 'ZPAL', 'ZPLA', 'ZSIL',
+  'JBGOCA', 'JBSICA',
+  // Swiss Real Estate
+  'SRFCHA', 'SRECHA', 'SWIIT', 'SREGA',
+]);
+
 // REITs americanos
 const REIT_TICKERS = new Set([
   // Diversified
