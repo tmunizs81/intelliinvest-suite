@@ -20,6 +20,21 @@ const CRYPTO_TICKERS = new Set([
   'XLM', 'STELLAR', 'TRX', 'TRON', 'EOS', 'NEO',
   'ZEC', 'ZCASH', 'XMR', 'MONERO', 'DASH',
   'BCH', 'ETC',
+  // Ondo Finance - Tokenized RWA
+  'OUSG', 'USDY', 'OMMF', 'ROUSG',
+  // xStocks by Backed Finance - Tokenized Stocks
+  'CRCLX', 'GOOGLX', 'NVDAX', 'MSTRX', 'SPYX', 'AAPLX',
+  'COINX', 'HOODX', 'MCDX', 'AMZNX', 'TBLLX', 'IEMGX',
+  'IWMX', 'KRAQX', 'COPXX', 'PALLX', 'AMDX', 'BTGOX',
+  'BMNRX', 'OPENX', 'LLYX', 'NFLXX', 'GSX', 'TQQQX',
+  'BRK.BX', 'LINX', 'TMOX', 'GLDX', 'APPX', 'CRWDX',
+  'MSFTX', 'HDX', 'AVGOX', 'VTIX', 'VX', 'UNHX',
+  'JPMX', 'INTCX', 'BACX', 'IBMX', 'JNJX', 'HONX',
+  'ABBVX', 'ACNX', 'CVXX', 'CRMX', 'CMCSAX', 'DHRX',
+  'PMX', 'PEPX', 'ORCLX', 'PFEX', 'XOMX', 'PLTRX',
+  'PGX', 'TONXX', 'GMEX', 'MRKX', 'ABTX', 'AZNX',
+  'MRVLX', 'MDTX', 'CSCOX', 'KOX', 'NVOX', 'DFDVX',
+  'AMBRX', 'MAX', 'WMTX', 'SCHFX', 'BTBTX', 'IJRX', 'PPLTX',
 ]);
 
 const ETF_TICKERS_BR = new Set([
