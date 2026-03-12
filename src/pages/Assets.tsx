@@ -41,6 +41,7 @@ export default function Assets() {
   const [b3ImportOpen, setB3ImportOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [cashModalOpen, setCashModalOpen] = useState(false);
+  const [custodyOpen, setCustodyOpen] = useState(false);
 
   const handleSell = (holdingRow: HoldingRow, asset: Asset) => {
     setSellingHolding(holdingRow);
