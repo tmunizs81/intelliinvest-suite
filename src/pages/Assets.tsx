@@ -328,9 +328,9 @@ export default function Assets() {
                           {asset.currentPrice > 0 ? (
                             <div>
                               <span>{formatCurrency(asset.currentPrice)}</span>
-                              {asset.currency && asset.currency !== 'BRL' && (
+                              {asset.currency && asset.currency !== 'BRL' && asset.originalPrice && asset.originalPrice > 0 && (
                                 <p className="text-[10px] text-muted-foreground">
-                                  {formatCurrency(asset.currentPrice / (asset.exchangeRate || 1), asset.currency)}
+                                  {formatCurrency(asset.originalPrice, asset.currency)}
                                 </p>
                               )}
                             </div>
