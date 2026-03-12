@@ -257,6 +257,9 @@ export function classifyAssetType(ticker: string, explicitType?: string): string
   // 3. ETF americano (NYSE, NASDAQ, ARCA, CBOE)
   if (US_ETF_TICKERS.has(t)) return 'ETF Internacional';
 
+  // 3b. ETF alemão (XETRA / Frankfurt)
+  if (DE_ETF_TICKERS.has(t)) return 'ETF Internacional';
+
   // 4. REIT americano
   if (REIT_TICKERS.has(t)) return 'REIT';
 
