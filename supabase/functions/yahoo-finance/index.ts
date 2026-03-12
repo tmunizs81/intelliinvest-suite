@@ -353,114 +353,6 @@ const INTERNATIONAL_ETFS: Record<string, string> = {
   SWDA_MI: "SWDA.MI", VWCE_MI: "VWCE.MI",
 };
 
-// ─── Google Finance fetch for international ETFs ───
-function mapToGoogleFinance(ticker: string): { symbol: string; exchange: string } | null {
-  const mapped = INTERNATIONAL_ETFS[ticker];
-  if (mapped) {
-    const exchangeMap: Record<string, string> = {
-      ".L": "LON", ".DE": "ETR", ".AS": "AMS", ".PA": "EPA", ".MI": "BIT", ".SW": "SWX", ".IR": "ISE",
-    };
-    for (const [suffix, exchange] of Object.entries(exchangeMap)) {
-      if (mapped.endsWith(suffix)) {
-        return { symbol: mapped.replace(suffix, ""), exchange };
-      }
-    }
-  }
-  // If ticker already has dot notation
-  if (ticker.includes(".")) {
-    const exchangeMap: Record<string, string> = {
-      ".L": "LON", ".DE": "ETR", ".AS": "AMS", ".PA": "EPA", ".MI": "BIT", ".SW": "SWX",
-    };
-    for (const [suffix, exchange] of Object.entries(exchangeMap)) {
-      if (ticker.endsWith(suffix)) {
-        return { symbol: ticker.replace(suffix, ""), exchange };
-      }
-    }
-  }
-  return null;
-}
-
-async function fetchGoogleFinanceQuote(ticker: string): Promise<QuoteResult | null> {
-  const gf = mapToGoogleFinance(ticker);
-  if (!gf) return null;
-
-  try {
-    const url = `https://www.google.com/finance/quote/${gf.symbol}:${gf.exchange}`;
-    const resp = await fetch(url, {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Accept-Language": "en-US,en;q=0.9",
-      },
-      signal: AbortSignal.timeout(10000),
-    });
-
-    if (!resp.ok) return null;
-    const html = await resp.text();
-
-    // Extract current price from Google Finance HTML
-    // Pattern: data-last-price="123.45"
-    const priceMatch = html.match(/data-last-price="([^"]+)"/);
-    if (!priceMatch) return null;
-    const currentPrice = parseFloat(priceMatch[1]);
-    if (isNaN(currentPrice) || currentPrice <= 0) return null;
-
-    // Extract change percentage
-    const changeMatch = html.match(/data-last-normal-market-timestamp[^>]*>.*?<\/div>.*?<div[^>]*>.*?<span[^>]*>.*?<\/span>.*?<span[^>]*>\(?([-+]?[\d.]+)%\)?/s)
-      || html.match(/data-last-price[^>]*>.*?(\([-+]?[\d.]+%\))/s);
-    let change24h = 0;
-    // Try alternative pattern for change
-    const changePctMatch = html.match(/data-percentage-change="([^"]+)"/);
-    if (changePctMatch) {
-      change24h = parseFloat(changePctMatch[1]) * 100;
-    }
-
-    // Extract currency
-    const currencyMatch = html.match(/data-currency-code="([^"]+)"/);
-    let currency = currencyMatch ? currencyMatch[1] : "USD";
-
-    // Extract name
-    const nameMatch = html.match(/<div[^>]*class="[^"]*zzDege[^"]*"[^>]*>([^<]+)</)
-      || html.match(/<title>([^(]+)\(/);
-    const name = nameMatch ? nameMatch[1].trim() : `${gf.symbol}`;
-
-    const previousClose = change24h !== 0 ? currentPrice / (1 + change24h / 100) : currentPrice;
-
-    // Handle GBp (pence) - Google Finance returns in main currency unit
-    let displayCurrency = currency;
-    let priceForConversion = currentPrice;
-    if (currency === "GBp" || currency === "GBX") {
-      priceForConversion = currentPrice / 100;
-      displayCurrency = "GBP";
-      currency = "GBP";
-    }
-
-    const rate = await getExchangeRate(currency);
-    const priceBRL = priceForConversion * rate;
-
-    return {
-      ticker,
-      currentPrice: priceForConversion,
-      change24h: Math.round(change24h * 100) / 100,
-      previousClose: Math.round(previousClose * 100) / 100,
-      name,
-      source: "google",
-      currency: displayCurrency,
-      currentPriceBRL: Math.round(priceBRL * 100) / 100,
-      exchangeRate: rate,
-    };
-  } catch (err) {
-    console.warn(`Google Finance failed for ${ticker}:`, err);
-    return null;
-  }
-}
-
-// ─── Detect if ticker is international ───
-function isInternationalTicker(ticker: string): boolean {
-  if (INTERNATIONAL_ETFS[ticker]) return true;
-  if (/\.(L|DE|AS|PA|MI|SW|IR)$/.test(ticker)) return true;
-  return false;
-}
-
 // ─── Source 2: Yahoo Finance (global fallback) ───
 function mapToYahooTicker(ticker: string): string {
   const cryptoMappings: Record<string, string> = {
@@ -555,22 +447,7 @@ async function fetchQuoteWithFallback(ticker: string): Promise<QuoteResult> {
     }
   }
 
-  // For international ETFs: Google Finance first, then Yahoo as fallback
-  if (isInternationalTicker(ticker)) {
-    const googleResult = await fetchGoogleFinanceQuote(ticker);
-    if (googleResult && googleResult.currentPrice > 0) return googleResult;
-
-    const yahooResult = await fetchYahooQuote(ticker);
-    if (yahooResult && yahooResult.currentPrice > 0) return yahooResult;
-
-    return {
-      ticker, currentPrice: 0, change24h: 0, previousClose: 0, name: ticker,
-      source: "none", currency: "BRL", currentPriceBRL: 0, exchangeRate: 1,
-      error: "All sources failed",
-    };
-  }
-
-  // Brazilian assets: Brapi first, Yahoo fallback
+  // For all assets: try Brapi first (good for Brazilian), then Yahoo (good for international)
   const brapiResult = await fetchBrapiQuote(ticker);
   if (brapiResult && brapiResult.currentPrice > 0) return brapiResult;
 
