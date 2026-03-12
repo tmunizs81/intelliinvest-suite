@@ -88,6 +88,12 @@ export default function LoginPage() {
           </p>
         </form>
       </div>
+
+      <footer className="py-4 text-center">
+        <p className="text-[11px] text-muted-foreground/60">
+          © {new Date().getFullYear()} Todos os direitos reservados a T2 Soluções Tecnológicas. Proibida cópia ou distribuição não autorizada.
+        </p>
+      </footer>
     </div>
   );
 }
