@@ -320,7 +320,7 @@ function mapToYahooTicker(ticker: string): string {
     // === Borsa Italiana (.MI) ===
     SWDA_MI: "SWDA.MI", VWCE_MI: "VWCE.MI",
   };
-  if (irishEtfs[ticker]) return irishEtfs[ticker];
+  if (internationalEtfs[ticker]) return internationalEtfs[ticker];
 
   if (ticker.includes(".")) return ticker;
   // Brazilian assets: letters/numbers ending in digits (e.g. PETR4, HGLG11, 5MVL3)
