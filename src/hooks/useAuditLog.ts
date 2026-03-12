@@ -1,5 +1,4 @@
 import { useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 
 export function useAuditLog() {
@@ -12,17 +11,9 @@ export function useAuditLog() {
     details?: Record<string, any>
   ) => {
     if (!user) return;
-    try {
-      await supabase.from('audit_logs' as any).insert({
-        user_id: user.id,
-        action,
-        entity_type: entityType,
-        entity_id: entityId || null,
-        details: details || {},
-      } as any);
-    } catch (err) {
-      console.error('Audit log error:', err);
-    }
+    // Audit logs are now server-side only (service_role).
+    // Client-side logging is a no-op to avoid RLS errors.
+    console.debug(`[audit] ${action} ${entityType}`, entityId, details);
   }, [user]);
 
   return { log };
