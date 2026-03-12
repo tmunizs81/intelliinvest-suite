@@ -263,30 +263,64 @@ function mapToYahooTicker(ticker: string): string {
   };
   if (cryptoMappings[ticker]) return cryptoMappings[ticker];
 
-  const irishEtfs: Record<string, string> = {
-    // London Stock Exchange
+  const internationalEtfs: Record<string, string> = {
+    // === London Stock Exchange (.L) ===
+    // iShares
     CSPX: "CSPX.L", IWDA: "IWDA.L", EIMI: "EIMI.L", SWDA: "SWDA.L",
-    VWRA: "VWRA.L", VWRL: "VWRL.L", VUAA: "VUAA.L", VUSA: "VUSA.L",
     ISAC: "ISAC.L", IEMA: "IEMA.L", EMIM: "EMIM.L", IUIT: "IUIT.L",
-    IUAA: "IUAA.L", IDTL: "IDTL.L", AGBP: "AGBP.L", IGLN: "IGLN.L",
-    SGLN: "SGLN.L", PHAU: "PHAU.L", IBTM: "IBTM.L", LQDE: "LQDE.L",
-    VAGF: "VAGF.L", VERX: "VERX.L", MEUD: "MEUD.L", VJPN: "VJPN.L",
-    VAPX: "VAPX.L",
-    // XETRA (Alemanha)
-    SXRV: "SXRV.DE", SXR8: "SXR8.DE", EUNL: "EUNL.DE", IS3N: "IS3N.DE",
-    VGWL: "VGWL.DE", VWCE: "VWCE.DE",
-    EXSA: "EXSA.DE", EXS1: "EXS1.DE", DBXD: "DBXD.DE", XDWD: "XDWD.DE",
-    XDWL: "XDWL.DE", XMME: "XMME.DE", XDEM: "XDEM.DE", XDEW: "XDEW.DE",
-    DBXJ: "DBXJ.DE", DBXE: "DBXE.DE", XDJP: "XDJP.DE", XDPD: "XDPD.DE",
+    IUAA: "IUAA.L", IDTL: "IDTL.L", IGLN: "IGLN.L", IBTM: "IBTM.L",
+    LQDE: "LQDE.L", IWRD: "IWRD.L", IUKD: "IUKD.L", ISF: "ISF.L",
+    IJPN: "IJPN.L", IAPD: "IAPD.L", IBTS: "IBTS.L", INRG: "INRG.L",
+    ISPY: "ISPY.L", ISWD: "ISWD.L",
+    // Vanguard
+    VWRA: "VWRA.L", VWRL: "VWRL.L", VUAA: "VUAA.L", VUSA: "VUSA.L",
+    VAGF: "VAGF.L", VERX: "VERX.L", VJPN: "VJPN.L", VAPX: "VAPX.L",
+    VFEM: "VFEM.L", VMID: "VMID.L", VUKE: "VUKE.L", VEVE: "VEVE.L",
+    VHYL: "VHYL.L", VNRT: "VNRT.L",
+    // SPDR
+    SPY5: "SPY5.L", SPMV: "SPMV.L", SPYV: "SPYV.L", SPYD: "SPYD.L",
+    // Invesco
+    EQQQ: "EQQQ.L",
+    // Other London
+    SGLN: "SGLN.L", PHAU: "PHAU.L", AGBP: "AGBP.L", MEUD: "MEUD.L",
+    // Lyxor London
+    "100D": "100D.L",
+
+    // === XETRA / Frankfurt (.DE) - Popular na XTB ===
+    // iShares XETRA
+    SXR8: "SXR8.DE", EUNL: "EUNL.DE", IS3N: "IS3N.DE", SXRV: "SXRV.DE",
+    IUSA: "IUSA.DE", IUSN: "IUSN.DE", IUSQ: "IUSQ.DE", IQQH: "IQQH.DE",
+    QDVE: "QDVE.DE", SXRJ: "SXRJ.DE", SXRT: "SXRT.DE", SXRS: "SXRS.DE",
+    IBC0: "IBC0.DE", IBCI: "IBCI.DE", EXX5: "EXX5.DE",
+    "2B76": "2B76.DE", "2B77": "2B77.DE", "2B78": "2B78.DE",
+    CSNDX: "CSNDX.DE", EXXT: "EXXT.DE", EXV6: "EXV6.DE",
+    EXH1: "EXH1.DE", EXHE: "EXHE.DE", EXSA: "EXSA.DE", EXS1: "EXS1.DE",
+    // Vanguard XETRA
+    VWCE: "VWCE.DE", VGWL: "VGWL.DE",
+    // Xtrackers
+    DBXD: "DBXD.DE", XDWD: "XDWD.DE", XDWL: "XDWL.DE", XMME: "XMME.DE",
+    XDEM: "XDEM.DE", XDEW: "XDEW.DE", DBXJ: "DBXJ.DE", DBXE: "DBXE.DE",
+    XDJP: "XDJP.DE", XDPD: "XDPD.DE", XQUI: "XQUI.DE",
+    // Amundi / Lyxor XETRA
     LYMS: "LYMS.DE", LYP6: "LYP6.DE", LYPS: "LYPS.DE", LYPQ: "LYPQ.DE",
-    EXXT: "EXXT.DE", EXV6: "EXV6.DE", EXH1: "EXH1.DE", EXHE: "EXHE.DE",
-    IUSN: "IUSN.DE", IUSQ: "IUSQ.DE", IQQH: "IQQH.DE", CSNDX: "CSNDX.DE",
-    TDIV: "TDIV.DE", ZPRX: "ZPRX.DE", ZPRE: "ZPRE.DE",
-    // Frankfurt
+    "18MK": "18MK.DE", "18M2": "18M2.DE", "10AJ": "10AJ.DE",
+    // SPDR XETRA
+    ZPRX: "ZPRX.DE", ZPRE: "ZPRE.DE", TDIV: "TDIV.DE",
+    // Ações alemãs populares
     TL0: "TL0.DE", SAP: "SAP.DE", SIE: "SIE.DE", ALV: "ALV.DE",
     BAS: "BAS.DE", DTE: "DTE.DE", BMW: "BMW.DE", MBG: "MBG.DE",
+
+    // === Euronext Amsterdam (.AS) ===
+    VWRL_AS: "VWRL.AS", IWDA_AS: "IWDA.AS",
+
+    // === Euronext Paris (.PA) ===
+    CW8: "CW8.PA", EWLD: "EWLD.PA", MWRD: "MWRD.PA",
+    PANX: "PANX.PA", PAEEM: "PAEEM.PA",
+
+    // === Borsa Italiana (.MI) ===
+    SWDA_MI: "SWDA.MI", VWCE_MI: "VWCE.MI",
   };
-  if (irishEtfs[ticker]) return irishEtfs[ticker];
+  if (internationalEtfs[ticker]) return internationalEtfs[ticker];
 
   if (ticker.includes(".")) return ticker;
   // Brazilian assets: letters/numbers ending in digits (e.g. PETR4, HGLG11, 5MVL3)
