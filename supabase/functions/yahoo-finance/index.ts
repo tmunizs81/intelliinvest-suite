@@ -264,14 +264,27 @@ function mapToYahooTicker(ticker: string): string {
   if (cryptoMappings[ticker]) return cryptoMappings[ticker];
 
   const irishEtfs: Record<string, string> = {
+    // London Stock Exchange
     CSPX: "CSPX.L", IWDA: "IWDA.L", EIMI: "EIMI.L", SWDA: "SWDA.L",
     VWRA: "VWRA.L", VWRL: "VWRL.L", VUAA: "VUAA.L", VUSA: "VUSA.L",
     ISAC: "ISAC.L", IEMA: "IEMA.L", EMIM: "EMIM.L", IUIT: "IUIT.L",
     IUAA: "IUAA.L", IDTL: "IDTL.L", AGBP: "AGBP.L", IGLN: "IGLN.L",
     SGLN: "SGLN.L", PHAU: "PHAU.L", IBTM: "IBTM.L", LQDE: "LQDE.L",
+    VAGF: "VAGF.L", VERX: "VERX.L", MEUD: "MEUD.L", VJPN: "VJPN.L",
+    VAPX: "VAPX.L",
+    // XETRA (Alemanha)
     SXRV: "SXRV.DE", SXR8: "SXR8.DE", EUNL: "EUNL.DE", IS3N: "IS3N.DE",
-    VGWL: "VGWL.DE", VWCE: "VWCE.DE", VAGF: "VAGF.L", VERX: "VERX.L",
-    MEUD: "MEUD.L", VJPN: "VJPN.L", VAPX: "VAPX.L",
+    VGWL: "VGWL.DE", VWCE: "VWCE.DE",
+    EXSA: "EXSA.DE", EXS1: "EXS1.DE", DBXD: "DBXD.DE", XDWD: "XDWD.DE",
+    XDWL: "XDWL.DE", XMME: "XMME.DE", XDEM: "XDEM.DE", XDEW: "XDEW.DE",
+    DBXJ: "DBXJ.DE", DBXE: "DBXE.DE", XDJP: "XDJP.DE", XDPD: "XDPD.DE",
+    LYMS: "LYMS.DE", LYP6: "LYP6.DE", LYPS: "LYPS.DE", LYPQ: "LYPQ.DE",
+    EXXT: "EXXT.DE", EXV6: "EXV6.DE", EXH1: "EXH1.DE", EXHE: "EXHE.DE",
+    IUSN: "IUSN.DE", IUSQ: "IUSQ.DE", IQQH: "IQQH.DE", CSNDX: "CSNDX.DE",
+    TDIV: "TDIV.DE", ZPRX: "ZPRX.DE", ZPRE: "ZPRE.DE",
+    // Frankfurt
+    TL0: "TL0.DE", SAP: "SAP.DE", SIE: "SIE.DE", ALV: "ALV.DE",
+    BAS: "BAS.DE", DTE: "DTE.DE", BMW: "BMW.DE", MBG: "MBG.DE",
   };
   if (irishEtfs[ticker]) return irishEtfs[ticker];
 
