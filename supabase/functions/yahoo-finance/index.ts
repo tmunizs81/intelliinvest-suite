@@ -146,6 +146,47 @@ async function fetchCurrencyRate(ticker: string): Promise<QuoteResult> {
   };
 }
 
+// ─── Ondo Global Markets: detect "on" suffix and get underlying ticker ───
+const ONDO_GM_TICKERS = new Set([
+  'AALon','AAPLon','ABBVon','ABNBon','ABTon','ACHRon','ACNon','ADBEon','ADIon',
+  'AGGon','ALBon','AMATon','AMCon','AMDon','AMGNon','AMZNon','ANETon','APLDon',
+  'APOon','APPon','ARMon','ASMLon','ASTSon','AVGOon','AXPon','BABAon','BACon',
+  'BAon','BBAIon','BIDUon','BILIon','BINCon','BLKon','BLSHon','BMNRon','BNOon',
+  'BTGOon','BTGon','BZon','CAPRon','CATon','CEGon','CIBRon','CIFRon','CLOAon',
+  'CLOIon','CMGon','COFon','COHRon','COINon','COPXon','COPon','COSTon','CPNGon',
+  'CRCLon','CRMon','CRWDon','CRWVon','CSCOon','CVNAon','CVXon','Con',
+  'DASHon','DBCon','DEon','DGRWon','DISon','DNNon','ECHon','EEMon','EFAon',
+  'ENLVon','ENPHon','EQIXon','ETHAon','ETNon','EWJon','EWYon','EWZon','EXODon',
+  'FCXon','FFOGon','FGDLon','FIGRon','FIGon','FLHYon','FLQLon','FSOLon','FTGCon',
+  'FUTUon','FXIon','Fon','GEMIon','GEVon','GEon','GLDon','GLTRon','GLXYon',
+  'GMEon','GOOGLon','GRABon','GRNDon','GSon','HDon','HIMSon','HOODon','HYGon',
+  'HYSon','IAUon','IBITon','IBMon','IEFAon','IEFon','IEMGon','IJHon','INCEon',
+  'INDAon','INTCon','INTUon','IONQon','IRENon','ISRGon','ITAon','ITOTon','IVVon',
+  'IWFon','IWMon','IWNon','JAAAon','JDon','JNJon','JPMon','KLACon','KOon',
+  'KWEBon','LINon','LIon','LLYon','LMTon','LOWon','LRCXon','LUNRon','MARAon',
+  'MAon','MCDon','MELIon','METAon','MPon','MRKon','MRNAon','MRVLon','MSFTon',
+  'MSTRon','MTZon','MUon','NBISon','NEEon','NEMon','NFLXon','NIKLon','NIOon',
+  'NKEon','NOCon','NOWon','NTESon','NVDAon','NVOon','OIHon','OKLOon','ONDSon',
+  'ONon','OPENon','OPRAon','ORCLon','OSCRon','OXYon','PALLon','PANWon','PAVEon',
+  'PBRon','PCGon','PDBCon','PDDon','PEPon','PFEon','PGon','PINSon','PLTRon',
+  'PLUGon','PPLTon','PSQon','PYPLon','QBTSon','QCOMon','QQQon','QUBTon',
+  'RDDTon','RDWon','REGNon','REMXon','RGTIon','RIOTon','RIVNon','RKLBon',
+  'RTXon','SBETon','SBUXon','SCCOon','SCHWon','SEDGon','SGOVon','SHOPon',
+  'SHYon','SLVon','SMCIon','SNAPon','SNDKon','SNOWon','SOFIon','SOUNon',
+  'SOXXon','SOon','SPGIon','SPOTon','SPYon','SQQQon','STXon','TCOMon',
+  'TIPon','TLNon','TLTon','TMOon','TMUSon','TMon','TQQQon','TSLAon','TSMon',
+  'TXNon','Ton','UBERon','UECon','UNGon','UNHon','UNPon','URAon','USDon',
+  'USFRon','USOon','VFSon','VNQon','VRTXon','VRTon','VSTon','VTIon','VTVon',
+  'VZon','Von','WDCon','WFCon','WMTon','WMon','WULFon','XOMon','XYZon',
+]);
+
+function getOndoGMUnderlying(ticker: string): string | null {
+  if (ONDO_GM_TICKERS.has(ticker)) return ticker.replace(/on$/, '');
+  const found = [...ONDO_GM_TICKERS].find(t => t.toUpperCase() === ticker.toUpperCase());
+  if (found) return found.replace(/on$/, '');
+  return null;
+}
+
 // ─── CoinGecko fetch for crypto (including stablecoins) ───
 const COINGECKO_IDS: Record<string, string> = {
   BTC: "bitcoin", ETH: "ethereum", SOL: "solana", ADA: "cardano",
