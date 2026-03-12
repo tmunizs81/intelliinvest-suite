@@ -765,16 +765,48 @@ async function fetchYahooQuote(ticker: string): Promise<QuoteResult | null> {
   }
 }
 
+// ─── Dynamic Ondo GM lookup from database (for new tokens not in hardcoded set) ───
+let dynamicOndoCache: Map<string, string> | null = null;
+let dynamicOndoCacheTime = 0;
+
+async function getDynamicOndoUnderlying(ticker: string): Promise<string | null> {
+  // Cache for 10 minutes
+  if (!dynamicOndoCache || Date.now() - dynamicOndoCacheTime > 600000) {
+    try {
+      const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+      const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+      const resp = await fetch(
+        `${supabaseUrl}/rest/v1/ondo_gm_tokens?select=symbol,underlying_ticker`,
+        {
+          headers: { Authorization: `Bearer ${anonKey}`, apikey: anonKey },
+          signal: AbortSignal.timeout(5000),
+        }
+      );
+      if (resp.ok) {
+        const rows = await resp.json();
+        dynamicOndoCache = new Map(rows.map((r: { symbol: string; underlying_ticker: string }) => [r.symbol.toUpperCase(), r.underlying_ticker]));
+        dynamicOndoCacheTime = Date.now();
+        console.log(`Loaded ${dynamicOndoCache.size} Ondo GM tokens from DB`);
+      }
+    } catch (err) {
+      console.warn("Failed to load dynamic Ondo tokens:", err);
+    }
+  }
+  return dynamicOndoCache?.get(ticker.toUpperCase()) || null;
+}
+
 // ─── Multi-source fetch with fallback ───
 async function fetchQuoteWithFallback(ticker: string): Promise<QuoteResult> {
-  // Ondo GM tokens: fetch underlying stock/ETF price from Yahoo Finance
-  const ondoUnderlying = getOndoGMUnderlying(ticker);
+  // Ondo GM tokens: check hardcoded set first, then DB
+  let ondoUnderlying = getOndoGMUnderlying(ticker);
+  if (!ondoUnderlying) {
+    ondoUnderlying = await getDynamicOndoUnderlying(ticker);
+  }
   if (ondoUnderlying) {
     const yahooResult = await fetchYahooQuote(ondoUnderlying);
     if (yahooResult && yahooResult.currentPrice > 0) {
       return { ...yahooResult, ticker, name: `${ondoUnderlying} (Ondo Tokenized)`, source: "yahoo-ondo-gm" };
     }
-    // Fallback to Brapi
     const brapiResult = await fetchBrapiQuote(ondoUnderlying);
     if (brapiResult && brapiResult.currentPrice > 0) {
       return { ...brapiResult, ticker, name: `${ondoUnderlying} (Ondo Tokenized)`, source: "brapi-ondo-gm" };
