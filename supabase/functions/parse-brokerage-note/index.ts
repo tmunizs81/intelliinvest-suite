@@ -10,8 +10,8 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+    if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY is not configured");
 
     const { text_content } = await req.json();
     if (!text_content) {
@@ -27,14 +27,14 @@ ${text_content}
 Para cada operação identifique: ticker, nome, tipo (Ação/FII/ETF/BDR), operação (buy/sell), quantidade, preço unitário, total, taxas.
 Identifique também a data da nota e a corretora.`;
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const response = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        Authorization: `Bearer ${GEMINI_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "gemini-2.5-flash",
         messages: [
           { role: "system", content: "Você é um especialista em extrair dados de notas de corretagem da B3 (bolsa brasileira). Extraia com precisão todos os dados de operações. Tickers brasileiros terminam em números (ex: PETR4, VALE3). FIIs terminam em 11 (ex: HGLG11)." },
           { role: "user", content: prompt },

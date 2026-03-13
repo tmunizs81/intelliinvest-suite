@@ -5,12 +5,12 @@ const corsHeaders = {
 };
 
 async function callAI(body: any): Promise<Response> {
-  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+  const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
   const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
-  if (LOVABLE_API_KEY) {
-    const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+  if (GEMINI_API_KEY) {
+    const resp = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
       method: "POST",
-      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${GEMINI_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
     if (resp.ok || resp.status === 402) return resp;
@@ -37,7 +37,7 @@ Deno.serve(async (req) => {
     const holdingsText = holdings.map((a: any) => `${a.ticker} (${a.type}): ${a.quantity}un a R$${a.currentPrice?.toFixed(2)}`).join("\n");
 
     const response = await callAI({
-      model: "google/gemini-2.5-flash-lite",
+      model: "gemini-2.5-flash-lite",
       messages: [
         { role: "system", content: "Você é um especialista em dividendos do mercado brasileiro. Projete dividendos futuros com base em dados históricos típicos." },
         { role: "user", content: `Projete dividendos futuros (próximos 12 meses):\n\n${holdingsText}` },
