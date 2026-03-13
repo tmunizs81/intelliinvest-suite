@@ -127,8 +127,24 @@ Gere insights inteligentes, alertas e recomendações baseados nestes dados reai
     });
 
     if (!response.ok) {
-      if (response.status === 429) return new Response(JSON.stringify({ error: "Rate limit exceeded." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      if (response.status === 402) return new Response(JSON.stringify({ error: "Créditos insuficientes." }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      if (response.status === 429 || response.status === 402) {
+        // Graceful degradation: return basic portfolio-derived insights
+        const topAsset = portfolio.reduce((a: any, b: any) => (b.allocation > a.allocation ? b : a), portfolio[0]);
+        const negativeAssets = portfolio.filter((a: any) => a.change24h < -3);
+        const fallbackInsights = [
+          { type: "analysis", title: "Resumo da carteira", description: `Patrimônio de R$${totalValue.toFixed(0)} com ${portfolio.length} ativos. Retorno total: ${totalReturn.toFixed(1)}%.`, severity: "info" },
+          { type: "alert", title: `Maior posição: ${topAsset.ticker}`, description: `${topAsset.ticker} representa ${topAsset.allocation?.toFixed(1)}% da carteira. Avalie concentração.`, severity: topAsset.allocation > 20 ? "warning" : "info", ticker: topAsset.ticker },
+        ];
+        if (negativeAssets.length > 0) {
+          fallbackInsights.push({ type: "alert", title: `${negativeAssets.length} ativo(s) em queda forte`, description: negativeAssets.map((a: any) => `${a.ticker} (${a.change24h?.toFixed(1)}%)`).join(", "), severity: "warning" as const, ticker: negativeAssets[0].ticker });
+        }
+        return new Response(JSON.stringify({
+          insights: fallbackInsights,
+          summary: `Carteira com ${portfolio.length} ativos e retorno de ${totalReturn.toFixed(1)}% (análise local)`,
+          _provider: provider, _fallback: true,
+          timestamp: new Date().toISOString(),
+        }), { headers: { ...corsHeaders, "Content-Type": "application/json", "x-ai-provider": provider } });
+      }
       const text = await response.text();
       console.error("AI gateway error:", response.status, text);
       throw new Error(`AI gateway error: ${response.status}`);
