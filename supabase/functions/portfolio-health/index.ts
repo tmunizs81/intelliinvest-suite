@@ -10,7 +10,7 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    if (!GEMINI_API_KEY && !GROQ_API_KEY) throw new Error("No AI API key configured");
+    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
     const { portfolio } = await req.json();
     if (!portfolio || !Array.isArray(portfolio) || portfolio.length === 0) {
@@ -37,14 +37,14 @@ ${portfolioText}
 Avalie: diversificação, concentração, exposição cambial, volatilidade, correlação entre ativos.
 Use a ferramenta generate_health_score para retornar o resultado estruturado.`;
 
-    const response = await fetch(GEMINI_API_KEY ? "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions" : "https://api.groq.com/openai/v1/chat/completions", {
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${GEMINI_API_KEY || GROQ_API_KEY}`,
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: GEMINI_API_KEY ? "gemini-2.5-flash" : "llama-3.3-70b-versatile",
+        model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: "Você é um analista de risco especializado em carteiras de investimento brasileiras. Avalie a saúde da carteira de forma objetiva." },
           { role: "user", content: prompt },
