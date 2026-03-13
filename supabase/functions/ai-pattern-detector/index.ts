@@ -206,8 +206,10 @@ SEMPRE identifique pelo menos 3-5 padrões. Use a ferramenta para retornar o res
     });
 
     if (!response.ok) {
-      if (response.status === 429) return new Response(JSON.stringify({ error: "Rate limit." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      if (response.status === 402) return new Response(JSON.stringify({ error: "Créditos insuficientes." }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      if (response.status === 429 || response.status === 402) {
+        console.warn(`AI provider returned ${response.status}, returning empty patterns`);
+        return emptyFallback("provedor indisponível");
+      }
       const errText = await response.text();
       console.error("AI error:", response.status, errText);
       throw new Error(`AI error: ${response.status}`);
