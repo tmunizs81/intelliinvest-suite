@@ -121,6 +121,20 @@ function inferImpact(title: string, desc: string): "positive" | "negative" | "ne
   return "neutral";
 }
 
+function prioritizeNews(items: NewsItem[], ticker: string, max = 10): NewsItem[] {
+  const t = ticker.toLowerCase();
+  const scored = items.map((item) => {
+    const text = `${item.title} ${item.desc}`.toLowerCase();
+    let score = 0;
+    if (text.includes(t)) score += 5;
+    if (text.includes("fii") || text.includes("ações") || text.includes("bolsa")) score += 1;
+    return { item, score };
+  });
+
+  scored.sort((a, b) => b.score - a.score);
+  return scored.slice(0, max).map((x) => x.item);
+}
+
 function buildFallbackOpinion(ticker: string, name: string | undefined, type: string | undefined, news: NewsItem[], reason = "degraded_mode"): MarketOpinion {
   const picked = news.slice(0, 6).map((n) => ({
     title: n.title,
