@@ -35,8 +35,7 @@ async function callAI(body: any): Promise<Response> {
       headers: { Authorization: `Bearer ${GEMINI_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({ ...body, model: "gemini-2.5-flash" }),
     });
-    if (resp.ok || resp.status === 402) return resp;
-    if (resp.status !== 429 && resp.status < 500) return resp;
+    if (resp.ok) return resp;
     console.warn(`Gemini failed (${resp.status}), trying Groq fallback...`);
     try { await resp.text(); } catch {}
   }
