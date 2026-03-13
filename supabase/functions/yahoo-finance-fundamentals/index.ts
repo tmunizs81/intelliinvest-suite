@@ -68,7 +68,21 @@ function getAssetCategory(ticker: string, type?: string): 'fii' | 'stock' | 'etf
   return 'other';
 }
 
+function parseBrNumber(raw: string): number | null {
+  if (!raw) return null;
+  const cleaned = raw.replace(/[R$%\s]/g, '').trim();
+  if (!cleaned || cleaned === '-') return null;
+  // "536.031" = thousands, "0,95" = decimal
+  if (cleaned.includes(',')) {
+    const num = parseFloat(cleaned.replace(/\./g, '').replace(',', '.'));
+    return isNaN(num) ? null : num;
+  }
+  const num = parseFloat(cleaned);
+  return isNaN(num) ? null : num;
+}
+
 // ─── StatusInvest (auxiliary for BR indicators) ───
+// Parses actual HTML structure: <h3 class="title ...">LABEL</h3> ... <strong class="value">NUMBER</strong>
 async function tryStatusInvest(ticker: string, category: string): Promise<Partial<FundamentalResult> | null> {
   try {
     const slug = category === 'fii' ? 'fundos-imobiliarios' : category === 'etf' ? 'etfs' : 'acoes';
@@ -85,77 +99,90 @@ async function tryStatusInvest(ticker: string, category: string): Promise<Partia
     const html = await resp.text();
     if (!html || html.length < 1000) return null;
 
-    // Extract values using StatusInvest's data-statusvalue or title+value pattern
-    const extractValue = (label: string): number | null => {
-      // Pattern 1: title="Label" ... <strong class="value" ... >VALUE</strong>
-      // Pattern 2: data-statusvalue with nearby label
-      const patterns = [
-        // Look for title="LABEL" followed by value with data-value
-        new RegExp(`title="${label}"[^>]*>[\\s\\S]*?<strong[^>]*?\\bvalue\\b[^>]*?>[\\s]*([\\d.,%-]+)`, 'i'),
-        // Look for >LABEL< followed by value
-        new RegExp(`>${label}</[^>]+>[\\s\\S]*?<strong[^>]*?>[\\s]*([\\d.,%-]+)`, 'i'),
-        // data-value pattern near label
-        new RegExp(`title="${label}"[\\s\\S]*?data-value="([^"]*)"`, 'i'),
-      ];
-      for (const regex of patterns) {
-        const match = html.match(regex);
-        if (match?.[1]) {
-          const cleaned = match[1].replace(/\./g, '').replace(',', '.').replace('%', '').trim();
-          const num = parseFloat(cleaned);
-          if (!isNaN(num)) return num;
-        }
-      }
-      return null;
+    // Find ">LABEL<" then next <strong class="value...">NUMBER</strong> within window
+    const extractTitleValue = (label: string, window = 300): number | null => {
+      const idx = html.indexOf(`>${label}<`);
+      if (idx === -1) return null;
+      const chunk = html.substring(idx, idx + window);
+      const m = chunk.match(/<strong[^>]*class="[^"]*value[^"]*"[^>]*>([^<]+)/);
+      return m ? parseBrNumber(m[1]) : null;
     };
 
-    // Alternative: extract all data-value attributes with their context
-    const extractDataValue = (label: string): number | null => {
-      // Find the section containing the label and get the data-value
-      const escapedLabel = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const regex = new RegExp(`(?:title="|>)${escapedLabel}(?:"|<)[\\s\\S]{0,500}?data-value="([^"]*)"`, 'i');
-      const match = html.match(regex);
-      if (match?.[1]) {
-        const cleaned = match[1].replace(',', '.').trim();
-        const num = parseFloat(cleaned);
-        if (!isNaN(num) && num !== 0) return num;
-      }
-      return null;
+    // Find ">LABEL<" then next <span class="sub-value...">NUMBER</span>
+    const extractSubValue = (label: string, window = 200): number | null => {
+      const idx = html.indexOf(`>${label}<`);
+      if (idx === -1) return null;
+      const chunk = html.substring(idx, idx + window);
+      const m = chunk.match(/<span[^>]*class="[^"]*sub-value[^"]*"[^>]*>([^<]+)/);
+      return m ? parseBrNumber(m[1]) : null;
     };
 
     const result: Partial<FundamentalResult> = {};
 
     if (category === 'fii') {
-      result.pvpa = extractDataValue('P/VP') ?? extractValue('P/VP');
-      result.dividendYield = extractDataValue('Dividend Yield') ?? extractDataValue('DY');
-      result.lastDividend = extractDataValue('Último Rendimento') ?? extractDataValue('ÚLTIMO RENDIMENTO');
-      result.vacancy = extractDataValue('Vacância') ?? extractDataValue('VACÂNCIA');
-      result.cotistas = extractDataValue('N° de cotistas') ?? extractDataValue('Nº Cotistas') ?? extractDataValue('COTISTAS');
-      result.patrimony = extractDataValue('Patrimônio Líq') ?? extractDataValue('PATRIMÔNIO');
-      result.pb = result.pvpa; // P/VP = P/B for FIIs
-      
-      // Valor Patrimonial per quota
-      const vpCota = extractDataValue('Val. Patrimonial p/ Cota') ?? extractDataValue('VALOR PATRIMONIAL');
-      if (vpCota) result.bookValue = vpCota;
+      // P/VP: <h3 class="title m-0">P/VP</h3> <strong class="value">0,95</strong>
+      result.pvpa = extractTitleValue('P/VP');
+      result.pb = result.pvpa;
+
+      // Dividend Yield from top section
+      result.dividendYield = extractTitleValue('Dividend Yield');
+
+      // Val. patrimonial p/cota (multiple title variants in responsive layout)
+      result.bookValue = extractTitleValue('Val. patrimonial p/cota')
+        ?? extractTitleValue('Valor patrim. p/cota')
+        ?? extractTitleValue('Val. patrim. p/cota');
+
+      // Patrimônio (sub-value under VP section)
+      result.patrimony = extractSubValue('Patrimônio');
+
+      // Valor de mercado (sub-value under P/VP section)
+      result.marketCap = extractSubValue('Valor de mercado');
+
+      // Nº de Cotistas
+      result.cotistas = extractTitleValue('Nº de Cotistas');
+
+      // Último Rendimento - in card section with different structure
+      const lastDivIdx = html.indexOf('>Último rendimento<');
+      if (lastDivIdx !== -1) {
+        const chunk = html.substring(lastDivIdx, lastDivIdx + 400);
+        const m = chunk.match(/<strong[^>]*class="[^"]*value[^"]*"[^>]*>([^<]+)/);
+        if (m) result.lastDividend = parseBrNumber(m[1]);
+      }
+
+      // Vacância
+      const vacIdx = html.indexOf('>Vacância<');
+      if (vacIdx !== -1) {
+        const chunk = html.substring(vacIdx, vacIdx + 300);
+        const m = chunk.match(/<strong[^>]*class="[^"]*value[^"]*"[^>]*>([^<]+)/);
+        if (m) result.vacancy = parseBrNumber(m[1]);
+      } else {
+        // Try "Vac. Física" or similar
+        const vacIdx2 = html.indexOf('>Vac.');
+        if (vacIdx2 !== -1) {
+          const chunk = html.substring(vacIdx2, vacIdx2 + 300);
+          const m = chunk.match(/<strong[^>]*class="[^"]*value[^"]*"[^>]*>([^<]+)/);
+          if (m) result.vacancy = parseBrNumber(m[1]);
+        }
+      }
     } else {
       // Stocks
-      result.pe = extractDataValue('P/L') ?? extractValue('P/L');
-      result.pb = extractDataValue('P/VP') ?? extractValue('P/VP');
+      result.pe = extractTitleValue('P/L');
+      result.pb = extractTitleValue('P/VP');
       result.pvpa = result.pb;
-      result.dividendYield = extractDataValue('Dividend Yield') ?? extractDataValue('DY');
-      result.roe = extractDataValue('ROE');
-      result.netMargin = extractDataValue('Margem Líquida') ?? extractDataValue('MARGEM LÍQUIDA');
-      result.grossMargin = extractDataValue('Margem Bruta') ?? extractDataValue('MARGEM BRUTA');
-      result.evEbitda = extractDataValue('EV/EBITDA');
-      result.payout = extractDataValue('Payout');
-      result.currentRatio = extractDataValue('Liquidez Corrente') ?? extractDataValue('LIQ. CORRENTE');
-      result.debtToEquity = extractDataValue('Dív. Líquida/PL') ?? extractDataValue('DÍV. LÍQ./PL');
+      result.dividendYield = extractTitleValue('Dividend Yield') ?? extractTitleValue('DY');
+      result.roe = extractTitleValue('ROE');
+      result.netMargin = extractTitleValue('Margem Líquida') ?? extractTitleValue('M. Líquida');
+      result.grossMargin = extractTitleValue('Margem Bruta') ?? extractTitleValue('M. Bruta');
+      result.evEbitda = extractTitleValue('EV/EBITDA');
+      result.payout = extractTitleValue('Payout');
+      result.currentRatio = extractTitleValue('Liquidez Corrente') ?? extractTitleValue('Liq. Corrente');
+      result.debtToEquity = extractTitleValue('Dív. Líquida/PL');
+      result.marketCap = extractSubValue('Valor de mercado');
     }
 
-    // Market cap for both
-    const mktCap = extractDataValue('Valor de mercado') ?? extractDataValue('VALOR DE MERCADO');
-    if (mktCap) result.marketCap = mktCap;
-
-    return Object.values(result).some(v => v != null) ? result : null;
+    const hasData = Object.entries(result).some(([_, v]) => v != null);
+    if (hasData) console.log("StatusInvest parsed:", JSON.stringify(result));
+    return hasData ? result : null;
   } catch (e) {
     console.warn("StatusInvest error:", e);
     return null;
