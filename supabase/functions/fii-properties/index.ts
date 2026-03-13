@@ -6,27 +6,93 @@ const corsHeaders = {
 
 const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
 
-async function fetchPageText(url: string): Promise<string | null> {
+// In-memory cache: 10min TTL
+const cache = new Map<string, { data: string; ts: number }>();
+const CACHE_TTL = 10 * 60 * 1000;
+
+interface Property {
+  name: string;
+  state: string;
+  city?: string;
+  type?: string;
+  area_m2?: number;
+  address?: string;
+}
+
+function parseBrNumber(raw: string): number | null {
+  if (!raw) return null;
+  const cleaned = raw.replace(/[R$%\s]/g, '').trim();
+  if (!cleaned || cleaned === '-') return null;
+  if (cleaned.includes(',')) {
+    return parseFloat(cleaned.replace(/\./g, '').replace(',', '.')) || null;
+  }
+  return parseFloat(cleaned) || null;
+}
+
+// Try to parse properties directly from StatusInvest HTML (no AI needed)
+function parsePropertiesFromHtml(html: string, ticker: string): string | null {
+  // StatusInvest has a portfolio section with property cards
+  // Look for property data in the HTML structure
+  const properties: Property[] = [];
+  
+  // Pattern: property names appear in portfolio section
+  // Look for patterns like location names + state abbreviations
+  const portfolioIdx = html.indexOf('portfolio-section');
+  if (portfolioIdx === -1) {
+    // Try alternate section markers
+    const altIdx = html.indexOf('PORTFÓLIO');
+    if (altIdx === -1) return null;
+  }
+
+  // Extract from table rows or card structures
+  // StatusInvest uses data attributes and tables for portfolio
+  // Look for property entries with state codes
+  const stateRegex = /(?:class="[^"]*"[^>]*>)\s*([A-Z][a-záéíóúãõ\s\-\.]+(?:Shopping|Logíst|Galpão|Centro|Park|Mall|Tower|Office|Business|Plaza|Outlet|Industrial|Distribui)[A-Za-záéíóúãõ\s\-\.]*)\s*<[\s\S]{0,300}?(?:>|\b)(AC|AL|AP|AM|BA|CE|DF|ES|GO|MA|MT|MS|MG|PA|PB|PR|PE|PI|RJ|RN|RS|RO|RR|SC|SP|SE|TO)(?:\b|<)/gi;
+  
+  let match;
+  const seen = new Set<string>();
+  while ((match = stateRegex.exec(html)) !== null && properties.length < 50) {
+    const name = match[1].trim();
+    if (name.length < 3 || seen.has(name.toLowerCase())) continue;
+    seen.add(name.toLowerCase());
+    properties.push({ name, state: match[2].toUpperCase() });
+  }
+
+  if (properties.length >= 3) {
+    const result = {
+      fund_name: ticker.toUpperCase(),
+      total_properties: properties.length,
+      properties,
+    };
+    return JSON.stringify(result);
+  }
+  return null;
+}
+
+async function fetchHtml(url: string, timeoutMs = 4000): Promise<string | null> {
   try {
     const resp = await fetch(url, {
       headers: { "User-Agent": UA, "Accept": "text/html", "Accept-Language": "pt-BR,pt;q=0.9" },
-      signal: AbortSignal.timeout(12000),
+      signal: AbortSignal.timeout(timeoutMs),
     });
     if (!resp.ok) return null;
-    const html = await resp.text();
-    return html
-      .replace(/<script[\s\S]*?<\/script>/gi, " ")
-      .replace(/<style[\s\S]*?<\/style>/gi, " ")
-      .replace(/<[^>]+>/g, " ")
-      .replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&quot;/g, '"')
-      .replace(/&#39;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
-      .replace(/\s+/g, " ")
-      .trim()
-      .substring(0, 20000);
-  } catch (err) {
-    console.warn(`fetchPageText failed: ${url}`, err);
+    return await resp.text();
+  } catch {
     return null;
   }
+}
+
+function extractRelevantText(html: string): string {
+  // Strip scripts/styles, keep only text, limit to relevant sections
+  return html
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+    .replace(/\s+/g, " ")
+    .trim()
+    .substring(0, 10000);
 }
 
 async function callAI(body: any): Promise<{ response: Response; provider: string }> {
@@ -39,10 +105,10 @@ async function callAI(body: any): Promise<{ response: Response; provider: string
         method: "POST",
         headers: { Authorization: `Bearer ${DEEPSEEK_API_KEY}`, "Content-Type": "application/json" },
         body: JSON.stringify({ ...rest, model: "deepseek-chat" }),
+        signal: AbortSignal.timeout(6000),
       });
       if (resp.ok) return { response: resp, provider: "deepseek" };
-      console.warn("DeepSeek failed:", resp.status, "falling back to Lovable AI");
-    } catch (e) { console.warn("DeepSeek error, falling back:", e); }
+    } catch { /* fallback */ }
   }
   if (!LOVABLE_API_KEY) throw new Error("No AI provider available");
   const { model, ...rest } = body;
@@ -50,6 +116,7 @@ async function callAI(body: any): Promise<{ response: Response; provider: string
     method: "POST",
     headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
     body: JSON.stringify({ ...rest, model: model?.startsWith("google/") ? model : `google/${model || "gemini-2.5-flash"}` }),
+    signal: AbortSignal.timeout(6000),
   });
   return { response: resp, provider: "lovable" };
 }
@@ -62,57 +129,69 @@ Deno.serve(async (req) => {
     if (!ticker) return new Response(JSON.stringify({ error: "ticker required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
     const t = ticker.toLowerCase();
-    const [inv10Text, statusText] = await Promise.all([
-      fetchPageText(`https://investidor10.com.br/fiis/${t}/`),
-      fetchPageText(`https://statusinvest.com.br/fundos-imobiliarios/${t}`),
+
+    // Check cache first
+    const cached = cache.get(t);
+    if (cached && Date.now() - cached.ts < CACHE_TTL) {
+      return new Response(cached.data, { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // Fetch both sources in parallel with tight timeouts
+    const [inv10Html, statusHtml] = await Promise.all([
+      fetchHtml(`https://investidor10.com.br/fiis/${t}/`, 4000),
+      fetchHtml(`https://statusinvest.com.br/fundos-imobiliarios/${t}`, 4000),
     ]);
 
-    const scrapedContent = [
-      inv10Text ? `[Investidor10]\n${inv10Text}` : null,
-      statusText ? `[StatusInvest]\n${statusText}` : null,
-    ].filter(Boolean).join("\n\n---\n\n");
+    // Try direct HTML parsing first (fastest path, no AI needed)
+    const combinedHtml = (inv10Html || '') + (statusHtml || '');
+    if (combinedHtml.length > 1000) {
+      const directResult = parsePropertiesFromHtml(combinedHtml, ticker);
+      if (directResult) {
+        cache.set(t, { data: directResult, ts: Date.now() });
+        return new Response(directResult, { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+    }
 
-    if (!scrapedContent) {
-      return new Response(JSON.stringify({ error: "Não foi possível coletar dados das fontes" }), {
+    // Fallback: use AI to extract from text
+    const texts = [
+      inv10Html ? `[Investidor10]\n${extractRelevantText(inv10Html)}` : null,
+      statusHtml ? `[StatusInvest]\n${extractRelevantText(statusHtml)}` : null,
+    ].filter(Boolean).join("\n---\n");
+
+    if (!texts) {
+      return new Response(JSON.stringify({ error: "Não foi possível coletar dados" }), {
         status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const prompt = `Analise os dados coletados do FII ${ticker.toUpperCase()} e extraia a lista completa de imóveis/propriedades que compõem o fundo.
-
-DADOS COLETADOS:
-${scrapedContent}
-
-Use a ferramenta para retornar a lista de imóveis estruturada.`;
-
     const { response } = await callAI({
       model: "gemini-2.5-flash",
       messages: [
-        { role: "system", content: "Você extrai dados estruturados de imóveis de FIIs a partir de textos coletados de portais financeiros brasileiros. Seja preciso e extraia todos os imóveis mencionados." },
-        { role: "user", content: prompt },
+        { role: "system", content: "Extraia a lista de imóveis do FII de forma rápida e precisa." },
+        { role: "user", content: `Extraia os imóveis do FII ${ticker.toUpperCase()}:\n${texts}` },
       ],
       tools: [{
         type: "function",
         function: {
           name: "extract_properties",
-          description: "Extract structured FII property list",
+          description: "Extract FII property list",
           parameters: {
             type: "object",
             properties: {
-              fund_name: { type: "string", description: "Nome completo do fundo" },
-              total_properties: { type: "number", description: "Total de imóveis" },
-              total_area: { type: "number", description: "Área total bruta locável em m²" },
+              fund_name: { type: "string" },
+              total_properties: { type: "number" },
+              total_area: { type: "number" },
               properties: {
                 type: "array",
                 items: {
                   type: "object",
                   properties: {
-                    name: { type: "string", description: "Nome do imóvel" },
-                    state: { type: "string", description: "Sigla do estado" },
-                    city: { type: "string", description: "Cidade" },
-                    type: { type: "string", description: "Tipo do imóvel" },
-                    area_m2: { type: "number", description: "Área bruta locável em m²" },
-                    address: { type: "string", description: "Endereço ou localização" },
+                    name: { type: "string" },
+                    state: { type: "string" },
+                    city: { type: "string" },
+                    type: { type: "string" },
+                    area_m2: { type: "number" },
+                    address: { type: "string" },
                   },
                   required: ["name", "state"],
                   additionalProperties: false,
@@ -136,7 +215,9 @@ Use a ferramenta para retornar a lista de imóveis estruturada.`;
     const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
     if (!toolCall?.function?.arguments) throw new Error("No structured response");
 
-    return new Response(toolCall.function.arguments, { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    const resultStr = toolCall.function.arguments;
+    cache.set(t, { data: resultStr, ts: Date.now() });
+    return new Response(resultStr, { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (err) {
     console.error("fii-properties error:", err);
     return new Response(JSON.stringify({ error: err instanceof Error ? err.message : "Unknown error" }), {
