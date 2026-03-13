@@ -86,11 +86,19 @@ Ativos:\n${portfolioText}\n\nData: ${new Date().toLocaleDateString('pt-BR')}`;
     });
 
     if (!response.ok) {
-      if (response.status === 429) return new Response(JSON.stringify({ error: "Rate limit exceeded." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      if (response.status === 402) return new Response(JSON.stringify({ error: "Créditos insuficientes." }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      if (response.status === 429 || response.status === 402) {
+        // Return a friendly SSE stream with an explanation instead of an error
+        const msg = response.status === 429
+          ? "⏳ O serviço de IA está temporariamente sobrecarregado. Aguarde alguns segundos e tente novamente."
+          : "💳 Créditos de IA insuficientes. Verifique seu plano.";
+        const ssePayload = `data: ${JSON.stringify({ choices: [{ delta: { content: msg } }] })}\n\ndata: [DONE]\n\n`;
+        return new Response(ssePayload, { headers: { ...corsHeaders, "Content-Type": "text/event-stream", "x-ai-provider": provider } });
+      }
       const text = await response.text();
       console.error("AI gateway error:", response.status, text);
-      return new Response(JSON.stringify({ error: "Erro no serviço de IA" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      const errMsg = "❌ Erro no serviço de IA. Tente novamente em instantes.";
+      const errPayload = `data: ${JSON.stringify({ choices: [{ delta: { content: errMsg } }] })}\n\ndata: [DONE]\n\n`;
+      return new Response(errPayload, { headers: { ...corsHeaders, "Content-Type": "text/event-stream", "x-ai-provider": provider } });
     }
 
     return new Response(response.body, { headers: { ...corsHeaders, "Content-Type": "text/event-stream", "x-ai-provider": provider } });
