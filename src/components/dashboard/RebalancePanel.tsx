@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { type Asset } from '@/lib/mockData';
+import { checkAIProviderFallback } from '@/lib/aiProviderToast';
 import { Scale, Loader2, RefreshCw, ArrowUp, ArrowDown, Minus, AlertTriangle } from 'lucide-react';
 
 interface AllocationItem {
