@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { type Asset } from '@/lib/mockData';
+import { checkAIProviderFallback } from '@/lib/aiProviderToast';
 import { Loader2, Search, Sparkles, RefreshCw, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 
 interface Pattern {
