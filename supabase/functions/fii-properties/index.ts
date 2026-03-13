@@ -69,7 +69,7 @@ function parsePropertiesFromHtml(html: string, ticker: string): string | null {
   return null;
 }
 
-async function fetchHtml(url: string, timeoutMs = 4000): Promise<string | null> {
+async function fetchHtml(url: string, timeoutMs = 8000): Promise<string | null> {
   try {
     const resp = await fetch(url, {
       headers: { "User-Agent": UA, "Accept": "text/html", "Accept-Language": "pt-BR,pt;q=0.9" },
