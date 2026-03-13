@@ -89,7 +89,9 @@ Deno.serve(async (req) => {
     const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
     if (!toolCall?.function?.arguments) throw new Error("No structured response");
 
-    return new Response(toolCall.function.arguments, { headers: { ...corsHeaders, "Content-Type": "application/json", "x-ai-provider": provider } });
+    const parsedResult = JSON.parse(toolCall.function.arguments);
+    parsedResult._provider = provider;
+    return new Response(JSON.stringify(parsedResult), { headers: { ...corsHeaders, "Content-Type": "application/json", "x-ai-provider": provider } });
   } catch (err) {
     console.error("ai-dividend-forecast error:", err);
     return new Response(JSON.stringify({ error: err instanceof Error ? err.message : "Unknown error" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });

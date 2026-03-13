@@ -217,7 +217,7 @@ SEMPRE identifique pelo menos 3-5 padrões. Use a ferramenta para retornar o res
     if (toolCall?.function?.arguments) {
       try {
         const parsed = JSON.parse(toolCall.function.arguments);
-        return new Response(JSON.stringify(parsed), { headers: { ...corsHeaders, "Content-Type": "application/json", "x-ai-provider": provider } });
+        return new Response(JSON.stringify({ ...parsed, _provider: provider }), { headers: { ...corsHeaders, "Content-Type": "application/json", "x-ai-provider": provider } });
       } catch {}
     }
 
@@ -231,7 +231,7 @@ SEMPRE identifique pelo menos 3-5 padrões. Use a ferramenta para retornar o res
       parsed = { patterns: [] };
     }
 
-    return new Response(JSON.stringify(parsed), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ ...parsed, _provider: provider }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (err) {
     console.error("pattern-detector error:", err);
     return new Response(JSON.stringify({ error: String(err) }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });

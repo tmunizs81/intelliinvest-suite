@@ -104,7 +104,9 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify(fallback), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json", "x-ai-provider": provider } });
     }
 
-    return new Response(toolCall.function.arguments, { headers: { ...corsHeaders, "Content-Type": "application/json", "x-ai-provider": provider } });
+    const parsedResult = JSON.parse(toolCall.function.arguments);
+    parsedResult._provider = provider;
+    return new Response(JSON.stringify(parsedResult), { headers: { ...corsHeaders, "Content-Type": "application/json", "x-ai-provider": provider } });
   } catch (err) {
     console.error("ai-market-news error:", err);
     return new Response(JSON.stringify({ error: err instanceof Error ? err.message : "Unknown error" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
