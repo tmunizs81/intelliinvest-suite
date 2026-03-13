@@ -4,12 +4,23 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const UAs = [
+const USER_AGENTS = [
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
 ];
 
-// In-memory cache: 15min TTL
+const BRAZIL_STATES = new Set([
+  "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "MS", "MG",
+  "PA", "PB", "PR", "PE", "PI", "RJ", "RN", "RS", "RO", "RR", "SC", "SP", "SE", "TO",
+]);
+
+const NAME_BLACKLIST = [
+  "cota", "cotas", "volume", "carteira", "ações", "acao", "bdr", "stocks", "stock",
+  "tipo", "busca", "close", "revisão", "revisao", "contrato", "contratos", "dy", "p/vp",
+  "vacância", "vacancia", "yield", "patrimônio", "patrimonio", "cotista", "cotistas", "cadastre",
+  "{title}", "null", "undefined",
+];
+
 const cache = new Map<string, { data: string; ts: number }>();
 const CACHE_TTL = 15 * 60 * 1000;
 
@@ -20,162 +31,291 @@ interface Property {
   type?: string;
 }
 
-async function fetchHtml(url: string, timeoutMs = 12000): Promise<string | null> {
+function pickUA(): string {
+  return USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
+}
+
+function decodeHtmlEntities(input: string): string {
+  if (!input) return "";
+
+  return input
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => {
+      const code = Number.parseInt(hex, 16);
+      return Number.isFinite(code) ? String.fromCodePoint(code) : "";
+    })
+    .replace(/&#(\d+);/g, (_, dec) => {
+      const code = Number.parseInt(dec, 10);
+      return Number.isFinite(code) ? String.fromCodePoint(code) : "";
+    })
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&nbsp;/g, " ");
+}
+
+function cleanText(input: string): string {
+  return decodeHtmlEntities(input)
+    .replace(/<[^>]+>/g, " ")
+    .replace(/[\t\n\r]+/g, " ")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
+function isValidState(value: string): boolean {
+  return BRAZIL_STATES.has(value.toUpperCase());
+}
+
+function isLikelyPropertyName(name: string): boolean {
+  if (!name) return false;
+  const n = cleanText(name);
+
+  if (n.length < 4 || n.length > 90) return false;
+  if (/[{}<>]/.test(n)) return false;
+  if (/^(r\$|\d+([.,]\d+)?)$/i.test(n)) return false;
+
+  const lower = n.toLowerCase();
+  if (NAME_BLACKLIST.some((w) => lower.includes(w))) return false;
+
+  // Reject if looks like pure metrics/ui labels
+  if (/^(lista|fonte|indicadores|valuation|operacional|preço|preco)$/i.test(n)) return false;
+
+  // Require at least one letter and one separator (space, -, /) to avoid short UI labels
+  if (!/[a-zà-ú]/i.test(n)) return false;
+  if (!/[\s\-/]/.test(n) && n.length < 8) return false;
+
+  return true;
+}
+
+function normalizeProperty(name: string, state: string): Property | null {
+  const cleanedName = cleanText(name);
+  const uf = state.toUpperCase().trim();
+
+  if (!isValidState(uf)) return null;
+  if (!isLikelyPropertyName(cleanedName)) return null;
+
+  return { name: cleanedName, state: uf };
+}
+
+function dedupeProperties(properties: Property[]): Property[] {
+  const seen = new Set<string>();
+  const result: Property[] = [];
+
+  for (const p of properties) {
+    const key = `${p.name.toLowerCase()}::${p.state}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    result.push(p);
+  }
+
+  return result;
+}
+
+function extractFocusedSection(html: string): string {
+  const markers = [
+    "lista de imóveis",
+    "lista de imoveis",
+    "portfólio",
+    "portfolio",
+    "imóveis",
+    "imoveis",
+    "propriedades",
+  ];
+
+  const lower = html.toLowerCase();
+  for (const marker of markers) {
+    const idx = lower.indexOf(marker);
+    if (idx !== -1) {
+      const start = Math.max(0, idx - 2000);
+      const end = Math.min(html.length, idx + 22000);
+      return html.slice(start, end);
+    }
+  }
+
+  // fallback to limited HTML chunk to reduce noisy parsing
+  return html.slice(0, 25000);
+}
+
+async function fetchHtml(url: string, timeoutMs = 10000): Promise<string | null> {
   try {
     const resp = await fetch(url, {
       headers: {
-        "User-Agent": UAs[Math.floor(Math.random() * UAs.length)],
+        "User-Agent": pickUA(),
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.5",
-        "Accept-Encoding": "gzip, deflate",
         "Cache-Control": "no-cache",
+        "Pragma": "no-cache",
       },
       signal: AbortSignal.timeout(timeoutMs),
     });
+
     if (!resp.ok) return null;
     return await resp.text();
   } catch (e) {
-    console.warn(`Fetch failed for ${url}:`, e instanceof Error ? e.message : e);
+    console.warn(`fetchHtml failed (${url}):`, e instanceof Error ? e.message : e);
     return null;
   }
 }
 
-// Parse properties from Investidor10 HTML
-function parseInvestidor10(html: string): Property[] {
-  const properties: Property[] = [];
-  const seen = new Set<string>();
+function parseByPatterns(html: string): Property[] {
+  const scope = extractFocusedSection(html);
+  const props: Property[] = [];
 
-  // Investidor10 has property cards with names and locations
-  // Try multiple patterns
-  
-  // Pattern 1: Table rows with property data
-  const rowRegex = /<tr[^>]*>[\s\S]*?<td[^>]*>([\s\S]*?)<\/td>[\s\S]*?<td[^>]*>([\s\S]*?)<\/td>/gi;
-  let m;
-  while ((m = rowRegex.exec(html)) !== null) {
-    const col1 = m[1].replace(/<[^>]+>/g, '').trim();
-    const col2 = m[2].replace(/<[^>]+>/g, '').trim();
-    // Check if col2 looks like a state code
-    if (/^[A-Z]{2}$/.test(col2) && col1.length > 2 && !seen.has(col1.toLowerCase())) {
-      seen.add(col1.toLowerCase());
-      properties.push({ name: col1, state: col2 });
-    }
-  }
-
-  // Pattern 2: Look for property names near state codes in any context
-  const statePattern = /([A-ZÀ-Úa-zà-ú][A-Za-zÀ-Úà-ú\s\-\.\/]{3,60})\s*(?:[-–|,]|<[^>]*>)\s*(AC|AL|AP|AM|BA|CE|DF|ES|GO|MA|MT|MS|MG|PA|PB|PR|PE|PI|RJ|RN|RS|RO|RR|SC|SP|SE|TO)\b/g;
-  while ((m = statePattern.exec(html)) !== null && properties.length < 80) {
-    const name = m[1].replace(/<[^>]+>/g, '').trim();
-    if (name.length >= 3 && name.length <= 80 && !seen.has(name.toLowerCase())) {
-      // Filter out generic HTML/CSS terms
-      if (/^(class|style|width|height|div|span|table|img|src|href|data|font|color|border|padding|margin|display|position|text|align|center|right|left)$/i.test(name)) continue;
-      seen.add(name.toLowerCase());
-      properties.push({ name, state: m[2].toUpperCase() });
-    }
-  }
-
-  return properties;
-}
-
-// Parse properties from StatusInvest HTML
-function parseStatusInvest(html: string): Property[] {
-  const properties: Property[] = [];
-  const seen = new Set<string>();
-
-  // StatusInvest portfolio section
-  // Look for location data with state codes
-  const patterns = [
-    // Card-based: property name followed by location
-    /(?:title|alt|name|label)[^>]*>([^<]{3,60})<[\s\S]{0,200}?\b(AC|AL|AP|AM|BA|CE|DF|ES|GO|MA|MT|MS|MG|PA|PB|PR|PE|PI|RJ|RN|RS|RO|RR|SC|SP|SE|TO)\b/gi,
-    // Direct text patterns
-    />\s*([A-ZÀ-Ú][A-Za-zÀ-Úà-ú\s\-\.\/]{3,60})\s*[-–,]\s*([A-Z]{2})\s*</g,
+  const patterns: RegExp[] = [
+    // name ... UF
+    /(?:>|"|\b)([A-ZÀ-Ú][A-Za-zÀ-Úà-ú0-9\s\-.\/]{3,90}?)(?:<|"|\s|,|\-|\|){1,4}(AC|AL|AP|AM|BA|CE|DF|ES|GO|MA|MT|MS|MG|PA|PB|PR|PE|PI|RJ|RN|RS|RO|RR|SC|SP|SE|TO)\b/g,
+    // JSON-like: "name":"...","state":"SP"
+    /"(?:name|nome|title)"\s*:\s*"([^"\\]{3,90})"[\s\S]{0,120}?"(?:state|uf|estado)"\s*:\s*"([A-Z]{2})"/gi,
+    // Alternate JSON-like: "state":"SP" ... "name":"..."
+    /"(?:state|uf|estado)"\s*:\s*"([A-Z]{2})"[\s\S]{0,120}?"(?:name|nome|title)"\s*:\s*"([^"\\]{3,90})"/gi,
   ];
 
   for (const regex of patterns) {
-    let m;
-    while ((m = regex.exec(html)) !== null && properties.length < 80) {
-      const name = m[1].replace(/<[^>]+>/g, '').trim();
-      const state = m[2].toUpperCase();
-      if (!/^(AC|AL|AP|AM|BA|CE|DF|ES|GO|MA|MT|MS|MG|PA|PB|PR|PE|PI|RJ|RN|RS|RO|RR|SC|SP|SE|TO)$/.test(state)) continue;
-      if (name.length >= 3 && !seen.has(name.toLowerCase())) {
-        if (/^(class|style|width|height|div|span|table)$/i.test(name)) continue;
-        seen.add(name.toLowerCase());
-        properties.push({ name, state });
+    let m: RegExpExecArray | null;
+    while ((m = regex.exec(scope)) !== null && props.length < 120) {
+      let maybeName = "";
+      let maybeState = "";
+
+      if (m[2] && m[2].length === 2 && isValidState(m[2])) {
+        maybeName = m[1];
+        maybeState = m[2];
+      } else if (m[1] && m[1].length === 2 && isValidState(m[1])) {
+        maybeName = m[2];
+        maybeState = m[1];
       }
+
+      const normalized = normalizeProperty(maybeName, maybeState);
+      if (normalized) props.push(normalized);
     }
   }
 
-  return properties;
+  return dedupeProperties(props);
 }
 
-// Use FundsExplorer as additional source
-async function tryFundsExplorer(ticker: string): Promise<Property[]> {
-  const html = await fetchHtml(`https://www.fundsexplorer.com.br/funds/${ticker.toLowerCase()}`, 12000);
-  if (!html) return [];
-  
-  const properties: Property[] = [];
-  const seen = new Set<string>();
-  
-  // FundsExplorer lists properties with state
-  const regex = />\s*([A-ZÀ-Ú][A-Za-zÀ-Úà-ú\s\-\.\/]{3,60})\s*[-–,]\s*(AC|AL|AP|AM|BA|CE|DF|ES|GO|MA|MT|MS|MG|PA|PB|PR|PE|PI|RJ|RN|RS|RO|RR|SC|SP|SE|TO)\s*</g;
-  let m;
-  while ((m = regex.exec(html)) !== null && properties.length < 80) {
-    const name = m[1].trim();
-    if (name.length >= 3 && !seen.has(name.toLowerCase())) {
-      seen.add(name.toLowerCase());
-      properties.push({ name, state: m[2].toUpperCase() });
-    }
-  }
-  
-  return properties;
+function filterQuality(properties: Property[]): Property[] {
+  if (properties.length === 0) return properties;
+
+  const valid = properties.filter((p) => isLikelyPropertyName(p.name));
+  const qualityRatio = valid.length / properties.length;
+
+  // If parsing is too noisy, reject all and rely on AI fallback
+  if (qualityRatio < 0.55) return [];
+
+  return dedupeProperties(valid);
 }
 
-// AI fallback - only if we have HTML text but couldn't parse
-async function tryAIExtraction(text: string, ticker: string): Promise<string | null> {
-  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-  if (!LOVABLE_API_KEY || text.length < 500) return null;
-
-  try {
-    const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash-lite",
-        messages: [
-          { role: "system", content: "Extraia APENAS a lista de imóveis/propriedades do FII. Responda em JSON com fund_name, total_properties e properties (array com name e state)." },
-          { role: "user", content: `FII ${ticker}. Texto:\n${text.substring(0, 6000)}` },
-        ],
-        max_tokens: 2000,
-        temperature: 0,
-      }),
-      signal: AbortSignal.timeout(15000),
-    });
-    if (!resp.ok) return null;
-    const data = await resp.json();
-    const content = data.choices?.[0]?.message?.content;
-    if (!content) return null;
-    // Extract JSON from response
-    const jsonMatch = content.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) return null;
-    // Validate it's valid JSON with properties
-    const parsed = JSON.parse(jsonMatch[0]);
-    if (parsed.properties && Array.isArray(parsed.properties) && parsed.properties.length > 0) {
-      return JSON.stringify(parsed);
-    }
-    return null;
-  } catch (e) {
-    console.warn("AI extraction failed:", e instanceof Error ? e.message : e);
-    return null;
-  }
-}
-
-function stripHtml(html: string): string {
-  return html
+function stripHtmlText(html: string): string {
+  return decodeHtmlEntities(html)
     .replace(/<script[\s\S]*?<\/script>/gi, " ")
     .replace(/<style[\s\S]*?<\/style>/gi, " ")
     .replace(/<[^>]+>/g, " ")
-    .replace(/&nbsp;/g, " ").replace(/&amp;/g, "&")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+async function callDeepSeek(text: string, ticker: string): Promise<Property[] | null> {
+  const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
+  if (!DEEPSEEK_API_KEY) return null;
+
+  try {
+    const response = await fetch("https://api.deepseek.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${DEEPSEEK_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "deepseek-chat",
+        temperature: 0,
+        messages: [
+          {
+            role: "system",
+            content:
+              "Extraia somente imóveis/propriedades de FIIs no Brasil e devolva JSON puro no formato: {\"properties\":[{\"name\":\"...\",\"state\":\"SP\"}]}.",
+          },
+          {
+            role: "user",
+            content: `FII: ${ticker.toUpperCase()}\nTexto:\n${text.slice(0, 9000)}`,
+          },
+        ],
+      }),
+      signal: AbortSignal.timeout(12000),
+    });
+
+    if (!response.ok) return null;
+
+    const data = await response.json();
+    const content = data?.choices?.[0]?.message?.content;
+    if (!content) return null;
+
+    const jsonMatch = String(content).match(/\{[\s\S]*\}/);
+    if (!jsonMatch) return null;
+
+    const parsed = JSON.parse(jsonMatch[0]);
+    const list = Array.isArray(parsed?.properties) ? parsed.properties : [];
+
+    const normalized = list
+      .map((p: any) => normalizeProperty(String(p?.name ?? ""), String(p?.state ?? "")))
+      .filter(Boolean) as Property[];
+
+    return filterQuality(dedupeProperties(normalized));
+  } catch (e) {
+    console.warn("DeepSeek extraction failed:", e instanceof Error ? e.message : e);
+    return null;
+  }
+}
+
+async function callLovableFallback(text: string, ticker: string): Promise<Property[] | null> {
+  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+  if (!LOVABLE_API_KEY) return null;
+
+  try {
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-3-flash-preview",
+        temperature: 0,
+        messages: [
+          {
+            role: "system",
+            content:
+              "Extraia somente imóveis/propriedades de FIIs no Brasil e devolva JSON puro no formato: {\"properties\":[{\"name\":\"...\",\"state\":\"SP\"}]}.",
+          },
+          {
+            role: "user",
+            content: `FII: ${ticker.toUpperCase()}\nTexto:\n${text.slice(0, 9000)}`,
+          },
+        ],
+      }),
+      signal: AbortSignal.timeout(12000),
+    });
+
+    if (!response.ok) return null;
+
+    const data = await response.json();
+    const content = data?.choices?.[0]?.message?.content;
+    if (!content) return null;
+
+    const jsonMatch = String(content).match(/\{[\s\S]*\}/);
+    if (!jsonMatch) return null;
+
+    const parsed = JSON.parse(jsonMatch[0]);
+    const list = Array.isArray(parsed?.properties) ? parsed.properties : [];
+
+    const normalized = list
+      .map((p: any) => normalizeProperty(String(p?.name ?? ""), String(p?.state ?? "")))
+      .filter(Boolean) as Property[];
+
+    return filterQuality(dedupeProperties(normalized));
+  } catch (e) {
+    console.warn("Lovable fallback extraction failed:", e instanceof Error ? e.message : e);
+    return null;
+  }
 }
 
 Deno.serve(async (req) => {
@@ -183,91 +323,119 @@ Deno.serve(async (req) => {
 
   try {
     const { ticker } = await req.json();
-    if (!ticker) return new Response(JSON.stringify({ error: "ticker required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    if (!ticker) {
+      return new Response(JSON.stringify({ error: "ticker required" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
-    const t = ticker.toLowerCase();
+    const t = String(ticker).toLowerCase();
 
-    // Check cache
     const cached = cache.get(t);
     if (cached && Date.now() - cached.ts < CACHE_TTL) {
-      return new Response(cached.data, { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(cached.data, {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    let allProperties: Property[] = [];
-    let rawText = "";
+    const sources = [
+      `https://investidor10.com.br/fiis/${t}/`,
+      `https://statusinvest.com.br/fundos-imobiliarios/${t}`,
+      `https://www.fundsexplorer.com.br/funds/${t}`,
+    ];
 
-    // Try sources sequentially to avoid resource exhaustion
-    // Source 1: Investidor10
-    console.log(`Fetching properties for ${ticker} from Investidor10...`);
-    const inv10Html = await fetchHtml(`https://investidor10.com.br/fiis/${t}/`);
-    if (inv10Html) {
-      const props = parseInvestidor10(inv10Html);
-      console.log(`Investidor10: found ${props.length} properties`);
-      allProperties.push(...props);
-      rawText += stripHtml(inv10Html).substring(0, 5000);
-    }
+    const collected: Property[] = [];
+    let textForAI = "";
 
-    // Source 2: StatusInvest (only if we need more)
-    if (allProperties.length < 3) {
-      console.log(`Fetching from StatusInvest...`);
-      const statusHtml = await fetchHtml(`https://statusinvest.com.br/fundos-imobiliarios/${t}`);
-      if (statusHtml) {
-        const props = parseStatusInvest(statusHtml);
-        console.log(`StatusInvest: found ${props.length} properties`);
-        // Merge without duplicates
-        const existing = new Set(allProperties.map(p => p.name.toLowerCase()));
-        for (const p of props) {
-          if (!existing.has(p.name.toLowerCase())) {
-            allProperties.push(p);
-            existing.add(p.name.toLowerCase());
-          }
-        }
-        rawText += "\n" + stripHtml(statusHtml).substring(0, 5000);
+    // Sequential fetch to avoid aggressive concurrent timeouts
+    for (const url of sources) {
+      const html = await fetchHtml(url, 10000);
+      if (!html) continue;
+
+      const parsed = filterQuality(parseByPatterns(html));
+      if (parsed.length > 0) {
+        collected.push(...parsed);
+      }
+
+      textForAI += `\n\n[${url}]\n${stripHtmlText(html).slice(0, 3500)}`;
+
+      // Fast path: if we already have enough items, stop early
+      const mergedFast = dedupeProperties(collected);
+      if (mergedFast.length >= 5) {
+        const resultFast = JSON.stringify({
+          fund_name: ticker.toUpperCase(),
+          total_properties: mergedFast.length,
+          properties: mergedFast,
+        });
+        cache.set(t, { data: resultFast, ts: Date.now() });
+        return new Response(resultFast, {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
     }
 
-    // Source 3: FundsExplorer (only if still need more)
-    if (allProperties.length < 3) {
-      console.log(`Fetching from FundsExplorer...`);
-      const feProps = await tryFundsExplorer(ticker);
-      console.log(`FundsExplorer: found ${feProps.length} properties`);
-      const existing = new Set(allProperties.map(p => p.name.toLowerCase()));
-      for (const p of feProps) {
-        if (!existing.has(p.name.toLowerCase())) {
-          allProperties.push(p);
-          existing.add(p.name.toLowerCase());
-        }
+    const merged = dedupeProperties(collected);
+
+    // If direct parsing is sparse, try AI enrichment (DeepSeek first)
+    if (merged.length < 5 && textForAI.length > 500) {
+      const deepseekProps = await callDeepSeek(textForAI, ticker);
+      if (deepseekProps && deepseekProps.length > 0) {
+        const combined = dedupeProperties([...merged, ...deepseekProps]);
+        const result = JSON.stringify({
+          fund_name: ticker.toUpperCase(),
+          total_properties: combined.length,
+          properties: combined,
+        });
+        cache.set(t, { data: result, ts: Date.now() });
+        return new Response(result, {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const lovableProps = await callLovableFallback(textForAI, ticker);
+      if (lovableProps && lovableProps.length > 0) {
+        const combined = dedupeProperties([...merged, ...lovableProps]);
+        const result = JSON.stringify({
+          fund_name: ticker.toUpperCase(),
+          total_properties: combined.length,
+          properties: combined,
+        });
+        cache.set(t, { data: result, ts: Date.now() });
+        return new Response(result, {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
     }
 
-    // If direct parsing found properties, return them
-    if (allProperties.length >= 1) {
+    // Return direct parsed result when enrichment is not needed or not available
+    if (merged.length > 0) {
       const result = JSON.stringify({
         fund_name: ticker.toUpperCase(),
-        total_properties: allProperties.length,
-        properties: allProperties,
+        total_properties: merged.length,
+        properties: merged,
       });
       cache.set(t, { data: result, ts: Date.now() });
-      return new Response(result, { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(result, {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    // AI fallback with collected text
-    if (rawText.length > 500) {
-      console.log("Trying AI extraction...");
-      const aiResult = await tryAIExtraction(rawText, ticker);
-      if (aiResult) {
-        cache.set(t, { data: aiResult, ts: Date.now() });
-        return new Response(aiResult, { headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      }
-    }
-
-    return new Response(JSON.stringify({ error: "Não foi possível coletar lista de imóveis. Tente novamente." }), {
-      status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({ error: "Não foi possível coletar a lista de imóveis no momento." }),
+      {
+        status: 404,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
+    );
   } catch (err) {
     console.error("fii-properties error:", err);
-    return new Response(JSON.stringify({ error: err instanceof Error ? err.message : "Erro interno" }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({ error: err instanceof Error ? err.message : "Erro interno" }),
+      {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
+    );
   }
 });
