@@ -45,6 +45,7 @@ async function callAI(body: any): Promise<Response> {
     headers: { Authorization: `Bearer ${GROQ_API_KEY}`, "Content-Type": "application/json" },
     body: JSON.stringify({ ...body, model: "llama-3.3-70b-versatile" }),
   });
+}
 
 function average(values: number[]): number {
   if (!values.length) return 0;
