@@ -34,7 +34,7 @@ type MarketOpinion = {
 
 const localCache = new Map<string, { data: MarketOpinion; ts: number }>();
 const CACHE_TTL_MS = 5 * 60 * 1000;
-const REQUEST_TIMEOUT_MS = 5000;
+const REQUEST_TIMEOUT_MS = 3200;
 
 async function safeFetchText(url: string, timeoutMs = REQUEST_TIMEOUT_MS): Promise<string | null> {
   try {
