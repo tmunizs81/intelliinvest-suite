@@ -322,7 +322,7 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json", "x-ai-provider": provider },
       });
     } catch (aiErr) {
-      const fallback = buildFallbackOpinion(ticker, name, type, uniqueNews, "ai_timeout_or_error");
+      const fallback = buildFallbackOpinion(ticker, name, type, prioritizedNews, "ai_timeout_or_error");
       localCache.set(cacheKey, { data: fallback, ts: Date.now() });
       return new Response(JSON.stringify(fallback), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
