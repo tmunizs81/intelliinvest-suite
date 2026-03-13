@@ -21,8 +21,20 @@ function isRateLimited(req: Request): boolean {
 }
 
 async function callAI(body: any): Promise<{ response: Response; provider: string }> {
+  const OPENROUTER_API_KEY = Deno.env.get("OPENROUTER_API_KEY");
   const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
   const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
+
+  if (OPENROUTER_API_KEY) {
+    const resp = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${OPENROUTER_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ ...body, model: body.model || "google/gemini-2.5-flash" }),
+    });
+    if (resp.ok) return { response: resp, provider: "openrouter" };
+    console.warn(`OpenRouter failed (${resp.status}), trying Gemini...`);
+    try { await resp.text(); } catch {}
+  }
 
   if (GEMINI_API_KEY) {
     const resp = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
@@ -31,7 +43,7 @@ async function callAI(body: any): Promise<{ response: Response; provider: string
       body: JSON.stringify({ ...body, model: "gemini-2.5-flash" }),
     });
     if (resp.ok) return { response: resp, provider: "gemini" };
-    console.warn(`Gemini failed (${resp.status}), trying Groq fallback...`);
+    console.warn(`Gemini failed (${resp.status}), trying Groq...`);
     try { await resp.text(); } catch {}
   }
 
