@@ -5,11 +5,54 @@ const corsHeaders = {
   "Access-Control-Expose-Headers": "x-ai-provider",
 };
 
-async function callAI(body) {
+const REQUEST_TIMEOUT_MS = 3200;
+
+async function safeFetchJson(url: string, timeoutMs = REQUEST_TIMEOUT_MS): Promise<any | null> {
+  try {
+    const resp = await fetch(url, { signal: AbortSignal.timeout(timeoutMs) });
+    if (!resp.ok) return null;
+    return await resp.json();
+  } catch {
+    return null;
+  }
+}
+
+type SimpleNews = { title: string; description: string; link: string; source?: string };
+
+// ── MarketAux API ──
+async function fetchMarketAux(query: string, limit = 5): Promise<SimpleNews[]> {
+  const key = Deno.env.get("MARKETAUX_API_KEY");
+  if (!key) return [];
+  const url = `https://api.marketaux.com/v1/news/all?search=${encodeURIComponent(query)}&filter_entities=true&language=pt&limit=${limit}&api_token=${key}`;
+  const json = await safeFetchJson(url);
+  if (!json?.data) return [];
+  return json.data.map((a: any) => ({
+    title: a.title || "",
+    description: a.description || a.snippet || a.title || "",
+    link: a.url || "",
+    source: a.source || "MarketAux",
+  })).filter((n: SimpleNews) => n.title && n.link);
+}
+
+// ── NewsAPI.org ──
+async function fetchNewsApi(query: string, limit = 5): Promise<SimpleNews[]> {
+  const key = Deno.env.get("NEWSAPI_API_KEY");
+  if (!key) return [];
+  const url = `https://newsapi.org/v2/everything?q=${encodeURIComponent(query)}&language=pt&sortBy=publishedAt&pageSize=${limit}&apiKey=${key}`;
+  const json = await safeFetchJson(url);
+  if (!json?.articles) return [];
+  return json.articles.map((a: any) => ({
+    title: a.title || "",
+    description: a.description || a.title || "",
+    link: a.url || "",
+    source: a.source?.name || "NewsAPI",
+  })).filter((n: SimpleNews) => n.title && n.link);
+}
+
+async function callAI(body: any) {
   const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
-  // Primary: DeepSeek
   if (DEEPSEEK_API_KEY) {
     try {
       const { model, ...rest } = body;
@@ -17,67 +60,60 @@ async function callAI(body) {
         method: "POST",
         headers: { Authorization: `Bearer ${DEEPSEEK_API_KEY}`, "Content-Type": "application/json" },
         body: JSON.stringify({ ...rest, model: "deepseek-chat" }),
+        signal: AbortSignal.timeout(3500),
       });
       if (resp.ok) return { response: resp, provider: "deepseek" };
-      console.warn("DeepSeek failed:", resp.status, "falling back to Lovable AI");
-    } catch (e) { console.warn("DeepSeek error, falling back:", e); }
+    } catch { /* fallback */ }
   }
 
-  // Fallback: Lovable AI
   if (!LOVABLE_API_KEY) throw new Error("No AI provider available");
   const { model, ...rest } = body;
   const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
     headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
     body: JSON.stringify({ ...rest, model: model && model.startsWith("google/") ? model : `google/${model || "gemini-2.5-flash"}` }),
+    signal: AbortSignal.timeout(3500),
   });
   return { response: resp, provider: "lovable" };
 }
 
-async function fetchGoogleNews(query: string): Promise<{title: string; description: string; link: string}[]> {
+async function fetchGoogleNews(query: string): Promise<SimpleNews[]> {
   try {
     const url = `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=pt-BR&gl=BR&ceid=BR:pt-419`;
-    const resp = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" } });
-    if (!resp.ok) { try { await resp.text(); } catch {} return []; }
+    const resp = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" }, signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) });
+    if (!resp.ok) return [];
     const xml = await resp.text();
-    const items: {title: string; description: string; link: string}[] = [];
-    const regex = /<item>[\s\S]*?<title><!\[CDATA\[(.*?)\]\]><\/title>[\s\S]*?<link>(.*?)<\/link>[\s\S]*?<\/item>/g;
+    const items: SimpleNews[] = [];
+    const regex = /<item>[\s\S]*?<title>(.*?)<\/title>[\s\S]*?<link>(.*?)<\/link>[\s\S]*?(?:<description>(.*?)<\/description>)?[\s\S]*?<\/item>/g;
     let match;
     while ((match = regex.exec(xml)) !== null && items.length < 5) {
-      items.push({ title: match[1], description: match[1], link: match[2] });
-    }
-    // Fallback: simpler regex
-    if (items.length === 0) {
-      const regex2 = /<item>[\s\S]*?<title>(.*?)<\/title>[\s\S]*?<link>(.*?)<\/link>[\s\S]*?<\/item>/g;
-      while ((match = regex2.exec(xml)) !== null && items.length < 5) {
-        const title = match[1].replace(/<!\[CDATA\[|\]\]>/g, '');
-        items.push({ title, description: title, link: match[2] });
-      }
+      const title = (match[1] || "").replace(/<!\[CDATA\[|\]\]>/g, "").replace(/<[^>]*>/g, "").trim();
+      const link = match[2].trim();
+      const desc = (match[3] || title).replace(/<!\[CDATA\[|\]\]>/g, "").replace(/<[^>]*>/g, "").trim();
+      if (title && link) items.push({ title, description: desc, link, source: "Google News" });
     }
     return items;
-  } catch (e) {
-    console.warn("fetchGoogleNews error:", e);
+  } catch {
     return [];
   }
 }
 
-async function fetchRssItems(url: string, limit: number): Promise<{title: string; description: string; link: string}[]> {
+async function fetchRssItems(url: string, source: string, limit: number): Promise<SimpleNews[]> {
   try {
-    const resp = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" } });
-    if (!resp.ok) { try { await resp.text(); } catch {} return []; }
+    const resp = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" }, signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) });
+    if (!resp.ok) return [];
     const xml = await resp.text();
-    const items: {title: string; description: string; link: string}[] = [];
+    const items: SimpleNews[] = [];
     const regex = /<item>[\s\S]*?<title>(.*?)<\/title>[\s\S]*?<link>(.*?)<\/link>[\s\S]*?(?:<description>(.*?)<\/description>)?[\s\S]*?<\/item>/g;
     let match;
     while ((match = regex.exec(xml)) !== null && items.length < limit) {
-      const title = match[1].replace(/<!\[CDATA\[|\]\]>/g, '').trim();
+      const title = (match[1] || "").replace(/<!\[CDATA\[|\]\]>/g, "").trim();
       const link = match[2].trim();
-      const desc = (match[3] || title).replace(/<!\[CDATA\[|\]\]>/g, '').replace(/<[^>]*>/g, '').trim();
-      items.push({ title, description: desc, link });
+      const desc = (match[3] || title).replace(/<!\[CDATA\[|\]\]>/g, "").replace(/<[^>]*>/g, "").trim();
+      if (title && link) items.push({ title, description: desc, link, source });
     }
     return items;
-  } catch (e) {
-    console.warn("fetchRssItems error:", e);
+  } catch {
     return [];
   }
 }
@@ -91,23 +127,26 @@ Deno.serve(async (req) => {
 
     const tickerList = tickers.slice(0, 10);
     const queries = [`mercado financeiro Brasil investimentos ${new Date().getFullYear()}`, ...tickerList.slice(0, 4).map((t: string) => `${t} ações bolsa brasil`)];
-    const rssFeeds = ["https://www.infomoney.com.br/feed/", "https://valorinveste.globo.com/rss/valor-investe/"];
 
-    const [googleResults, ...rssResults] = await Promise.all([
-      Promise.all(queries.map(q => fetchGoogleNews(q))),
-      ...rssFeeds.map(url => fetchRssItems(url, 5)),
+    // All sources in parallel — APIs + Google News + RSS
+    const settled = await Promise.allSettled([
+      fetchMarketAux(tickerList.slice(0, 3).join(" "), 5),
+      fetchNewsApi(`${tickerList.slice(0, 3).join(" ")} Brasil mercado`, 5),
+      ...queries.map(q => fetchGoogleNews(q)),
+      fetchRssItems("https://www.infomoney.com.br/feed/", "InfoMoney", 5),
+      fetchRssItems("https://valorinveste.globo.com/rss/valor-investe/", "Valor Investe", 5),
     ]);
 
-    const allNews = [...googleResults.flat(), ...rssResults.flat()];
+    const allNews = settled.flatMap((res) => (res.status === "fulfilled" ? res.value : []));
     const seen = new Set<string>();
     const uniqueNews = allNews.filter(n => {
       const key = n.title.toLowerCase().substring(0, 40);
       if (seen.has(key)) return false;
       seen.add(key);
       return true;
-    }).slice(0, 20);
+    }).slice(0, 25);
 
-    const newsContext = uniqueNews.map((n, i) => `[${i + 1}] ${n.title}\n${n.description}\nFonte: ${n.link}`).join("\n\n");
+    const newsContext = uniqueNews.map((n, i) => `[${i + 1}] ${n.title}\n${n.description}\nFonte: ${n.source || n.link}`).join("\n\n");
 
     const { response, provider } = await callAI({
       model: "gemini-2.5-flash",
@@ -158,17 +197,10 @@ Deno.serve(async (req) => {
           category: "macro",
           source_url: item.link,
         }));
-
-        return new Response(JSON.stringify({
-          news: fallbackNews,
-          _provider: provider,
-          _fallback: true,
-          _fallback_reason: response.status === 429 ? "rate_limit" : "credits",
-        }), {
+        return new Response(JSON.stringify({ news: fallbackNews, _provider: provider, _fallback: true, _fallback_reason: response.status === 429 ? "rate_limit" : "credits" }), {
           headers: { ...corsHeaders, "Content-Type": "application/json", "x-ai-provider": provider },
         });
       }
-
       throw new Error(`AI error: ${response.status}`);
     }
 
