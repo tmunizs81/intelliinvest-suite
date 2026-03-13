@@ -22,11 +22,7 @@ const REPORT_TOOL = {
           type: "array",
           items: {
             type: "object",
-            properties: {
-              ticker: { type: "string" },
-              return_pct: { type: "number" },
-              comment: { type: "string" },
-            },
+            properties: { ticker: { type: "string" }, return_pct: { type: "number" }, comment: { type: "string" } },
             required: ["ticker", "return_pct", "comment"],
             additionalProperties: false,
           },
@@ -35,11 +31,7 @@ const REPORT_TOOL = {
           type: "array",
           items: {
             type: "object",
-            properties: {
-              ticker: { type: "string" },
-              return_pct: { type: "number" },
-              comment: { type: "string" },
-            },
+            properties: { ticker: { type: "string" }, return_pct: { type: "number" }, comment: { type: "string" } },
             required: ["ticker", "return_pct", "comment"],
             additionalProperties: false,
           },
@@ -56,15 +48,42 @@ const REPORT_TOOL = {
 };
 
 async function callAI(messages: any[]) {
+  const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-  if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+
+  // Try DeepSeek first
+  if (DEEPSEEK_API_KEY) {
+    try {
+      const resp = await fetch("https://api.deepseek.com/v1/chat/completions", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${DEEPSEEK_API_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "deepseek-chat",
+          messages,
+          tools: [REPORT_TOOL],
+          tool_choice: { type: "function", function: { name: "generate_report" } },
+        }),
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
+        if (toolCall?.function?.arguments) return toolCall.function.arguments;
+        const content = data.choices?.[0]?.message?.content;
+        if (content) {
+          const jsonMatch = content.match(/\{[\s\S]*\}/);
+          if (jsonMatch) return jsonMatch[0];
+        }
+      }
+      console.warn("DeepSeek failed for monthly-report, falling back to Lovable AI");
+    } catch (e) { console.warn("DeepSeek error:", e); }
+  }
+
+  // Fallback to Lovable AI
+  if (!LOVABLE_API_KEY) throw new Error("No AI provider available");
 
   const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${LOVABLE_API_KEY}`,
-      "Content-Type": "application/json",
-    },
+    headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
     body: JSON.stringify({
       model: "google/gemini-2.5-flash",
       messages,
@@ -81,15 +100,13 @@ async function callAI(messages: any[]) {
 
   const data = await response.json();
   const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
-  if (!toolCall?.function?.arguments) {
-    const content = data.choices?.[0]?.message?.content;
-    if (content) {
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
-      if (jsonMatch) return jsonMatch[0];
-    }
-    throw new Error("No structured response from AI");
+  if (toolCall?.function?.arguments) return toolCall.function.arguments;
+  const content = data.choices?.[0]?.message?.content;
+  if (content) {
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    if (jsonMatch) return jsonMatch[0];
   }
-  return toolCall.function.arguments;
+  throw new Error("No structured response from AI");
 }
 
 Deno.serve(async (req) => {
@@ -126,7 +143,7 @@ Deno.serve(async (req) => {
     try {
       result = await callAI(messages);
     } catch (e) {
-      console.error("Lovable AI failed:", e);
+      console.error("AI failed:", e);
     }
 
     if (!result) {
@@ -135,7 +152,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Validate JSON before returning
     try {
       JSON.parse(result);
     } catch {

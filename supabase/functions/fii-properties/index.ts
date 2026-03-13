@@ -1,5 +1,3 @@
-
-
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -31,12 +29,35 @@ async function fetchPageText(url: string): Promise<string | null> {
   }
 }
 
+async function callAI(body: any): Promise<{ response: Response; provider: string }> {
+  const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
+  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+  if (DEEPSEEK_API_KEY) {
+    try {
+      const { model, ...rest } = body;
+      const resp = await fetch("https://api.deepseek.com/v1/chat/completions", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${DEEPSEEK_API_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ ...rest, model: "deepseek-chat" }),
+      });
+      if (resp.ok) return { response: resp, provider: "deepseek" };
+      console.warn("DeepSeek failed:", resp.status, "falling back to Lovable AI");
+    } catch (e) { console.warn("DeepSeek error, falling back:", e); }
+  }
+  if (!LOVABLE_API_KEY) throw new Error("No AI provider available");
+  const { model, ...rest } = body;
+  const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ ...rest, model: model?.startsWith("google/") ? model : `google/${model || "gemini-2.5-flash"}` }),
+  });
+  return { response: resp, provider: "lovable" };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
-
     const { ticker } = await req.json();
     if (!ticker) return new Response(JSON.stringify({ error: "ticker required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
@@ -62,60 +83,48 @@ Deno.serve(async (req) => {
 DADOS COLETADOS:
 ${scrapedContent}
 
-Use a ferramenta para retornar a lista de imóveis estruturada. Para cada imóvel inclua:
-- Nome do imóvel/empreendimento
-- Estado (UF)
-- Cidade
-- Tipo (Galpão Logístico, Laje Corporativa, Shopping, Hospital, Educacional, etc.)
-- Área bruta locável em m² (se disponível)
-- Endereço ou localização (se disponível)
+Use a ferramenta para retornar a lista de imóveis estruturada.`;
 
-Extraia TODOS os imóveis mencionados. Se a área não estiver disponível, coloque null.`;
-
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          { role: "system", content: "Você extrai dados estruturados de imóveis de FIIs a partir de textos coletados de portais financeiros brasileiros. Seja preciso e extraia todos os imóveis mencionados." },
-          { role: "user", content: prompt },
-        ],
-        tools: [{
-          type: "function",
-          function: {
-            name: "extract_properties",
-            description: "Extract structured FII property list",
-            parameters: {
-              type: "object",
+    const { response } = await callAI({
+      model: "gemini-2.5-flash",
+      messages: [
+        { role: "system", content: "Você extrai dados estruturados de imóveis de FIIs a partir de textos coletados de portais financeiros brasileiros. Seja preciso e extraia todos os imóveis mencionados." },
+        { role: "user", content: prompt },
+      ],
+      tools: [{
+        type: "function",
+        function: {
+          name: "extract_properties",
+          description: "Extract structured FII property list",
+          parameters: {
+            type: "object",
+            properties: {
+              fund_name: { type: "string", description: "Nome completo do fundo" },
+              total_properties: { type: "number", description: "Total de imóveis" },
+              total_area: { type: "number", description: "Área total bruta locável em m²" },
               properties: {
-                fund_name: { type: "string", description: "Nome completo do fundo" },
-                total_properties: { type: "number", description: "Total de imóveis" },
-                total_area: { type: "number", description: "Área total bruta locável em m² (se disponível)" },
-                properties: {
-                  type: "array",
-                  items: {
-                    type: "object",
-                    properties: {
-                      name: { type: "string", description: "Nome do imóvel" },
-                      state: { type: "string", description: "Sigla do estado (SP, RJ, MG...)" },
-                      city: { type: "string", description: "Cidade" },
-                      type: { type: "string", description: "Tipo do imóvel" },
-                      area_m2: { type: "number", description: "Área bruta locável em m²" },
-                      address: { type: "string", description: "Endereço ou localização" },
-                    },
-                    required: ["name", "state"],
-                    additionalProperties: false,
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    name: { type: "string", description: "Nome do imóvel" },
+                    state: { type: "string", description: "Sigla do estado" },
+                    city: { type: "string", description: "Cidade" },
+                    type: { type: "string", description: "Tipo do imóvel" },
+                    area_m2: { type: "number", description: "Área bruta locável em m²" },
+                    address: { type: "string", description: "Endereço ou localização" },
                   },
+                  required: ["name", "state"],
+                  additionalProperties: false,
                 },
               },
-              required: ["fund_name", "properties"],
-              additionalProperties: false,
             },
+            required: ["fund_name", "properties"],
+            additionalProperties: false,
           },
-        }],
-        tool_choice: { type: "function", function: { name: "extract_properties" } },
-      }),
+        },
+      }],
+      tool_choice: { type: "function", function: { name: "extract_properties" } },
     });
 
     if (!response.ok) {

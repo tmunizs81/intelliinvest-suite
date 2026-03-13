@@ -1,17 +1,38 @@
-
-
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+async function callAI(body: any): Promise<{ response: Response; provider: string }> {
+  const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
+  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+  if (DEEPSEEK_API_KEY) {
+    try {
+      const { model, ...rest } = body;
+      const resp = await fetch("https://api.deepseek.com/v1/chat/completions", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${DEEPSEEK_API_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ ...rest, model: "deepseek-chat" }),
+      });
+      if (resp.ok) return { response: resp, provider: "deepseek" };
+      console.warn("DeepSeek failed:", resp.status, "falling back to Lovable AI");
+    } catch (e) { console.warn("DeepSeek error, falling back:", e); }
+  }
+  if (!LOVABLE_API_KEY) throw new Error("No AI provider available");
+  const { model, ...rest } = body;
+  const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ ...rest, model: model?.startsWith("google/") ? model : `google/${model || "gemini-2.5-flash"}` }),
+  });
+  return { response: resp, provider: "lovable" };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
-
     const { portfolio } = await req.json();
     if (!portfolio?.length) {
       return new Response(JSON.stringify({ error: "portfolio required" }), {
@@ -35,53 +56,46 @@ Regras:
 
 Use a ferramenta para retornar resultado estruturado.`;
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          { role: "system", content: "Você é um analista fundamentalista especialista em valuation de ações e FIIs brasileiros. Calcule preços teto de forma conservadora e realista." },
-          { role: "user", content: prompt },
-        ],
-        tools: [{
-          type: "function",
-          function: {
-            name: "calculate_ceiling_prices",
-            description: "Return ceiling price calculations",
-            parameters: {
-              type: "object",
-              properties: {
-                summary: { type: "string", description: "Brief overall assessment (max 100 chars)" },
-                assets: {
-                  type: "array",
-                  items: {
-                    type: "object",
-                    properties: {
-                      ticker: { type: "string" },
-                      current_price: { type: "number" },
-                      bazin_ceiling: { type: "number", description: "Bazin ceiling price, 0 if N/A" },
-                      graham_ceiling: { type: "number", description: "Graham ceiling price, 0 if N/A" },
-                      is_below_bazin: { type: "boolean" },
-                      is_below_graham: { type: "boolean" },
-                      verdict: { type: "string", description: "Buy/Hold/Expensive (max 20 chars)" },
-                      note: { type: "string", description: "Brief note (max 60 chars)" },
-                    },
-                    required: ["ticker", "current_price", "bazin_ceiling", "graham_ceiling", "is_below_bazin", "is_below_graham", "verdict", "note"],
-                    additionalProperties: false,
+    const { response } = await callAI({
+      model: "gemini-2.5-flash",
+      messages: [
+        { role: "system", content: "Você é um analista fundamentalista especialista em valuation de ações e FIIs brasileiros. Calcule preços teto de forma conservadora e realista." },
+        { role: "user", content: prompt },
+      ],
+      tools: [{
+        type: "function",
+        function: {
+          name: "calculate_ceiling_prices",
+          description: "Return ceiling price calculations",
+          parameters: {
+            type: "object",
+            properties: {
+              summary: { type: "string", description: "Brief overall assessment (max 100 chars)" },
+              assets: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    ticker: { type: "string" },
+                    current_price: { type: "number" },
+                    bazin_ceiling: { type: "number", description: "Bazin ceiling price, 0 if N/A" },
+                    graham_ceiling: { type: "number", description: "Graham ceiling price, 0 if N/A" },
+                    is_below_bazin: { type: "boolean" },
+                    is_below_graham: { type: "boolean" },
+                    verdict: { type: "string", description: "Buy/Hold/Expensive (max 20 chars)" },
+                    note: { type: "string", description: "Brief note (max 60 chars)" },
                   },
+                  required: ["ticker", "current_price", "bazin_ceiling", "graham_ceiling", "is_below_bazin", "is_below_graham", "verdict", "note"],
+                  additionalProperties: false,
                 },
               },
-              required: ["summary", "assets"],
-              additionalProperties: false,
             },
+            required: ["summary", "assets"],
+            additionalProperties: false,
           },
-        }],
-        tool_choice: { type: "function", function: { name: "calculate_ceiling_prices" } },
-      }),
+        },
+      }],
+      tool_choice: { type: "function", function: { name: "calculate_ceiling_prices" } },
     });
 
     if (!response.ok) {

@@ -1,17 +1,38 @@
-
-
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+async function callAI(body: any): Promise<{ response: Response; provider: string }> {
+  const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
+  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+  if (DEEPSEEK_API_KEY) {
+    try {
+      const { model, ...rest } = body;
+      const resp = await fetch("https://api.deepseek.com/v1/chat/completions", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${DEEPSEEK_API_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ ...rest, model: "deepseek-chat" }),
+      });
+      if (resp.ok) return { response: resp, provider: "deepseek" };
+      console.warn("DeepSeek failed:", resp.status, "falling back to Lovable AI");
+    } catch (e) { console.warn("DeepSeek error, falling back:", e); }
+  }
+  if (!LOVABLE_API_KEY) throw new Error("No AI provider available");
+  const { model, ...rest } = body;
+  const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ ...rest, model: model?.startsWith("google/") ? model : `google/${model || "gemini-2.5-flash"}` }),
+  });
+  return { response: resp, provider: "lovable" };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
-
     const { portfolio, scenario } = await req.json();
     if (!portfolio?.length || !scenario) {
       return new Response(JSON.stringify({ error: "portfolio and scenario required" }), {
@@ -32,58 +53,48 @@ ${portfolioText}
 
 Calcule o impacto estimado no patrimônio e em cada ativo. Use a ferramenta para retornar resultado estruturado.`;
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          { role: "system", content: "Você é um simulador financeiro. Calcule impactos de cenários na carteira do investidor brasileiro de forma realista e educativa." },
-          { role: "user", content: prompt },
-        ],
-        tools: [{
-          type: "function",
-          function: {
-            name: "simulate_scenario",
-            description: "Return simulation results",
-            parameters: {
-              type: "object",
-              properties: {
-                scenario_name: { type: "string" },
-                summary: { type: "string", description: "Impact summary (max 120 chars)" },
-                current_total: { type: "number" },
-                projected_total: { type: "number" },
-                impact_pct: { type: "number" },
-                impacts: {
-                  type: "array",
-                  items: {
-                    type: "object",
-                    properties: {
-                      ticker: { type: "string" },
-                      current_value: { type: "number" },
-                      projected_value: { type: "number" },
-                      impact_pct: { type: "number" },
-                      reasoning: { type: "string" },
-                    },
-                    required: ["ticker", "current_value", "projected_value", "impact_pct", "reasoning"],
-                    additionalProperties: false,
+    const { response } = await callAI({
+      model: "gemini-2.5-flash",
+      messages: [
+        { role: "system", content: "Você é um simulador financeiro. Calcule impactos de cenários na carteira do investidor brasileiro de forma realista e educativa." },
+        { role: "user", content: prompt },
+      ],
+      tools: [{
+        type: "function",
+        function: {
+          name: "simulate_scenario",
+          description: "Return simulation results",
+          parameters: {
+            type: "object",
+            properties: {
+              scenario_name: { type: "string" },
+              summary: { type: "string", description: "Impact summary (max 120 chars)" },
+              current_total: { type: "number" },
+              projected_total: { type: "number" },
+              impact_pct: { type: "number" },
+              impacts: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    ticker: { type: "string" },
+                    current_value: { type: "number" },
+                    projected_value: { type: "number" },
+                    impact_pct: { type: "number" },
+                    reasoning: { type: "string" },
                   },
-                },
-                recommendations: {
-                  type: "array",
-                  items: { type: "string" },
+                  required: ["ticker", "current_value", "projected_value", "impact_pct", "reasoning"],
+                  additionalProperties: false,
                 },
               },
-              required: ["scenario_name", "summary", "current_total", "projected_total", "impact_pct", "impacts", "recommendations"],
-              additionalProperties: false,
+              recommendations: { type: "array", items: { type: "string" } },
             },
+            required: ["scenario_name", "summary", "current_total", "projected_total", "impact_pct", "impacts", "recommendations"],
+            additionalProperties: false,
           },
-        }],
-        tool_choice: { type: "function", function: { name: "simulate_scenario" } },
-      }),
+        },
+      }],
+      tool_choice: { type: "function", function: { name: "simulate_scenario" } },
     });
 
     if (!response.ok) {

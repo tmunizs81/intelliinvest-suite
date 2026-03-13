@@ -1,17 +1,38 @@
-
-
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+async function callAI(body: any): Promise<{ response: Response; provider: string }> {
+  const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
+  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+  if (DEEPSEEK_API_KEY) {
+    try {
+      const { model, ...rest } = body;
+      const resp = await fetch("https://api.deepseek.com/v1/chat/completions", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${DEEPSEEK_API_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ ...rest, model: "deepseek-chat" }),
+      });
+      if (resp.ok) return { response: resp, provider: "deepseek" };
+      console.warn("DeepSeek failed:", resp.status, "falling back to Lovable AI");
+    } catch (e) { console.warn("DeepSeek error, falling back:", e); }
+  }
+  if (!LOVABLE_API_KEY) throw new Error("No AI provider available");
+  const { model, ...rest } = body;
+  const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ ...rest, model: model?.startsWith("google/") ? model : `google/${model || "gemini-2.5-flash"}` }),
+  });
+  return { response: resp, provider: "lovable" };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
-
     const { portfolio, goal_amount, goal_years, monthly_contribution } = await req.json();
 
     const totalValue = portfolio?.reduce((s: number, a: any) => s + (a.currentPrice * a.quantity), 0) || 0;
@@ -21,65 +42,51 @@ ${monthly_contribution ? `Ele pode investir R$${monthly_contribution}/mês.` : '
 
 Calcule: aporte mensal necessário, taxa de retorno necessária, probabilidade de sucesso e sugira alocação ideal.`;
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          { role: "system", content: "Você é um planejador financeiro especialista brasileiro. Calcule metas de investimento com precisão e sugira alocações realistas." },
-          { role: "user", content: prompt },
-        ],
-        tools: [{
-          type: "function",
-          function: {
-            name: "calculate_goal",
-            description: "Return investment goal calculation",
-            parameters: {
-              type: "object",
-              properties: {
-                monthly_needed: { type: "number" },
-                required_return_pct: { type: "number" },
-                probability_pct: { type: "number" },
-                years_to_goal: { type: "number" },
-                projected_total: { type: "number" },
-                summary: { type: "string" },
-                suggested_allocation: {
-                  type: "array",
-                  items: {
-                    type: "object",
-                    properties: {
-                      category: { type: "string" },
-                      pct: { type: "number" },
-                      reason: { type: "string" },
-                    },
-                    required: ["category", "pct", "reason"],
-                    additionalProperties: false,
-                  },
-                },
-                milestones: {
-                  type: "array",
-                  items: {
-                    type: "object",
-                    properties: {
-                      year: { type: "number" },
-                      projected_value: { type: "number" },
-                    },
-                    required: ["year", "projected_value"],
-                    additionalProperties: false,
-                  },
+    const { response } = await callAI({
+      model: "gemini-2.5-flash",
+      messages: [
+        { role: "system", content: "Você é um planejador financeiro especialista brasileiro. Calcule metas de investimento com precisão e sugira alocações realistas." },
+        { role: "user", content: prompt },
+      ],
+      tools: [{
+        type: "function",
+        function: {
+          name: "calculate_goal",
+          description: "Return investment goal calculation",
+          parameters: {
+            type: "object",
+            properties: {
+              monthly_needed: { type: "number" },
+              required_return_pct: { type: "number" },
+              probability_pct: { type: "number" },
+              years_to_goal: { type: "number" },
+              projected_total: { type: "number" },
+              summary: { type: "string" },
+              suggested_allocation: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: { category: { type: "string" }, pct: { type: "number" }, reason: { type: "string" } },
+                  required: ["category", "pct", "reason"],
+                  additionalProperties: false,
                 },
               },
-              required: ["monthly_needed", "required_return_pct", "probability_pct", "years_to_goal", "projected_total", "summary", "suggested_allocation", "milestones"],
-              additionalProperties: false,
+              milestones: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: { year: { type: "number" }, projected_value: { type: "number" } },
+                  required: ["year", "projected_value"],
+                  additionalProperties: false,
+                },
+              },
             },
+            required: ["monthly_needed", "required_return_pct", "probability_pct", "years_to_goal", "projected_total", "summary", "suggested_allocation", "milestones"],
+            additionalProperties: false,
           },
-        }],
-        tool_choice: { type: "function", function: { name: "calculate_goal" } },
-      }),
+        },
+      }],
+      tool_choice: { type: "function", function: { name: "calculate_goal" } },
     });
 
     if (!response.ok) {

@@ -1,17 +1,38 @@
-
-
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+async function callAI(body: any): Promise<{ response: Response; provider: string }> {
+  const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
+  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+  if (DEEPSEEK_API_KEY) {
+    try {
+      const { model, ...rest } = body;
+      const resp = await fetch("https://api.deepseek.com/v1/chat/completions", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${DEEPSEEK_API_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ ...rest, model: "deepseek-chat" }),
+      });
+      if (resp.ok) return { response: resp, provider: "deepseek" };
+      console.warn("DeepSeek failed:", resp.status, "falling back to Lovable AI");
+    } catch (e) { console.warn("DeepSeek error, falling back:", e); }
+  }
+  if (!LOVABLE_API_KEY) throw new Error("No AI provider available");
+  const { model, ...rest } = body;
+  const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ ...rest, model: model?.startsWith("google/") ? model : `google/${model || "gemini-2.5-flash"}` }),
+  });
+  return { response: resp, provider: "lovable" };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
-
     const { portfolio } = await req.json();
     if (!portfolio || !Array.isArray(portfolio) || portfolio.length === 0) {
       return new Response(JSON.stringify({ error: "portfolio array required" }), {
@@ -37,55 +58,48 @@ ${portfolioText}
 Avalie: diversificação, concentração, exposição cambial, volatilidade, correlação entre ativos.
 Use a ferramenta generate_health_score para retornar o resultado estruturado.`;
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          { role: "system", content: "Você é um analista de risco especializado em carteiras de investimento brasileiras. Avalie a saúde da carteira de forma objetiva." },
-          { role: "user", content: prompt },
-        ],
-        tools: [{
-          type: "function",
-          function: {
-            name: "generate_health_score",
-            description: "Return portfolio health score and breakdown",
-            parameters: {
-              type: "object",
-              properties: {
-                score: { type: "number", description: "Overall health score 0-100" },
-                grade: { type: "string", enum: ["A+", "A", "B+", "B", "C+", "C", "D", "F"] },
-                summary: { type: "string", description: "One-line assessment in Portuguese (max 80 chars)" },
-                dimensions: {
-                  type: "array",
-                  items: {
-                    type: "object",
-                    properties: {
-                      name: { type: "string", description: "Dimension name in Portuguese" },
-                      score: { type: "number", description: "Score 0-100 for this dimension" },
-                      description: { type: "string", description: "Brief assessment (max 60 chars)" },
-                    },
-                    required: ["name", "score", "description"],
-                    additionalProperties: false,
+    const { response } = await callAI({
+      model: "gemini-2.5-flash",
+      messages: [
+        { role: "system", content: "Você é um analista de risco especializado em carteiras de investimento brasileiras. Avalie a saúde da carteira de forma objetiva." },
+        { role: "user", content: prompt },
+      ],
+      tools: [{
+        type: "function",
+        function: {
+          name: "generate_health_score",
+          description: "Return portfolio health score and breakdown",
+          parameters: {
+            type: "object",
+            properties: {
+              score: { type: "number", description: "Overall health score 0-100" },
+              grade: { type: "string", enum: ["A+", "A", "B+", "B", "C+", "C", "D", "F"] },
+              summary: { type: "string", description: "One-line assessment in Portuguese (max 80 chars)" },
+              dimensions: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    name: { type: "string", description: "Dimension name in Portuguese" },
+                    score: { type: "number", description: "Score 0-100 for this dimension" },
+                    description: { type: "string", description: "Brief assessment (max 60 chars)" },
                   },
-                },
-                recommendations: {
-                  type: "array",
-                  items: { type: "string" },
-                  description: "3-5 actionable recommendations in Portuguese",
+                  required: ["name", "score", "description"],
+                  additionalProperties: false,
                 },
               },
-              required: ["score", "grade", "summary", "dimensions", "recommendations"],
-              additionalProperties: false,
+              recommendations: {
+                type: "array",
+                items: { type: "string" },
+                description: "3-5 actionable recommendations in Portuguese",
+              },
             },
+            required: ["score", "grade", "summary", "dimensions", "recommendations"],
+            additionalProperties: false,
           },
-        }],
-        tool_choice: { type: "function", function: { name: "generate_health_score" } },
-      }),
+        },
+      }],
+      tool_choice: { type: "function", function: { name: "generate_health_score" } },
     });
 
     if (!response.ok) {
@@ -99,7 +113,6 @@ Use a ferramenta generate_health_score para retornar o resultado estruturado.`;
     if (!toolCall?.function?.arguments) throw new Error("No structured response");
 
     const parsed = JSON.parse(toolCall.function.arguments);
-
     return new Response(JSON.stringify(parsed), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

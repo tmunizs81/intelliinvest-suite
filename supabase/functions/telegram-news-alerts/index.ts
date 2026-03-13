@@ -1,10 +1,39 @@
-
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+async function callAISimple(messages: any[]): Promise<string | null> {
+  const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
+  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+
+  if (DEEPSEEK_API_KEY) {
+    try {
+      const resp = await fetch("https://api.deepseek.com/v1/chat/completions", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${DEEPSEEK_API_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ model: "deepseek-chat", messages, max_tokens: 600 }),
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        return data.choices?.[0]?.message?.content || null;
+      }
+      console.warn("DeepSeek failed, falling back");
+    } catch (e) { console.warn("DeepSeek error:", e); }
+  }
+
+  if (!LOVABLE_API_KEY) return null;
+  const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ model: "google/gemini-2.5-flash", messages, max_tokens: 600 }),
+  });
+  if (!resp.ok) return null;
+  const data = await resp.json();
+  return data.choices?.[0]?.message?.content || null;
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -13,8 +42,6 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN")!;
-    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY")!;
     const adminClient = createClient(supabaseUrl, supabaseServiceKey);
 
     const { data: telegramUsers } = await adminClient
@@ -43,27 +70,13 @@ Deno.serve(async (req) => {
 
         const tickers = holdings.map((h: any) => h.ticker).slice(0, 10);
 
-        // Use AI to generate relevant news summary
-        const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${LOVABLE_API_KEY}`,
+        const newsContent = await callAISimple([
+          {
+            role: "system",
+            content: `Você é um analista financeiro. Gere um resumo de 3-5 notícias fictícias mas realistas e relevantes para os seguintes ativos brasileiros: ${tickers.join(', ')}. Para cada notícia inclua: emoji de impacto (🟢 positivo, 🔴 negativo, 🟡 neutro), ticker relacionado, título curto, e uma frase de impacto. Responda em formato de lista com markdown.`,
           },
-          body: JSON.stringify({
-            model: "google/gemini-2.5-flash",
-            messages: [
-              {
-                role: "system",
-                content: `Você é um analista financeiro. Gere um resumo de 3-5 notícias fictícias mas realistas e relevantes para os seguintes ativos brasileiros: ${tickers.join(', ')}. Para cada notícia inclua: emoji de impacto (🟢 positivo, 🔴 negativo, 🟡 neutro), ticker relacionado, título curto, e uma frase de impacto. Responda em formato de lista com markdown.`,
-              },
-              { role: "user", content: `Gere notícias relevantes para hoje ${new Date().toLocaleDateString('pt-BR')} sobre os ativos: ${tickers.join(', ')}` },
-            ],
-            max_tokens: 600,
-          }),
-        });
-        const aiData = await aiResp.json();
-        const newsContent = aiData.choices?.[0]?.message?.content;
+          { role: "user", content: `Gere notícias relevantes para hoje ${new Date().toLocaleDateString('pt-BR')} sobre os ativos: ${tickers.join(', ')}` },
+        ]);
 
         if (!newsContent) continue;
 
@@ -76,7 +89,6 @@ Deno.serve(async (req) => {
         });
 
         results.push({ userId: tgUser.user_id, success: true });
-
         await new Promise(r => setTimeout(r, 2000));
       } catch (err) {
         results.push({ userId: tgUser.user_id, error: String(err) });
