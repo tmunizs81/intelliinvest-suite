@@ -9,21 +9,17 @@ const corsHeaders = {
 const userCalls = new Map<string, number[]>();
 const MAX_CALLS_PER_MIN = 10;
 
-function checkRateLimit(req: Request): Response | null {
+function isRateLimited(req: Request): boolean {
   const auth = req.headers.get("authorization") || "";
   const parts = auth.replace("Bearer ", "").split(".");
   let userId = "anon";
   try { if (parts[1]) { const p = JSON.parse(atob(parts[1])); userId = p.sub || "anon"; } } catch {}
   const now = Date.now();
   const calls = (userCalls.get(userId) || []).filter(t => now - t < 60000);
-  if (calls.length >= MAX_CALLS_PER_MIN) {
-    return new Response(JSON.stringify({ error: "Rate limit: máximo de 10 chamadas/minuto." }), {
-      status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
+  if (calls.length >= MAX_CALLS_PER_MIN) return true;
   calls.push(now);
   userCalls.set(userId, calls);
-  return null;
+  return false;
 }
 
 async function callAI(body: any): Promise<{ response: Response; provider: string }> {
