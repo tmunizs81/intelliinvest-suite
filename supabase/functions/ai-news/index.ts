@@ -255,16 +255,30 @@ async function classifyWithAI(rawNews: SimpleNews[], tickers: string[]) {
 
   const deepseekResponse = await callDeepSeek(payload);
   if (deepseekResponse) {
-    const deepseekJson = await deepseekResponse.json();
-    const args = deepseekJson?.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
-    if (args) return { parsed: JSON.parse(args), provider: "deepseek" };
+    try {
+      const deepseekJson = await deepseekResponse.json();
+      const args = deepseekJson?.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
+      if (args) {
+        const parsed = JSON.parse(args);
+        if (parsed?.news?.length) return { parsed, provider: "deepseek" };
+      }
+    } catch {
+      // continue to secondary provider
+    }
   }
 
   const lovableResponse = await callLovable(payload);
   if (lovableResponse) {
-    const lovableJson = await lovableResponse.json();
-    const args = lovableJson?.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
-    if (args) return { parsed: JSON.parse(args), provider: "lovable" };
+    try {
+      const lovableJson = await lovableResponse.json();
+      const args = lovableJson?.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
+      if (args) {
+        const parsed = JSON.parse(args);
+        if (parsed?.news?.length) return { parsed, provider: "lovable" };
+      }
+    } catch {
+      // graceful fallback handled below
+    }
   }
 
   return null;
@@ -276,10 +290,12 @@ Deno.serve(async (req) => {
   try {
     const { tickers } = await req.json();
     if (!Array.isArray(tickers) || tickers.length === 0) {
-      return new Response(JSON.stringify({ error: "tickers required" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return jsonResponse({
+        news: [],
+        _provider: "fallback",
+        _fallback: true,
+        _fallback_reason: "invalid_tickers",
+      }, "fallback");
     }
 
     const tickerList: string[] = tickers.slice(0, 8);
