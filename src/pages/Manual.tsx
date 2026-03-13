@@ -577,7 +577,7 @@ A tela de **Análise Avançada** oferece ferramentas profissionais para análise
 - Informações: Nome, Tipo, Cidade, Estado, Área (m²), Endereço
 - **Gráfico de distribuição** por estado (donut chart)
 - **Barras por estado** com contagem de imóveis
-- Dados coletados de Investidor10 e StatusInvest via IA
+- Dados coletados de Investidor10, StatusInvest e FundsExplorer via parsing direto com fallback IA (DeepSeek)
 
 ### 📰 Notícias de Mercado e Opinião IA:
 - Varredura automática nos principais portais financeiros brasileiros e mundiais
