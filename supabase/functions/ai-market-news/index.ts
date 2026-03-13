@@ -306,7 +306,7 @@ Deno.serve(async (req) => {
       const data = await response.json();
       const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
       if (!toolCall?.function?.arguments) {
-        const fallback = buildFallbackOpinion(ticker, name, type, uniqueNews, "no_tool_call");
+        const fallback = buildFallbackOpinion(ticker, name, type, prioritizedNews, "no_tool_call");
         fallback._provider = provider;
         localCache.set(cacheKey, { data: fallback, ts: Date.now() });
         return new Response(JSON.stringify(fallback), {
