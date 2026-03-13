@@ -105,7 +105,7 @@ async function callAI(body: any): Promise<{ response: Response; provider: string
         method: "POST",
         headers: { Authorization: `Bearer ${DEEPSEEK_API_KEY}`, "Content-Type": "application/json" },
         body: JSON.stringify({ ...rest, model: "deepseek-chat" }),
-        signal: AbortSignal.timeout(6000),
+        signal: AbortSignal.timeout(10000),
       });
       if (resp.ok) return { response: resp, provider: "deepseek" };
     } catch { /* fallback */ }
@@ -116,7 +116,7 @@ async function callAI(body: any): Promise<{ response: Response; provider: string
     method: "POST",
     headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
     body: JSON.stringify({ ...rest, model: model?.startsWith("google/") ? model : `google/${model || "gemini-2.5-flash"}` }),
-    signal: AbortSignal.timeout(6000),
+    signal: AbortSignal.timeout(10000),
   });
   return { response: resp, provider: "lovable" };
 }
