@@ -28,6 +28,8 @@ function checkRateLimit(req: Request): Response | null {
 const AI_TIMEOUT_MS = 12000;
 
 async function callAI(body: any): Promise<Response> {
+  const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
+  const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
 
   if (DEEPSEEK_API_KEY) {
     const resp = await fetch("https://api.deepseek.com/v1/chat/completions", {
@@ -48,37 +50,7 @@ async function callAI(body: any): Promise<Response> {
     headers: { Authorization: `Bearer ${GEMINI_API_KEY}`, "Content-Type": "application/json" },
     body: JSON.stringify({ ...body, model: "gemini-2.5-flash" }),
   });
-}`, "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-        signal: AbortSignal.timeout(AI_TIMEOUT_MS),
-      });
-      if (resp.ok || resp.status === 402) return resp;
-      if (resp.status !== 429 && resp.status < 500) return resp;
-      console.warn(`Lovable AI failed (${resp.status}), trying DeepSeek fallback...`);
-      try { await resp.text(); } catch {}
-    } catch (err) {
-      console.warn("Lovable AI request failed, trying fallback:", err);
-    }
-  }
-
-  if (!DEEPSEEK_API_KEY) {
-    throw new Error("A análise de IA demorou para responder. Tente novamente em instantes.");
-  }
-
-  console.log("Using DeepSeek fallback");
-  try {
-    return await fetch("https://api.deepseek.com/v1/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${DEEPSEEK_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ ...body, model: "deepseek-chat" }),
-      signal: AbortSignal.timeout(AI_TIMEOUT_MS),
-    });
-  } catch (err) {
-    console.error("DeepSeek fallback failed:", err);
-    throw new Error("A análise de IA demorou para responder. Tente novamente.");
-  }
 }
-
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 

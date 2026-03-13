@@ -26,6 +26,8 @@ function checkRateLimit(req: Request): Response | null {
 }
 
 async function callAI(body: any): Promise<Response> {
+  const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
+  const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
 
   if (DEEPSEEK_API_KEY) {
     const resp = await fetch("https://api.deepseek.com/v1/chat/completions", {
@@ -46,45 +48,7 @@ async function callAI(body: any): Promise<Response> {
     headers: { Authorization: `Bearer ${GEMINI_API_KEY}`, "Content-Type": "application/json" },
     body: JSON.stringify({ ...body, model: "gemini-2.5-flash" }),
   });
-}`, "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    if (resp.ok || resp.status === 402) return resp;
-    if (resp.status !== 429 && resp.status < 500) return resp;
-    console.warn(`Lovable AI failed (${resp.status}), trying DeepSeek fallback...`);
-    try { await resp.text(); } catch {}
-  }
-  if (!DEEPSEEK_API_KEY) throw new Error("No AI provider available");
-  console.log("Using DeepSeek fallback");
-  return fetch("https://api.deepseek.com/v1/chat/completions", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${DEEPSEEK_API_KEY}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ ...body, model: "deepseek-chat" }),
-  });
 }
-
-const SYSTEM_PROMPT = `Você é um consultor de investimentos AI de elite, especialista no mercado brasileiro (B3), criptomoedas, renda fixa e fundos imobiliários.
-
-Você recebe dados da carteira do usuário com cotações reais do Yahoo Finance. Sua função é analisar e gerar insights acionáveis.
-
-REGRAS:
-- Responda SEMPRE em português brasileiro
-- Use linguagem profissional mas acessível
-- Seja direto e objetivo
-- Forneça números e percentuais quando possível
-- Use tool calling para retornar insights estruturados
-- Gere entre 3 e 6 insights relevantes
-- Cada insight deve ter ação clara
-
-TIPOS DE ANÁLISE:
-1. Concentração de risco (setorial, por ativo)
-2. Ativos em destaque (maiores altas/quedas do dia)
-3. Oportunidades de rebalanceamento
-4. Análise de custo médio vs preço atual
-5. Alertas de risco (queda acentuada, volatilidade)
-6. Dividendos e eventos corporativos potenciais
-7. Comparação com benchmarks (CDI, Ibovespa)`;
-
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
