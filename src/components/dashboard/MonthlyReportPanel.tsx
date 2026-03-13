@@ -149,7 +149,15 @@ ${data.recommendations.map(r => `<div class="rec">${r}</div>`).join('')}
           </div>
         )}
 
-        {error && <p className="text-xs text-loss">⚠️ {error}</p>}
+        {error && (
+          <div className="text-center py-4 space-y-2">
+            <p className="text-xs text-loss">⚠️ {error}</p>
+            {error.includes('Créditos') && (
+              <p className="text-[10px] text-muted-foreground">Os créditos de IA estão esgotados. Aguarde a renovação ou entre em contato com o suporte.</p>
+            )}
+            <button onClick={generate} className="text-[10px] text-primary hover:underline">Tentar novamente</button>
+          </div>
+        )}
 
         {data && !loading && (
           <div className="space-y-4">
