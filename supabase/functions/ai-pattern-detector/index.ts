@@ -31,7 +31,7 @@ async function callAI(body: any): Promise<{ response: Response; provider: string
       Authorization: `Bearer ${LOVABLE_API_KEY}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ ...rest, model: model || "google/gemini-2.5-flash" }),
+    body: JSON.stringify({ ...rest, model: model && model.startsWith("google/") ? model : `google/${model || "gemini-2.5-flash"}` }),
   });
 
   return { response: resp, provider: "lovable" };
