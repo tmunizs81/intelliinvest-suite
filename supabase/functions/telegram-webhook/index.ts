@@ -445,14 +445,14 @@ Deno.serve(async (req) => {
       }, 0);
 
       try {
-        const aiResp = await fetch(DEEPSEEK_API_KEY ? "https://api.deepseek.com/v1/chat/completions" : "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
+        const aiResp = await fetch(GEMINI_API_KEY ? "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions" : "https://api.groq.com/openai/v1/chat/completions", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             "Authorization": `Bearer ${GEMINI_API_KEY}`,
           },
           body: JSON.stringify({
-            model: DEEPSEEK_API_KEY ? "deepseek-chat" : "gemini-2.5-flash",
+            model: GEMINI_API_KEY ? "gemini-2.5-flash" : "llama-3.3-70b-versatile",
             messages: [
               {
                 role: "system",

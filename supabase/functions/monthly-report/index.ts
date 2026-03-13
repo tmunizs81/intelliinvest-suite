@@ -120,31 +120,31 @@ Deno.serve(async (req) => {
       { role: "user", content: `Gere um relatório mensal completo da carteira para o período ${periodStr}:\n\nPatrimônio: R$${totalValue.toFixed(2)} | Custo: R$${totalCost.toFixed(2)} | Retorno Total: ${totalReturn.toFixed(2)}%\n${portfolio.length} ativos:\n${portfolioText}\n\nInclua: resumo executivo, performance geral, top 3 melhores e piores, análise de dividendos, recomendações para o próximo mês, e avaliação de risco.` },
     ];
 
-    // Try DeepSeek first, then Gemini as fallback
-    const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
+    // Try Gemini first, then Groq as fallback
     const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+    const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
 
     let result: string | null = null;
 
-    if (DEEPSEEK_API_KEY) {
-      try {
-        result = await callAI(
-          "https://api.deepseek.com/v1/chat/completions",
-          DEEPSEEK_API_KEY, "deepseek-chat", messages
-        );
-      } catch (e) {
-        console.error("DeepSeek failed, trying fallback:", e);
-      }
-    }
-
-    if (!result && GEMINI_API_KEY) {
+    if (GEMINI_API_KEY) {
       try {
         result = await callAI(
           "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
           GEMINI_API_KEY, "gemini-2.5-flash", messages
         );
       } catch (e) {
-        console.error("Gemini fallback also failed:", e);
+        console.error("Gemini failed, trying fallback:", e);
+      }
+    }
+
+    if (!result && GROQ_API_KEY) {
+      try {
+        result = await callAI(
+          "https://api.groq.com/openai/v1/chat/completions",
+          GROQ_API_KEY, "llama-3.3-70b-versatile", messages
+        );
+      } catch (e) {
+        console.error("Groq fallback also failed:", e);
       }
     }
 
