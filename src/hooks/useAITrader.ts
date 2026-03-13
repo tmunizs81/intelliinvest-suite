@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { type Asset } from '@/lib/mockData';
+import { toast } from '@/hooks/use-toast';
 
 export type ChatMessage = {
   id: string;
