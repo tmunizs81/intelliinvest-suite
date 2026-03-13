@@ -1299,8 +1299,8 @@ export default function Manual() {
 
       {/* Footer - print only */}
       <div className="hidden print:block mt-12 pt-4 border-t text-center text-xs text-muted-foreground">
-        <p>T2-SimplyNvest — Manual do Usuário v3.0</p>
-        <p>© 2025 T2 Systems. Todos os direitos reservados.</p>
+        <p>T2-SimplyNvest — Manual do Usuário v3.1</p>
+        <p>© 2026 T2 Systems. Todos os direitos reservados.</p>
       </div>
     </div>
   );
