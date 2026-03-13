@@ -295,7 +295,7 @@ Deno.serve(async (req) => {
       });
 
       if (!response.ok) {
-        const fallback = buildFallbackOpinion(ticker, name, type, uniqueNews, `ai_http_${response.status}`);
+        const fallback = buildFallbackOpinion(ticker, name, type, prioritizedNews, `ai_http_${response.status}`);
         fallback._provider = provider;
         localCache.set(cacheKey, { data: fallback, ts: Date.now() });
         return new Response(JSON.stringify(fallback), {
