@@ -55,15 +55,18 @@ const REPORT_TOOL = {
   },
 };
 
-async function callAI(url: string, apiKey: string, model: string, messages: any[]) {
-  const response = await fetch(url, {
+async function callAI(messages: any[]) {
+  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+  if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+
+  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${apiKey}`,
+      Authorization: `Bearer ${LOVABLE_API_KEY}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model,
+      model: "google/gemini-2.5-flash",
       messages,
       tools: [REPORT_TOOL],
       tool_choice: { type: "function", function: { name: "generate_report" } },
@@ -72,14 +75,13 @@ async function callAI(url: string, apiKey: string, model: string, messages: any[
 
   if (!response.ok) {
     const text = await response.text().catch(() => "");
-    console.error(`AI ${model} error ${response.status}:`, text);
+    console.error(`AI error ${response.status}:`, text);
     throw new Error(`AI error: ${response.status}`);
   }
 
   const data = await response.json();
   const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
   if (!toolCall?.function?.arguments) {
-    // Fallback: try to parse content directly
     const content = data.choices?.[0]?.message?.content;
     if (content) {
       const jsonMatch = content.match(/\{[\s\S]*\}/);
@@ -120,44 +122,11 @@ Deno.serve(async (req) => {
       { role: "user", content: `Gere um relatório mensal completo da carteira para o período ${periodStr}:\n\nPatrimônio: R$${totalValue.toFixed(2)} | Custo: R$${totalCost.toFixed(2)} | Retorno Total: ${totalReturn.toFixed(2)}%\n${portfolio.length} ativos:\n${portfolioText}\n\nInclua: resumo executivo, performance geral, top 3 melhores e piores, análise de dividendos, recomendações para o próximo mês, e avaliação de risco.` },
     ];
 
-    // Try OpenRouter first, then Gemini, then Groq as fallback
-    const OPENROUTER_API_KEY = Deno.env.get("OPENROUTER_API_KEY");
-    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
-    const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
-
     let result: string | null = null;
-
-    if (OPENROUTER_API_KEY) {
-      try {
-        result = await callAI(
-          "https://openrouter.ai/api/v1/chat/completions",
-          OPENROUTER_API_KEY, "google/gemini-2.5-flash", messages
-        );
-      } catch (e) {
-        console.error("OpenRouter failed, trying Gemini:", e);
-      }
-    }
-
-    if (!result && GEMINI_API_KEY) {
-      try {
-        result = await callAI(
-          "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
-          GEMINI_API_KEY, "gemini-2.5-flash", messages
-        );
-      } catch (e) {
-        console.error("Gemini failed, trying Groq:", e);
-      }
-    }
-
-    if (!result && GROQ_API_KEY) {
-      try {
-        result = await callAI(
-          "https://api.groq.com/openai/v1/chat/completions",
-          GROQ_API_KEY, "llama-3.3-70b-versatile", messages
-        );
-      } catch (e) {
-        console.error("Groq fallback also failed:", e);
-      }
+    try {
+      result = await callAI(messages);
+    } catch (e) {
+      console.error("Lovable AI failed:", e);
     }
 
     if (!result) {
