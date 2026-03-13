@@ -57,6 +57,111 @@ const userAgents = [
 
 function randomUA() { return userAgents[Math.floor(Math.random() * userAgents.length)]; }
 
+function getAssetCategory(ticker: string, type?: string): 'fii' | 'stock' | 'etf' | 'bdr' | 'other' {
+  if (type === 'FII') return 'fii';
+  if (type === 'ETF') return 'etf';
+  if (type === 'BDR') return 'bdr';
+  const t = ticker.toUpperCase();
+  if (/^[A-Z]{4}11$/.test(t)) return 'fii';
+  if (/^[A-Z]{4}(34|35|39)$/.test(t)) return 'bdr';
+  if (/^[A-Z]{4}\d{1,2}$/.test(t)) return 'stock';
+  return 'other';
+}
+
+// ─── StatusInvest (auxiliary for BR indicators) ───
+async function tryStatusInvest(ticker: string, category: string): Promise<Partial<FundamentalResult> | null> {
+  try {
+    const slug = category === 'fii' ? 'fundos-imobiliarios' : category === 'etf' ? 'etfs' : 'acoes';
+    const url = `https://statusinvest.com.br/${slug}/${ticker.toLowerCase()}`;
+    const resp = await fetch(url, {
+      headers: {
+        "User-Agent": randomUA(),
+        "Accept": "text/html,application/xhtml+xml",
+        "Accept-Language": "pt-BR,pt;q=0.9",
+      },
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!resp.ok) return null;
+    const html = await resp.text();
+    if (!html || html.length < 1000) return null;
+
+    // Extract values using StatusInvest's data-statusvalue or title+value pattern
+    const extractValue = (label: string): number | null => {
+      // Pattern 1: title="Label" ... <strong class="value" ... >VALUE</strong>
+      // Pattern 2: data-statusvalue with nearby label
+      const patterns = [
+        // Look for title="LABEL" followed by value with data-value
+        new RegExp(`title="${label}"[^>]*>[\\s\\S]*?<strong[^>]*?\\bvalue\\b[^>]*?>[\\s]*([\\d.,%-]+)`, 'i'),
+        // Look for >LABEL< followed by value
+        new RegExp(`>${label}</[^>]+>[\\s\\S]*?<strong[^>]*?>[\\s]*([\\d.,%-]+)`, 'i'),
+        // data-value pattern near label
+        new RegExp(`title="${label}"[\\s\\S]*?data-value="([^"]*)"`, 'i'),
+      ];
+      for (const regex of patterns) {
+        const match = html.match(regex);
+        if (match?.[1]) {
+          const cleaned = match[1].replace(/\./g, '').replace(',', '.').replace('%', '').trim();
+          const num = parseFloat(cleaned);
+          if (!isNaN(num)) return num;
+        }
+      }
+      return null;
+    };
+
+    // Alternative: extract all data-value attributes with their context
+    const extractDataValue = (label: string): number | null => {
+      // Find the section containing the label and get the data-value
+      const escapedLabel = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const regex = new RegExp(`(?:title="|>)${escapedLabel}(?:"|<)[\\s\\S]{0,500}?data-value="([^"]*)"`, 'i');
+      const match = html.match(regex);
+      if (match?.[1]) {
+        const cleaned = match[1].replace(',', '.').trim();
+        const num = parseFloat(cleaned);
+        if (!isNaN(num) && num !== 0) return num;
+      }
+      return null;
+    };
+
+    const result: Partial<FundamentalResult> = {};
+
+    if (category === 'fii') {
+      result.pvpa = extractDataValue('P/VP') ?? extractValue('P/VP');
+      result.dividendYield = extractDataValue('Dividend Yield') ?? extractDataValue('DY');
+      result.lastDividend = extractDataValue('Último Rendimento') ?? extractDataValue('ÚLTIMO RENDIMENTO');
+      result.vacancy = extractDataValue('Vacância') ?? extractDataValue('VACÂNCIA');
+      result.cotistas = extractDataValue('N° de cotistas') ?? extractDataValue('Nº Cotistas') ?? extractDataValue('COTISTAS');
+      result.patrimony = extractDataValue('Patrimônio Líq') ?? extractDataValue('PATRIMÔNIO');
+      result.pb = result.pvpa; // P/VP = P/B for FIIs
+      
+      // Valor Patrimonial per quota
+      const vpCota = extractDataValue('Val. Patrimonial p/ Cota') ?? extractDataValue('VALOR PATRIMONIAL');
+      if (vpCota) result.bookValue = vpCota;
+    } else {
+      // Stocks
+      result.pe = extractDataValue('P/L') ?? extractValue('P/L');
+      result.pb = extractDataValue('P/VP') ?? extractValue('P/VP');
+      result.pvpa = result.pb;
+      result.dividendYield = extractDataValue('Dividend Yield') ?? extractDataValue('DY');
+      result.roe = extractDataValue('ROE');
+      result.netMargin = extractDataValue('Margem Líquida') ?? extractDataValue('MARGEM LÍQUIDA');
+      result.grossMargin = extractDataValue('Margem Bruta') ?? extractDataValue('MARGEM BRUTA');
+      result.evEbitda = extractDataValue('EV/EBITDA');
+      result.payout = extractDataValue('Payout');
+      result.currentRatio = extractDataValue('Liquidez Corrente') ?? extractDataValue('LIQ. CORRENTE');
+      result.debtToEquity = extractDataValue('Dív. Líquida/PL') ?? extractDataValue('DÍV. LÍQ./PL');
+    }
+
+    // Market cap for both
+    const mktCap = extractDataValue('Valor de mercado') ?? extractDataValue('VALOR DE MERCADO');
+    if (mktCap) result.marketCap = mktCap;
+
+    return Object.values(result).some(v => v != null) ? result : null;
+  } catch (e) {
+    console.warn("StatusInvest error:", e);
+    return null;
+  }
+}
+
 // ─── Yahoo Finance V10 ───
 async function getCrumbAndCookie(): Promise<{ crumb: string; cookie: string } | null> {
   try {
@@ -178,7 +283,6 @@ async function tryBrapi(ticker: string): Promise<Partial<FundamentalResult> | nu
       fiftyTwoWeekLow: r.fiftyTwoWeekLow ?? null,
       avgVolume: r.averageDailyVolume10Day ?? null,
       beta: r.beta ?? null,
-      // financialData module
       roe: getRaw(fin.returnOnEquity) != null ? getRaw(fin.returnOnEquity) * 100 : null,
       netMargin: getRaw(fin.profitMargins) != null ? getRaw(fin.profitMargins) * 100 : null,
       grossMargin: getRaw(fin.grossMargins) != null ? getRaw(fin.grossMargins) * 100 : null,
@@ -191,7 +295,6 @@ async function tryBrapi(ticker: string): Promise<Partial<FundamentalResult> | nu
       payout: getRaw(fin.payoutRatio) != null ? getRaw(fin.payoutRatio) * 100 : null,
     };
 
-    // P/VP
     if (r.regularMarketPrice && r.bookValue) {
       result.pb = r.regularMarketPrice / r.bookValue;
       result.bookValue = r.bookValue;
@@ -219,17 +322,6 @@ function mergeData(...sources: Array<Partial<FundamentalResult> | null>): Fundam
   return result;
 }
 
-function getAssetCategory(ticker: string, type?: string): 'fii' | 'stock' | 'etf' | 'bdr' | 'other' {
-  if (type === 'FII') return 'fii';
-  if (type === 'ETF') return 'etf';
-  if (type === 'BDR') return 'bdr';
-  const t = ticker.toUpperCase();
-  if (/^[A-Z]{4}11$/.test(t)) return 'fii';
-  if (/^[A-Z]{4}(34|35|39)$/.test(t)) return 'bdr';
-  if (/^[A-Z]{4}\d{1,2}$/.test(t)) return 'stock';
-  return 'other';
-}
-
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -249,13 +341,15 @@ Deno.serve(async (req) => {
 
     const activeSources: string[] = [];
 
-    // Parallel: Brapi (for BR) + Yahoo V10 + Yahoo Chart
-    const [brapiData, auth] = await Promise.all([
+    // Parallel: Brapi + StatusInvest + Yahoo (all at once)
+    const [brapiData, statusInvestData, auth] = await Promise.all([
       isBrazilian ? tryBrapi(ticker) : Promise.resolve(null),
+      isBrazilian ? tryStatusInvest(ticker, category) : Promise.resolve(null),
       getCrumbAndCookie(),
     ]);
 
     if (brapiData) activeSources.push("Brapi");
+    if (statusInvestData) activeSources.push("StatusInvest");
 
     const [yahooV10, yahooChart] = await Promise.all([
       tryYahooV10(yahooTicker, auth),
@@ -265,10 +359,9 @@ Deno.serve(async (req) => {
     if (yahooV10) activeSources.push("Yahoo Finance");
     if (yahooChart) activeSources.push("Yahoo Chart");
 
-    // For Brazilian: Brapi first, Yahoo as fallback
-    // For international: Yahoo only
+    // Merge priority: Brapi → StatusInvest → Yahoo
     const result = isBrazilian
-      ? mergeData(brapiData, yahooV10, yahooChart)
+      ? mergeData(brapiData, statusInvestData, yahooV10, yahooChart)
       : mergeData(yahooV10, yahooChart);
 
     result.sources = activeSources;
