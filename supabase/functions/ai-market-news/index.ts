@@ -78,7 +78,7 @@ async function fetchGoogleNews(query: string, limit = 4): Promise<NewsItem[]> {
 }
 
 async function fetchRssItems(url: string, source: string, limit = 3): Promise<NewsItem[]> {
-  const xml = await safeFetchText(url, 4500);
+  const xml = await safeFetchText(url, REQUEST_TIMEOUT_MS);
   if (!xml) return [];
 
   const items: NewsItem[] = [];
