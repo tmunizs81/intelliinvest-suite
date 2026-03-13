@@ -2,6 +2,7 @@ const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+  "Access-Control-Expose-Headers": "x-ai-provider",
 };
 
 // ─── Per-user rate limiting ───
@@ -27,7 +28,7 @@ function checkRateLimit(req: Request): Response | null {
 
 const AI_TIMEOUT_MS = 12000;
 
-async function callAI(body: any): Promise<Response> {
+async function callAI(body: any): Promise<{ response: Response; provider: string }> {
   const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
   const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
 
@@ -37,18 +38,19 @@ async function callAI(body: any): Promise<Response> {
       headers: { Authorization: `Bearer ${GEMINI_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({ ...body, model: "gemini-2.5-flash" }),
     });
-    if (resp.ok) return resp;
+    if (resp.ok) return { response: resp, provider: "gemini" };
     console.warn(`Gemini failed (${resp.status}), trying Groq fallback...`);
     try { await resp.text(); } catch {}
   }
 
   if (!GROQ_API_KEY) throw new Error("No AI provider available");
   console.log("Using Groq fallback");
-  return fetch("https://api.groq.com/openai/v1/chat/completions", {
+  const groqResp = await fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
     headers: { Authorization: `Bearer ${GROQ_API_KEY}`, "Content-Type": "application/json" },
     body: JSON.stringify({ ...body, model: "llama-3.3-70b-versatile" }),
   });
+  return { response: groqResp, provider: "groq" };
 }
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -90,7 +92,7 @@ Responda APENAS com JSON válido neste formato exato:
   "confidence": 7
 }`;
 
-    const response = await callAI({
+    const { response, provider } = await callAI({
       model: "gemini-2.5-flash",
       messages: [
         { role: "system", content: "Você é um copilot de investimentos. Analise operações e dê sinais rápidos: verde (favorável), amarelo (atenção), vermelho (desfavorável). Responda APENAS com JSON válido, sem markdown." },
@@ -112,7 +114,7 @@ Responda APENAS com JSON válido neste formato exato:
 
     if (!result.signal || !result.title) throw new Error("Invalid AI response structure");
 
-    return new Response(JSON.stringify(result), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify(result), { headers: { ...corsHeaders, "Content-Type": "application/json", "x-ai-provider": provider } });
   } catch (err) {
     console.error("ai-copilot error:", err);
     return new Response(JSON.stringify({ error: err instanceof Error ? err.message : "Unknown error" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });

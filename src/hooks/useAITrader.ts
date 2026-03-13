@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { type Asset } from '@/lib/mockData';
+import { toast } from '@/hooks/use-toast';
 
 export type ChatMessage = {
   id: string;
@@ -203,6 +204,12 @@ export function useAITrader() {
       if (!resp.ok) {
         const errorData = await resp.json().catch(() => ({}));
         throw new Error(errorData.error || `Erro ${resp.status}`);
+      }
+
+      // Check if using fallback provider
+      const aiProvider = resp.headers.get("x-ai-provider");
+      if (aiProvider === "groq") {
+        toast({ title: "⚡ IA alternativa ativa", description: "Usando modelo alternativo (Groq).", duration: 5000 });
       }
 
       if (!resp.body) throw new Error("No response body");

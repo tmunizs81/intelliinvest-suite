@@ -2,6 +2,7 @@ const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+  "Access-Control-Expose-Headers": "x-ai-provider",
 };
 
 // ─── Per-user rate limiting ───
@@ -25,7 +26,7 @@ function checkRateLimit(req: Request): Response | null {
   return null;
 }
 
-async function callAI(body: any): Promise<Response> {
+async function callAI(body: any): Promise<{ response: Response; provider: string }> {
   const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
   const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
 
@@ -35,18 +36,19 @@ async function callAI(body: any): Promise<Response> {
       headers: { Authorization: `Bearer ${GEMINI_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({ ...body, model: "gemini-2.5-flash" }),
     });
-    if (resp.ok) return resp;
+    if (resp.ok) return { response: resp, provider: "gemini" };
     console.warn(`Gemini failed (${resp.status}), trying Groq fallback...`);
     try { await resp.text(); } catch {}
   }
 
   if (!GROQ_API_KEY) throw new Error("No AI provider available");
   console.log("Using Groq fallback");
-  return fetch("https://api.groq.com/openai/v1/chat/completions", {
+  const groqResp = await fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
     headers: { Authorization: `Bearer ${GROQ_API_KEY}`, "Content-Type": "application/json" },
     body: JSON.stringify({ ...body, model: "llama-3.3-70b-versatile" }),
   });
+  return { response: groqResp, provider: "groq" };
 }
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -90,7 +92,7 @@ ${portfolioSummary}`;
 
     const userMessage = question || "Analise minha carteira e me dê recomendações de investimento personalizadas. Quais ativos devo comprar, manter ou vender? Sugira também novos ativos.";
 
-    const response = await callAI({
+    const { response, provider } = await callAI({
       model: "gemini-2.5-flash",
       messages: [
         { role: "system", content: systemPrompt },
@@ -114,7 +116,7 @@ ${portfolioSummary}`;
     }
 
     return new Response(response.body, {
-      headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
+      headers: { ...corsHeaders, "Content-Type": "text/event-stream", "x-ai-provider": provider },
     });
   } catch (err) {
     console.error("ai-advisor error:", err);

@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { type Asset } from '@/lib/mockData';
+import { checkAIProviderFallback } from '@/lib/aiProviderToast';
 import { Scale, Loader2, RefreshCw, ArrowUp, ArrowDown, Minus, AlertTriangle } from 'lucide-react';
 
 interface AllocationItem {
@@ -48,6 +49,7 @@ export default function RebalancePanel({ assets }: { assets: Asset[] }) {
       });
       if (fnError) throw new Error(fnError.message);
       if (result.error) throw new Error(result.error);
+      checkAIProviderFallback(result);
       setData(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro');

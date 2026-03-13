@@ -1,6 +1,7 @@
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+  "Access-Control-Expose-Headers": "x-ai-provider",
 };
 
 const userCalls = new Map<string, number[]>();
@@ -23,7 +24,7 @@ function checkRateLimit(req: Request): Response | null {
   return null;
 }
 
-async function callAI(body: any): Promise<Response> {
+async function callAI(body: any): Promise<{ response: Response; provider: string }> {
   const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
   const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
 
@@ -33,18 +34,19 @@ async function callAI(body: any): Promise<Response> {
       headers: { Authorization: `Bearer ${GEMINI_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({ ...body, model: "gemini-2.5-flash" }),
     });
-    if (resp.ok) return resp;
+    if (resp.ok) return { response: resp, provider: "gemini" };
     console.warn(`Gemini failed (${resp.status}), trying Groq fallback...`);
     try { await resp.text(); } catch {}
   }
 
   if (!GROQ_API_KEY) throw new Error("No AI provider available");
   console.log("Using Groq fallback");
-  return fetch("https://api.groq.com/openai/v1/chat/completions", {
+  const groqResp = await fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
     headers: { Authorization: `Bearer ${GROQ_API_KEY}`, "Content-Type": "application/json" },
     body: JSON.stringify({ ...body, model: "llama-3.3-70b-versatile" }),
   });
+  return { response: groqResp, provider: "groq" };
 }
 
 function average(values: number[]): number {
@@ -150,7 +152,7 @@ Preço: R$${a.currentPrice?.toFixed(2)}, Var.24h: ${a.change24h?.toFixed(2)}%
 ${summary}`;
     }).join('\n\n');
 
-    const response = await callAI({
+    const { response, provider } = await callAI({
       model: "gemini-2.5-flash",
       messages: [
         {
@@ -215,7 +217,7 @@ SEMPRE identifique pelo menos 3-5 padrões. Use a ferramenta para retornar o res
     if (toolCall?.function?.arguments) {
       try {
         const parsed = JSON.parse(toolCall.function.arguments);
-        return new Response(JSON.stringify(parsed), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ ...parsed, _provider: provider }), { headers: { ...corsHeaders, "Content-Type": "application/json", "x-ai-provider": provider } });
       } catch {}
     }
 
@@ -229,7 +231,7 @@ SEMPRE identifique pelo menos 3-5 padrões. Use a ferramenta para retornar o res
       parsed = { patterns: [] };
     }
 
-    return new Response(JSON.stringify(parsed), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ ...parsed, _provider: provider }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (err) {
     console.error("pattern-detector error:", err);
     return new Response(JSON.stringify({ error: String(err) }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });

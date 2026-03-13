@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { type Asset, type AIInsight } from '@/lib/mockData';
+import { checkAIProviderFallback } from '@/lib/aiProviderToast';
 
 interface AIInsightsResult {
   insights: AIInsight[];
@@ -40,6 +41,7 @@ export function useAIInsights() {
       if (fnError) {
         throw new Error(fnError.message || 'Falha ao gerar insights');
       }
+      checkAIProviderFallback(data);
 
       if (data.error) {
         throw new Error(data.error);

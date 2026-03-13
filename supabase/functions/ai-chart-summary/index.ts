@@ -4,7 +4,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-async function callAI(body: any): Promise<Response> {
+async function callAI(body: any): Promise<{ response: Response; provider: string }> {
   const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
   const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
 
@@ -14,18 +14,19 @@ async function callAI(body: any): Promise<Response> {
       headers: { Authorization: `Bearer ${GEMINI_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({ ...body, model: "gemini-2.5-flash" }),
     });
-    if (resp.ok) return resp;
+    if (resp.ok) return { response: resp, provider: "gemini" };
     console.warn(`Gemini failed (${resp.status}), trying Groq fallback...`);
     try { await resp.text(); } catch {}
   }
 
   if (!GROQ_API_KEY) throw new Error("No AI provider available");
   console.log("Using Groq fallback");
-  return fetch("https://api.groq.com/openai/v1/chat/completions", {
+  const groqResp = await fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
     headers: { Authorization: `Bearer ${GROQ_API_KEY}`, "Content-Type": "application/json" },
     body: JSON.stringify({ ...body, model: "llama-3.3-70b-versatile" }),
   });
+  return { response: groqResp, provider: "groq" };
 }
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -46,7 +47,7 @@ Data atual: ${new Date().toLocaleDateString("pt-BR")}
 
 Forneça um resumo do que os indicadores do gráfico estão mostrando.`;
 
-    const response = await callAI({
+    const { response, provider } = await callAI({
       model: "gemini-2.5-flash",
       messages: [
         { role: "system", content: "Você é um analista técnico especializado em leitura de gráficos de ativos do mercado brasileiro. Analise os dados de candles e indicadores técnicos fornecidos e gere um resumo conciso da situação técnica do ativo. Responda em português." },

@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { type Asset } from '@/lib/mockData';
+import { checkAIProviderFallback } from '@/lib/aiProviderToast';
 import { Newspaper, Loader2, RefreshCw, TrendingUp, TrendingDown, Minus, Globe, Building, Landmark, Scale as ScaleIcon, ExternalLink } from 'lucide-react';
 
 interface NewsItem {
@@ -50,6 +51,7 @@ export default function NewsPanel({ assets }: { assets: Asset[] }) {
       });
       if (fnError) throw new Error(fnError.message);
       if (result.error) throw new Error(result.error);
+      checkAIProviderFallback(result);
       setNews(result.news || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro');

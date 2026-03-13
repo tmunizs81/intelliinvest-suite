@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { type Asset } from '@/lib/mockData';
 import { useAIRateLimit } from '@/hooks/useAIRateLimit';
+import { checkAIProviderFallback } from '@/lib/aiProviderToast';
 import { Shield, Loader2, AlertTriangle, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
 
 interface RiskAnalysis {
@@ -45,6 +46,7 @@ export default function AIRiskPanel({ assets }: Props) {
         body: { assets },
       });
       if (error) throw error;
+      checkAIProviderFallback(data);
       setAnalysis(data);
     } catch {
       setAnalysis(null);
