@@ -233,9 +233,10 @@ Deno.serve(async (req) => {
 
     const settled = await Promise.allSettled(feedJobs);
     const news = settled.flatMap((res) => (res.status === "fulfilled" ? res.value : []));
-    const uniqueNews = dedupeNews(news, 12);
+    const uniqueNews = dedupeNews(news, 16);
+    const prioritizedNews = prioritizeNews(uniqueNews, ticker, 10);
 
-    if (uniqueNews.length === 0) {
+    if (prioritizedNews.length === 0) {
       const fallback = buildFallbackOpinion(ticker, name, type, [], "no_news_sources");
       localCache.set(cacheKey, { data: fallback, ts: Date.now() });
       return new Response(JSON.stringify(fallback), {
@@ -243,8 +244,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const newsContext = uniqueNews
-      .slice(0, 10)
+    const newsContext = prioritizedNews
       .map((n, i) => `[${i + 1}] ${n.title}\n${n.desc}\nFonte: ${n.source || n.link}`)
       .join("\n\n");
 
