@@ -62,38 +62,49 @@ export default function MarketNewsPanel({ ticker, name, type }: Props) {
     setShowNews(true);
   }
 
-  const fetchOpinion = useCallback(async (retries = 3) => {
+  const fetchOpinion = useCallback(async (retries = 1) => {
     const cached = cache.get(ticker);
     if (cached && Date.now() - cached.ts < CACHE_TTL) {
       setOpinion(cached.data);
       return;
     }
+
     setLoading(true);
     setError(null);
+
     for (let attempt = 0; attempt <= retries; attempt++) {
       try {
-        if (attempt > 0) await new Promise(r => setTimeout(r, 2000 * attempt));
+        if (attempt > 0) await new Promise(r => setTimeout(r, 700));
+
         const { data, error: fnError } = await supabase.functions.invoke('ai-market-news', {
           body: { ticker, name, type },
         });
+
         if (fnError) {
-          if (fnError.message?.includes('429') && attempt < retries) continue;
-          throw new Error(fnError.message);
+          const msg = fnError.message || 'Erro ao buscar notícias';
+          const retryable = msg.includes('429') || msg.toLowerCase().includes('timeout');
+          if (retryable && attempt < retries) continue;
+          throw new Error(msg);
         }
+
         if (data?.error) {
-          if ((String(data.error).includes('Rate limit') || String(data.error).includes('429')) && attempt < retries) continue;
-          throw new Error(data.error);
+          const msg = String(data.error);
+          const retryable = msg.includes('429') || msg.toLowerCase().includes('timeout');
+          if (retryable && attempt < retries) continue;
+          throw new Error(msg);
         }
+
         cache.set(ticker, { data, ts: Date.now() });
         setOpinion(data);
         setLoading(false);
         return;
       } catch (err) {
         if (attempt === retries) {
-          setError(err instanceof Error ? err.message : 'Erro');
+          setError(err instanceof Error ? err.message : 'Erro ao buscar notícias');
         }
       }
     }
+
     setLoading(false);
   }, [ticker, name, type]);
 
