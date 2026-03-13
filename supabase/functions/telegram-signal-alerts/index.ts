@@ -16,10 +16,10 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN")!;
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
 
-    if (!botToken || !LOVABLE_API_KEY) {
+    if (!botToken || !GEMINI_API_KEY) {
       return new Response(JSON.stringify({ error: "Missing configuration" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },

@@ -26,12 +26,12 @@ function checkRateLimit(req: Request): Response | null {
 }
 
 async function callAI(body: any): Promise<Response> {
-  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+  const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
   const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
-  if (LOVABLE_API_KEY) {
-    const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+  if (GEMINI_API_KEY) {
+    const resp = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
       method: "POST",
-      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${GEMINI_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
     if (resp.ok || resp.status === 402) return resp;
@@ -75,7 +75,7 @@ NOTA FINAL: Média ponderada (Valuation 30%, Momento 25%, Dividendos 25%, Risco 
     })), null, 2)}`;
 
     const response = await callAI({
-      model: "google/gemini-2.5-flash",
+      model: "gemini-2.5-flash",
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },
