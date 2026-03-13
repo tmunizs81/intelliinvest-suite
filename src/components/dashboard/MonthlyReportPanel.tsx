@@ -46,8 +46,19 @@ export default function MonthlyReportPanel({ assets }: { assets: Asset[] }) {
       const { data: result, error: fnError } = await supabase.functions.invoke('monthly-report', {
         body: { portfolio },
       });
-      if (fnError) throw new Error(fnError.message);
-      if (result.error) throw new Error(result.error);
+      if (fnError) {
+        // Try to parse the error body for a friendly message
+        try {
+          const errBody = JSON.parse(fnError.message);
+          throw new Error(errBody.error || fnError.message);
+        } catch (parseErr) {
+          if (parseErr instanceof SyntaxError) {
+            throw new Error(fnError.message);
+          }
+          throw parseErr;
+        }
+      }
+      if (result?.error) throw new Error(result.error);
       setData(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro');
