@@ -144,9 +144,13 @@ O Dashboard é a tela principal do sistema, oferecendo uma visão completa e per
 - Defina metas financeiras (aposentadoria, reserva, etc.)
 - Acompanhe o progresso visualmente
 
-#### 📰 Notícias
-- Notícias relevantes do mercado financeiro
-- Atualizadas via IA
+#### 📰 Notícias IA
+- Feed de notícias reais do mercado financeiro brasileiro
+- **Fontes**: Google News, InfoMoney, Valor Investe, MarketAux, NewsAPI
+- Classificação de impacto por IA (positivo, negativo, neutro)
+- Categorias: Macro, Setorial, Empresa, Global, Regulatório
+- **Cache local** de 5 minutos para evitar chamadas repetidas
+- Fallback gracioso: exibe notícias em cache quando a API falha
 
 #### 🤖 Insights IA
 - Análises automáticas da sua carteira
@@ -573,7 +577,7 @@ A tela de **Análise Avançada** oferece ferramentas profissionais para análise
 - Informações: Nome, Tipo, Cidade, Estado, Área (m²), Endereço
 - **Gráfico de distribuição** por estado (donut chart)
 - **Barras por estado** com contagem de imóveis
-- Dados coletados de Investidor10 e StatusInvest via IA
+- Dados coletados de Investidor10, StatusInvest e FundsExplorer via parsing direto com fallback IA (DeepSeek)
 
 ### 📰 Notícias de Mercado e Opinião IA:
 - Varredura automática nos principais portais financeiros brasileiros e mundiais
@@ -642,10 +646,11 @@ A tela de **Análise Avançada** oferece ferramentas profissionais para análise
 - Score percentual exibido no badge e no modal detalhado
 - Dados obtidos via Yahoo Finance, StatusInvest e FundsExplorer
 
-### 🔄 Redundância IA (DeepSeek Fallback):
-- Todas as funções de IA possuem **fallback automático** para DeepSeek
-- Se o modelo primário (Gemini) retornar erro 429 ou 5xx, a requisição é reenviada automaticamente ao DeepSeek
+### 🔄 Redundância IA (DeepSeek + Lovable Gateway):
+- O sistema utiliza **DeepSeek** como provedor de IA **primário** (modelo deepseek-chat)
+- Se o DeepSeek falhar (erro, timeout ou rate limit), a requisição é reenviada automaticamente ao **Lovable AI Gateway** (Gemini)
 - Garante **alta disponibilidade** das análises mesmo em momentos de sobrecarga
+- Todas as 30+ Edge Functions seguem este padrão de redundância
 
 ### Como Usar:
 1. Acesse **Análise Avançada** no menu
@@ -1181,8 +1186,8 @@ Após adicionar os ativos:
 ---
 
 **T2-SimplyNvest** — Investimentos Inteligentes  
-*Versão 3.0 — Manual do Usuário*  
-*© 2025 T2 Systems. Todos os direitos reservados.*
+*Versão 3.1 — Manual do Usuário*  
+*© 2026 T2 Systems. Todos os direitos reservados.*
     `,
   },
 ];
@@ -1246,7 +1251,7 @@ export default function Manual() {
         <img src="/pwa-icon-192.png" alt="T2" className="h-16 w-16 mx-auto mb-4 rounded-xl" />
         <h1 className="text-3xl font-bold mb-2">T2-SimplyNvest</h1>
         <h2 className="text-xl text-muted-foreground mb-1">Manual do Usuário</h2>
-        <p className="text-sm text-muted-foreground">Versão 2.0 — Guia Completo de Funcionalidades</p>
+        <p className="text-sm text-muted-foreground">Versão 3.1 — Guia Completo de Funcionalidades</p>
       </div>
 
       {/* Table of Contents - print only */}
@@ -1294,8 +1299,8 @@ export default function Manual() {
 
       {/* Footer - print only */}
       <div className="hidden print:block mt-12 pt-4 border-t text-center text-xs text-muted-foreground">
-        <p>T2-SimplyNvest — Manual do Usuário v3.0</p>
-        <p>© 2025 T2 Systems. Todos os direitos reservados.</p>
+        <p>T2-SimplyNvest — Manual do Usuário v3.1</p>
+        <p>© 2026 T2 Systems. Todos os direitos reservados.</p>
       </div>
     </div>
   );
