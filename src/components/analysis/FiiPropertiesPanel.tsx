@@ -69,33 +69,21 @@ export default function FiiPropertiesPanel({ ticker }: Props) {
     setShowAll(false);
   }
 
-  const fetchProperties = useCallback(async (retries = 3) => {
+  const fetchProperties = useCallback(async () => {
     setLoading(true);
     setError(null);
-    for (let attempt = 0; attempt <= retries; attempt++) {
-      try {
-        if (attempt > 0) await new Promise(r => setTimeout(r, 2000 * attempt));
-        const { data: result, error: fnError } = await supabase.functions.invoke('fii-properties', {
-          body: { ticker },
-        });
-        if (fnError) {
-          if (fnError.message?.includes('429') && attempt < retries) continue;
-          throw new Error(fnError.message);
-        }
-        if (result?.error) {
-          if ((String(result.error).includes('Rate limit') || String(result.error).includes('429')) && attempt < retries) continue;
-          throw new Error(result.error);
-        }
-        setData(result);
-        setLoading(false);
-        return;
-      } catch (err) {
-        if (attempt === retries) {
-          setError(err instanceof Error ? err.message : 'Erro ao buscar imóveis');
-        }
-      }
+    try {
+      const { data: result, error: fnError } = await supabase.functions.invoke('fii-properties', {
+        body: { ticker },
+      });
+      if (fnError) throw new Error(fnError.message);
+      if (result?.error) throw new Error(result.error);
+      setData(result);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro ao buscar imóveis');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, [ticker]);
 
   // State distribution for chart
