@@ -25,8 +25,6 @@ function checkRateLimit(req: Request): Response | null {
 
 async function callAI(body: any): Promise<Response> {
   const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
-    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
-  const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
   if (GEMINI_API_KEY) {
     const resp = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
       method: "POST",
