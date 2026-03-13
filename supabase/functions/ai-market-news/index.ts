@@ -36,6 +36,16 @@ const localCache = new Map<string, { data: MarketOpinion; ts: number }>();
 const CACHE_TTL_MS = 5 * 60 * 1000;
 const REQUEST_TIMEOUT_MS = 3200;
 
+async function safeFetchJson(url: string, timeoutMs = REQUEST_TIMEOUT_MS): Promise<any | null> {
+  try {
+    const resp = await fetch(url, { signal: AbortSignal.timeout(timeoutMs) });
+    if (!resp.ok) return null;
+    return await resp.json();
+  } catch {
+    return null;
+  }
+}
+
 async function safeFetchText(url: string, timeoutMs = REQUEST_TIMEOUT_MS): Promise<string | null> {
   try {
     const resp = await fetch(url, {
@@ -57,15 +67,44 @@ function cleanText(input?: string): string {
     .trim();
 }
 
+// ── MarketAux API ──
+async function fetchMarketAux(query: string, limit = 5): Promise<NewsItem[]> {
+  const key = Deno.env.get("MARKETAUX_API_KEY");
+  if (!key) return [];
+  const url = `https://api.marketaux.com/v1/news/all?search=${encodeURIComponent(query)}&filter_entities=true&language=pt&limit=${limit}&api_token=${key}`;
+  const json = await safeFetchJson(url);
+  if (!json?.data) return [];
+  return json.data.map((a: any) => ({
+    title: a.title || "",
+    desc: a.description || a.snippet || a.title || "",
+    link: a.url || "",
+    source: a.source || "MarketAux",
+  })).filter((n: NewsItem) => n.title && n.link);
+}
+
+// ── NewsAPI.org ──
+async function fetchNewsApi(query: string, limit = 5): Promise<NewsItem[]> {
+  const key = Deno.env.get("NEWSAPI_API_KEY");
+  if (!key) return [];
+  const url = `https://newsapi.org/v2/everything?q=${encodeURIComponent(query)}&language=pt&sortBy=publishedAt&pageSize=${limit}&apiKey=${key}`;
+  const json = await safeFetchJson(url);
+  if (!json?.articles) return [];
+  return json.articles.map((a: any) => ({
+    title: a.title || "",
+    desc: a.description || a.title || "",
+    link: a.url || "",
+    source: a.source?.name || "NewsAPI",
+  })).filter((n: NewsItem) => n.title && n.link);
+}
+
+// ── Google News RSS ──
 async function fetchGoogleNews(query: string, limit = 4): Promise<NewsItem[]> {
   const url = `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=pt-BR&gl=BR&ceid=BR:pt-419`;
   const xml = await safeFetchText(url, REQUEST_TIMEOUT_MS);
   if (!xml) return [];
-
   const items: NewsItem[] = [];
   const regex = /<item>[\s\S]*?<title>(.*?)<\/title>[\s\S]*?<link>(.*?)<\/link>[\s\S]*?(?:<description>(.*?)<\/description>)?[\s\S]*?<\/item>/g;
   let match: RegExpExecArray | null;
-
   while ((match = regex.exec(xml)) !== null && items.length < limit) {
     const title = cleanText(match[1]);
     const link = cleanText(match[2]);
@@ -73,18 +112,16 @@ async function fetchGoogleNews(query: string, limit = 4): Promise<NewsItem[]> {
     if (!title || !link) continue;
     items.push({ title, desc, link, source: "Google News" });
   }
-
   return items;
 }
 
+// ── RSS feeds ──
 async function fetchRssItems(url: string, source: string, limit = 3): Promise<NewsItem[]> {
   const xml = await safeFetchText(url, REQUEST_TIMEOUT_MS);
   if (!xml) return [];
-
   const items: NewsItem[] = [];
   const regex = /<item>[\s\S]*?<title>(.*?)<\/title>[\s\S]*?<link>(.*?)<\/link>[\s\S]*?(?:<description>(.*?)<\/description>)?[\s\S]*?<\/item>/g;
   let match: RegExpExecArray | null;
-
   while ((match = regex.exec(xml)) !== null && items.length < limit) {
     const title = cleanText(match[1]);
     const link = cleanText(match[2]);
@@ -92,14 +129,12 @@ async function fetchRssItems(url: string, source: string, limit = 3): Promise<Ne
     if (!title || !link) continue;
     items.push({ title, desc, link, source });
   }
-
   return items;
 }
 
-function dedupeNews(items: NewsItem[], max = 12): NewsItem[] {
+function dedupeNews(items: NewsItem[], max = 16): NewsItem[] {
   const seen = new Set<string>();
   const output: NewsItem[] = [];
-
   for (const item of items) {
     const key = item.title.toLowerCase().replace(/[^a-z0-9à-ú\s]/gi, "").slice(0, 90);
     if (seen.has(key)) continue;
@@ -107,7 +142,6 @@ function dedupeNews(items: NewsItem[], max = 12): NewsItem[] {
     output.push(item);
     if (output.length >= max) break;
   }
-
   return output;
 }
 
@@ -115,7 +149,6 @@ function inferImpact(title: string, desc: string): "positive" | "negative" | "ne
   const text = `${title} ${desc}`.toLowerCase();
   const positiveWords = ["alta", "lucro", "cresce", "recorde", "compra", "valoriz", "forte", "supera"];
   const negativeWords = ["queda", "prejuízo", "cai", "risco", "crise", "investig", "downgrade", "rebaix"];
-
   if (negativeWords.some((w) => text.includes(w))) return "negative";
   if (positiveWords.some((w) => text.includes(w))) return "positive";
   return "neutral";
@@ -130,7 +163,6 @@ function prioritizeNews(items: NewsItem[], ticker: string, max = 10): NewsItem[]
     if (text.includes("fii") || text.includes("ações") || text.includes("bolsa")) score += 1;
     return { item, score };
   });
-
   scored.sort((a, b) => b.score - a.score);
   return scored.slice(0, max).map((x) => x.item);
 }
@@ -142,38 +174,26 @@ function buildFallbackOpinion(ticker: string, name: string | undefined, type: st
     summary: n.desc.slice(0, 180),
     source: n.source || n.link,
   }));
-
   const positiveCount = picked.filter((n) => n.impact === "positive").length;
   const negativeCount = picked.filter((n) => n.impact === "negative").length;
-
   const sentiment: MarketOpinion["sentiment"] =
     positiveCount > negativeCount ? "bullish" : negativeCount > positiveCount ? "cautious" : "neutral";
-
-  const sentimentLabel = sentiment === "bullish"
-    ? "Viés Positivo"
-    : sentiment === "cautious"
-      ? "Viés Cauteloso"
-      : "Neutro";
-
+  const sentimentLabel = sentiment === "bullish" ? "Viés Positivo" : sentiment === "cautious" ? "Viés Cauteloso" : "Neutro";
   return {
-    sentiment,
-    sentiment_label: sentimentLabel,
+    sentiment, sentiment_label: sentimentLabel,
     executive_summary: `Resumo rápido com base em ${picked.length} notícias recentes sobre ${ticker}.`,
-    market_position: `Ativo ${ticker} (${name || ticker}, ${type || "Ativo"}) monitorado em modo rápido com síntese local quando necessário.`,
+    market_position: `Ativo ${ticker} (${name || ticker}, ${type || "Ativo"}) monitorado em modo rápido.`,
     positive_catalysts: picked.filter((n) => n.impact === "positive").slice(0, 3).map((n) => n.title),
     negative_catalysts: picked.filter((n) => n.impact === "negative").slice(0, 3).map((n) => n.title),
     relevant_news: picked,
     conclusion: "Acompanhe a atualização contínua das manchetes para confirmar direção de curto prazo.",
-    confidence: 62,
-    _fallback: true,
-    _fallback_reason: reason,
+    confidence: 62, _fallback: true, _fallback_reason: reason,
   };
 }
 
 async function callAI(body: any): Promise<{ response: Response; provider: string }> {
   const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-
   if (DEEPSEEK_API_KEY) {
     try {
       const { model, ...rest } = body;
@@ -184,11 +204,8 @@ async function callAI(body: any): Promise<{ response: Response; provider: string
         signal: AbortSignal.timeout(3500),
       });
       if (resp.ok) return { response: resp, provider: "deepseek" };
-    } catch {
-      // silent fallback
-    }
+    } catch { /* silent fallback */ }
   }
-
   if (!LOVABLE_API_KEY) throw new Error("No AI provider available");
   const { model, ...rest } = body;
   const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -207,8 +224,7 @@ Deno.serve(async (req) => {
     const { ticker, name, type } = await req.json();
     if (!ticker) {
       return new Response(JSON.stringify({ error: "ticker required" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
@@ -220,21 +236,21 @@ Deno.serve(async (req) => {
       });
     }
 
-    const queries = [
-      `${ticker} ${name || ""} mercado financeiro`,
-      `${ticker} análise investimento Brasil`,
-    ];
+    const query = `${ticker} ${name || ""} mercado financeiro`;
 
-    const feedJobs = [
-      ...queries.map((q) => fetchGoogleNews(q, 4)),
+    // All sources in parallel — APIs + RSS
+    const settled = await Promise.allSettled([
+      fetchMarketAux(ticker, 5),
+      fetchNewsApi(`${ticker} Brasil`, 5),
+      fetchGoogleNews(query, 4),
+      fetchGoogleNews(`${ticker} análise investimento Brasil`, 4),
       fetchRssItems("https://www.infomoney.com.br/feed/", "InfoMoney", 3),
       fetchRssItems("https://valorinveste.globo.com/rss/valor-investe/", "Valor Investe", 3),
-    ];
+    ]);
 
-    const settled = await Promise.allSettled(feedJobs);
     const news = settled.flatMap((res) => (res.status === "fulfilled" ? res.value : []));
-    const uniqueNews = dedupeNews(news, 16);
-    const prioritizedNews = prioritizeNews(uniqueNews, ticker, 10);
+    const uniqueNews = dedupeNews(news, 20);
+    const prioritizedNews = prioritizeNews(uniqueNews, ticker, 12);
 
     if (prioritizedNews.length === 0) {
       const fallback = buildFallbackOpinion(ticker, name, type, [], "no_news_sources");
@@ -317,11 +333,10 @@ Deno.serve(async (req) => {
       const parsedResult = JSON.parse(toolCall.function.arguments) as MarketOpinion;
       parsedResult._provider = provider;
       localCache.set(cacheKey, { data: parsedResult, ts: Date.now() });
-
       return new Response(JSON.stringify(parsedResult), {
         headers: { ...corsHeaders, "Content-Type": "application/json", "x-ai-provider": provider },
       });
-    } catch (aiErr) {
+    } catch {
       const fallback = buildFallbackOpinion(ticker, name, type, prioritizedNews, "ai_timeout_or_error");
       localCache.set(cacheKey, { data: fallback, ts: Date.now() });
       return new Response(JSON.stringify(fallback), {
@@ -331,8 +346,7 @@ Deno.serve(async (req) => {
   } catch (err) {
     console.error("ai-market-news error:", err);
     return new Response(JSON.stringify({ error: err instanceof Error ? err.message : "Unknown error" }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });
