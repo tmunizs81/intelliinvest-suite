@@ -46,6 +46,87 @@ async function callAI(body: any): Promise<Response> {
     body: JSON.stringify({ ...body, model: "llama-3.3-70b-versatile" }),
   });
 }
+
+function average(values: number[]): number {
+  if (!values.length) return 0;
+  return values.reduce((sum, value) => sum + value, 0) / values.length;
+}
+
+function asNumber(value: unknown): number | null {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+function summarizeCandles(candles: any[]): string {
+  if (!Array.isArray(candles) || candles.length < 8) {
+    return "Dados históricos insuficientes para validar padrões.";
+  }
+
+  const normalized = candles
+    .map((c) => ({
+      date: c.date ?? c.timestamp ?? "-",
+      open: asNumber(c.open),
+      high: asNumber(c.high),
+      low: asNumber(c.low),
+      close: asNumber(c.close),
+      volume: asNumber(c.volume) ?? 0,
+    }))
+    .filter((c) => c.close !== null);
+
+  if (normalized.length < 8) {
+    return "Dados históricos insuficientes para validar padrões.";
+  }
+
+  const closes = normalized.map((c) => c.close as number);
+  const volumes = normalized.map((c) => c.volume);
+  const sma10 = average(closes.slice(-10));
+  const sma20 = average(closes.slice(-20));
+  const baseClose = closes[Math.max(0, closes.length - 30)] || closes[0];
+  const lastClose = closes[closes.length - 1];
+  const variation30d = baseClose ? ((lastClose - baseClose) / baseClose) * 100 : 0;
+  const avgVolume10 = average(volumes.slice(-10));
+
+  const recent = normalized.slice(-10).map((c) => {
+    const o = c.open ?? c.close ?? 0;
+    const h = c.high ?? c.close ?? 0;
+    const l = c.low ?? c.close ?? 0;
+    const cl = c.close ?? 0;
+    return `${c.date} O:${o.toFixed(2)} H:${h.toFixed(2)} L:${l.toFixed(2)} C:${cl.toFixed(2)} V:${Math.round(c.volume)}`;
+  }).join("\n");
+
+  return `SMA10: ${sma10.toFixed(2)} | SMA20: ${sma20.toFixed(2)} | Var30d: ${variation30d.toFixed(2)}% | Vol10d médio: ${Math.round(avgVolume10)}\nCandles (10 últimos):\n${recent}`;
+}
+
+async function fetchHistory(ticker: string, req: Request): Promise<any[]> {
+  try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
+    if (!supabaseUrl || !anonKey) return [];
+
+    const response = await fetch(`${supabaseUrl}/functions/v1/yahoo-finance-history`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: anonKey,
+        Authorization: req.headers.get("authorization") || `Bearer ${anonKey}`,
+      },
+      body: JSON.stringify({ ticker, range: "3mo", interval: "1d" }),
+    });
+
+    if (!response.ok) {
+      console.warn(`history fetch failed for ${ticker}: ${response.status}`);
+      try { await response.text(); } catch {}
+      return [];
+    }
+
+    const data = await response.json();
+    return Array.isArray(data?.candles) ? data.candles : [];
+  } catch (error) {
+    console.error(`fetchHistory error for ${ticker}:`, error);
+    return [];
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
