@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { type Asset, type AIInsight } from '@/lib/mockData';
+import { checkAIProviderFallback } from '@/lib/aiProviderToast';
 
 interface AIInsightsResult {
   insights: AIInsight[];
