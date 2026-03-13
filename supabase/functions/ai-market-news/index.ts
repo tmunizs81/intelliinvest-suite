@@ -234,79 +234,86 @@ Deno.serve(async (req) => {
       .map((n, i) => `[${i + 1}] ${n.title}\n${n.desc}\nFonte: ${n.source || n.link}`)
       .join("\n\n");
 
-    const { response, provider } = await callAI({
-      model: "gemini-2.5-flash",
-      messages: [
-        { role: "system", content: "Você é um analista de mercado financeiro. Seja objetivo e prático." },
-        { role: "user", content: `Analise as notícias sobre ${ticker} (${name || ticker}, tipo: ${type || "Ativo"}) e retorne opinião estruturada.\n\nNOTÍCIAS:\n${newsContext}` },
-      ],
-      tools: [{
-        type: "function",
-        function: {
-          name: "generate_market_opinion",
-          description: "Generate structured market opinion",
-          parameters: {
-            type: "object",
-            properties: {
-              sentiment: { type: "string", enum: ["bullish", "bearish", "neutral", "cautious"] },
-              sentiment_label: { type: "string" },
-              executive_summary: { type: "string" },
-              market_position: { type: "string" },
-              positive_catalysts: { type: "array", items: { type: "string" } },
-              negative_catalysts: { type: "array", items: { type: "string" } },
-              relevant_news: {
-                type: "array",
-                items: {
-                  type: "object",
-                  properties: {
-                    title: { type: "string" },
-                    impact: { type: "string", enum: ["positive", "negative", "neutral"] },
-                    summary: { type: "string" },
-                    source: { type: "string" },
+    try {
+      const { response, provider } = await callAI({
+        model: "gemini-2.5-flash",
+        messages: [
+          { role: "system", content: "Você é um analista de mercado financeiro. Seja objetivo e prático." },
+          { role: "user", content: `Analise as notícias sobre ${ticker} (${name || ticker}, tipo: ${type || "Ativo"}) e retorne opinião estruturada.\n\nNOTÍCIAS:\n${newsContext}` },
+        ],
+        tools: [{
+          type: "function",
+          function: {
+            name: "generate_market_opinion",
+            description: "Generate structured market opinion",
+            parameters: {
+              type: "object",
+              properties: {
+                sentiment: { type: "string", enum: ["bullish", "bearish", "neutral", "cautious"] },
+                sentiment_label: { type: "string" },
+                executive_summary: { type: "string" },
+                market_position: { type: "string" },
+                positive_catalysts: { type: "array", items: { type: "string" } },
+                negative_catalysts: { type: "array", items: { type: "string" } },
+                relevant_news: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      title: { type: "string" },
+                      impact: { type: "string", enum: ["positive", "negative", "neutral"] },
+                      summary: { type: "string" },
+                      source: { type: "string" },
+                    },
+                    required: ["title", "impact", "summary"],
+                    additionalProperties: false,
                   },
-                  required: ["title", "impact", "summary"],
-                  additionalProperties: false,
                 },
+                conclusion: { type: "string" },
+                confidence: { type: "number" },
               },
-              conclusion: { type: "string" },
-              confidence: { type: "number" },
+              required: ["sentiment", "sentiment_label", "executive_summary", "market_position", "positive_catalysts", "negative_catalysts", "relevant_news", "conclusion", "confidence"],
+              additionalProperties: false,
             },
-            required: ["sentiment", "sentiment_label", "executive_summary", "market_position", "positive_catalysts", "negative_catalysts", "relevant_news", "conclusion", "confidence"],
-            additionalProperties: false,
           },
-        },
-      }],
-      tool_choice: { type: "function", function: { name: "generate_market_opinion" } },
-    });
+        }],
+        tool_choice: { type: "function", function: { name: "generate_market_opinion" } },
+      });
 
-    if (!response.ok) {
-      const fallback = buildFallbackOpinion(ticker, name, type, uniqueNews, `ai_http_${response.status}`);
-      fallback._provider = provider;
-      localCache.set(cacheKey, { data: fallback, ts: Date.now() });
-      return new Response(JSON.stringify(fallback), {
+      if (!response.ok) {
+        const fallback = buildFallbackOpinion(ticker, name, type, uniqueNews, `ai_http_${response.status}`);
+        fallback._provider = provider;
+        localCache.set(cacheKey, { data: fallback, ts: Date.now() });
+        return new Response(JSON.stringify(fallback), {
+          headers: { ...corsHeaders, "Content-Type": "application/json", "x-ai-provider": provider },
+        });
+      }
+
+      const data = await response.json();
+      const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
+      if (!toolCall?.function?.arguments) {
+        const fallback = buildFallbackOpinion(ticker, name, type, uniqueNews, "no_tool_call");
+        fallback._provider = provider;
+        localCache.set(cacheKey, { data: fallback, ts: Date.now() });
+        return new Response(JSON.stringify(fallback), {
+          headers: { ...corsHeaders, "Content-Type": "application/json", "x-ai-provider": provider },
+        });
+      }
+
+      const parsedResult = JSON.parse(toolCall.function.arguments) as MarketOpinion;
+      parsedResult._provider = provider;
+      localCache.set(cacheKey, { data: parsedResult, ts: Date.now() });
+
+      return new Response(JSON.stringify(parsedResult), {
         headers: { ...corsHeaders, "Content-Type": "application/json", "x-ai-provider": provider },
       });
-    }
-
-    const data = await response.json();
-    const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
-    if (!toolCall?.function?.arguments) {
-      const fallback = buildFallbackOpinion(ticker, name, type, uniqueNews, "no_tool_call");
-      fallback._provider = provider;
+    } catch (aiErr) {
+      const fallback = buildFallbackOpinion(ticker, name, type, uniqueNews, "ai_timeout_or_error");
       localCache.set(cacheKey, { data: fallback, ts: Date.now() });
       return new Response(JSON.stringify(fallback), {
-        headers: { ...corsHeaders, "Content-Type": "application/json", "x-ai-provider": provider },
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-
-    const parsedResult = JSON.parse(toolCall.function.arguments) as MarketOpinion;
-    parsedResult._provider = provider;
-
-    localCache.set(cacheKey, { data: parsedResult, ts: Date.now() });
-
-    return new Response(JSON.stringify(parsedResult), {
-      headers: { ...corsHeaders, "Content-Type": "application/json", "x-ai-provider": provider },
-    });
   } catch (err) {
     console.error("ai-market-news error:", err);
     return new Response(JSON.stringify({ error: err instanceof Error ? err.message : "Unknown error" }), {
