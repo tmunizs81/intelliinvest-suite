@@ -28,6 +28,7 @@ export default function PatternDetectorPanel({ assets }: { assets: Asset[] }) {
         body: { tickers, assets: assets.slice(0, 10).map(a => ({ ticker: a.ticker, name: a.name, currentPrice: a.currentPrice, change24h: a.change24h })) },
       });
       if (fnError) throw new Error(fnError.message);
+      checkAIProviderFallback(data);
       setPatterns(data?.patterns || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro');

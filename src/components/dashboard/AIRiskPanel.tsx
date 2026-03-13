@@ -46,6 +46,7 @@ export default function AIRiskPanel({ assets }: Props) {
         body: { assets },
       });
       if (error) throw error;
+      checkAIProviderFallback(data);
       setAnalysis(data);
     } catch {
       setAnalysis(null);

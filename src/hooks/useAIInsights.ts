@@ -41,6 +41,7 @@ export function useAIInsights() {
       if (fnError) {
         throw new Error(fnError.message || 'Falha ao gerar insights');
       }
+      checkAIProviderFallback(data);
 
       if (data.error) {
         throw new Error(data.error);

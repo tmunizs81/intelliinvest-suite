@@ -49,6 +49,7 @@ export default function RebalancePanel({ assets }: { assets: Asset[] }) {
       });
       if (fnError) throw new Error(fnError.message);
       if (result.error) throw new Error(result.error);
+      checkAIProviderFallback(result);
       setData(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro');

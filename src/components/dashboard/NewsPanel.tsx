@@ -51,6 +51,7 @@ export default function NewsPanel({ assets }: { assets: Asset[] }) {
       });
       if (fnError) throw new Error(fnError.message);
       if (result.error) throw new Error(result.error);
+      checkAIProviderFallback(result);
       setNews(result.news || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro');
