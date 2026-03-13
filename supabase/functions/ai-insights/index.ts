@@ -31,7 +31,7 @@ async function callAI(body: any): Promise<{ response: Response; provider: string
     const resp = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: { Authorization: `Bearer ${OPENROUTER_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ ...body, model: body.model || "google/gemini-2.5-flash-preview-09-2025" }),
+      body: JSON.stringify({ ...body, model: "google/gemini-2.5-flash-preview-09-2025" }),
     });
     if (resp.ok) return { response: resp, provider: "openrouter" };
     const errBody = await resp.text().catch(() => "");
