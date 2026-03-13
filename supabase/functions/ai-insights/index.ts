@@ -31,11 +31,12 @@ async function callAI(body: any): Promise<{ response: Response; provider: string
     const resp = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: { Authorization: `Bearer ${OPENROUTER_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ ...body, model: body.model || "google/gemini-2.5-flash" }),
+      body: JSON.stringify({ ...body, model: "google/gemini-2.5-flash" }),
     });
     if (resp.ok) return { response: resp, provider: "openrouter" };
-    console.warn(`OpenRouter failed (${resp.status}), trying Gemini...`);
-    try { await resp.text(); } catch {}
+    const errBody = await resp.text().catch(() => "");
+    console.warn(`OpenRouter failed (${resp.status}): ${errBody}`);
+    
   }
 
   if (GEMINI_API_KEY) {
