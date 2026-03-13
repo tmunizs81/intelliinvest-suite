@@ -49,9 +49,6 @@ async function callAI(body: any): Promise<{ response: Response; provider: string
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
-  const rateLimited = checkRateLimit(req);
-  if (rateLimited) return rateLimited;
-
   try {
     const { portfolio } = await req.json();
     if (!portfolio || !Array.isArray(portfolio)) return new Response(JSON.stringify({ error: "portfolio array required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -59,6 +56,30 @@ Deno.serve(async (req) => {
     const totalValue = portfolio.reduce((s: number, a: any) => s + (a.currentPrice * a.quantity), 0);
     const totalCost = portfolio.reduce((s: number, a: any) => s + (a.avgPrice * a.quantity), 0);
     const totalReturn = totalCost > 0 ? ((totalValue - totalCost) / totalCost * 100) : 0;
+
+    // Helper to build local fallback insights
+    const buildFallback = (reason: string) => {
+      const topAsset = portfolio.reduce((a: any, b: any) => ((b.allocation || 0) > (a.allocation || 0) ? b : a), portfolio[0]);
+      const negativeAssets = portfolio.filter((a: any) => (a.change24h || 0) < -3);
+      const fallbackInsights: any[] = [
+        { type: "analysis", title: "Resumo da carteira", description: `Patrimônio de R$${totalValue.toFixed(0)} com ${portfolio.length} ativos. Retorno total: ${totalReturn.toFixed(1)}%.`, severity: "info" },
+        { type: "alert", title: `Maior posição: ${topAsset.ticker}`, description: `${topAsset.ticker} representa ${(topAsset.allocation || 0).toFixed(1)}% da carteira. Avalie concentração.`, severity: (topAsset.allocation || 0) > 20 ? "warning" : "info", ticker: topAsset.ticker },
+      ];
+      if (negativeAssets.length > 0) {
+        fallbackInsights.push({ type: "alert", title: `${negativeAssets.length} ativo(s) em queda forte`, description: negativeAssets.map((a: any) => `${a.ticker} (${(a.change24h || 0).toFixed(1)}%)`).join(", "), severity: "warning", ticker: negativeAssets[0].ticker });
+      }
+      return new Response(JSON.stringify({
+        insights: fallbackInsights,
+        summary: `Carteira com ${portfolio.length} ativos e retorno de ${totalReturn.toFixed(1)}% (${reason})`,
+        _provider: "local", _fallback: true, timestamp: new Date().toISOString(),
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    };
+
+    // Rate limit → return local fallback instead of 429
+    if (isRateLimited(req)) {
+      console.warn("Rate limited, returning local fallback");
+      return buildFallback("limite de chamadas");
+    }
 
     const portfolioText = portfolio.map((a: any) => {
       const value = a.currentPrice * a.quantity;
