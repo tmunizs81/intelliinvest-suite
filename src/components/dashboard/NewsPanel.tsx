@@ -13,6 +13,48 @@ interface NewsItem {
   source_url?: string;
 }
 
+interface CachedNewsPayload {
+  timestamp: number;
+  news: NewsItem[];
+}
+
+const NEWS_CACHE_TTL_MS = 5 * 60 * 1000;
+
+function getNewsCacheKey(tickers: string[]) {
+  return `news-cache:${[...tickers].sort().join(',')}`;
+}
+
+function readCachedNews(cacheKey: string, allowExpired = false): NewsItem[] | null {
+  try {
+    const raw = localStorage.getItem(cacheKey);
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw) as CachedNewsPayload;
+    if (!parsed || !Array.isArray(parsed.news) || typeof parsed.timestamp !== 'number') {
+      return null;
+    }
+
+    const expired = Date.now() - parsed.timestamp > NEWS_CACHE_TTL_MS;
+    if (expired && !allowExpired) return null;
+
+    return parsed.news;
+  } catch {
+    return null;
+  }
+}
+
+function writeCachedNews(cacheKey: string, news: NewsItem[]) {
+  try {
+    const payload: CachedNewsPayload = {
+      timestamp: Date.now(),
+      news,
+    };
+    localStorage.setItem(cacheKey, JSON.stringify(payload));
+  } catch {
+    // ignore cache write issues
+  }
+}
+
 const impactColors = {
   positive: 'border-gain/30 bg-gain/5',
   negative: 'border-loss/30 bg-loss/5',
@@ -42,19 +84,49 @@ export default function NewsPanel({ assets }: { assets: Asset[] }) {
 
   const generate = useCallback(async () => {
     if (assets.length === 0) return;
+
+    const tickers = assets
+      .map((a) => a.ticker)
+      .filter((ticker): ticker is string => Boolean(ticker))
+      .slice(0, 10);
+
+    if (!tickers.length) return;
+
+    const cacheKey = getNewsCacheKey(tickers);
+    const cachedFresh = readCachedNews(cacheKey);
+    if (cachedFresh?.length) {
+      setNews(cachedFresh);
+      setError(null);
+      return;
+    }
+
     setLoading(true);
     setError(null);
+
     try {
-      const tickers = assets.map(a => a.ticker);
       const { data: result, error: fnError } = await supabase.functions.invoke('ai-news', {
         body: { tickers },
       });
-      if (fnError) throw new Error(fnError.message);
-      if (result.error) throw new Error(result.error);
+
+      if (fnError) throw new Error('Falha ao buscar notícias em tempo real');
+      if (result?.error) throw new Error(result.error);
+
       checkAIProviderFallback(result);
-      setNews(result.news || []);
+
+      const freshNews = Array.isArray(result?.news) ? result.news : [];
+      setNews(freshNews);
+
+      if (freshNews.length) {
+        writeCachedNews(cacheKey, freshNews);
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro');
+      const staleCache = readCachedNews(cacheKey, true);
+      if (staleCache?.length) {
+        setNews(staleCache);
+        setError('Falha ao atualizar agora. Exibindo notícias em cache local.');
+      } else {
+        setError(err instanceof Error ? err.message : 'Erro');
+      }
     } finally {
       setLoading(false);
     }

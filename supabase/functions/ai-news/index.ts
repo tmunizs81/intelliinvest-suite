@@ -276,10 +276,12 @@ Deno.serve(async (req) => {
   try {
     const { tickers } = await req.json();
     if (!Array.isArray(tickers) || tickers.length === 0) {
-      return new Response(JSON.stringify({ error: "tickers required" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return jsonResponse({
+        news: [],
+        _provider: "fallback",
+        _fallback: true,
+        _fallback_reason: "invalid_tickers",
+      }, "fallback");
     }
 
     const tickerList: string[] = tickers.slice(0, 8);
