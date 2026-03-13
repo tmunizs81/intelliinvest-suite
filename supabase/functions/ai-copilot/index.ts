@@ -113,7 +113,7 @@ Responda APENAS com JSON válido neste formato exato:
 
     if (!result.signal || !result.title) throw new Error("Invalid AI response structure");
 
-    return new Response(JSON.stringify(result), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify(result), { headers: { ...corsHeaders, "Content-Type": "application/json", "x-ai-provider": provider } });
   } catch (err) {
     console.error("ai-copilot error:", err);
     return new Response(JSON.stringify({ error: err instanceof Error ? err.message : "Unknown error" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });

@@ -93,17 +93,17 @@ Deno.serve(async (req) => {
 
     if (!response.ok) {
       const fallback = buildFallbackOpinion(ticker, name, type, unique);
-      return new Response(JSON.stringify(fallback), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify(fallback), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json", "x-ai-provider": provider } });
     }
 
     const data = await response.json();
     const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
     if (!toolCall?.function?.arguments) {
       const fallback = buildFallbackOpinion(ticker, name, type, unique);
-      return new Response(JSON.stringify(fallback), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify(fallback), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json", "x-ai-provider": provider } });
     }
 
-    return new Response(toolCall.function.arguments, { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(toolCall.function.arguments, { headers: { ...corsHeaders, "Content-Type": "application/json", "x-ai-provider": provider } });
   } catch (err) {
     console.error("ai-market-news error:", err);
     return new Response(JSON.stringify({ error: err instanceof Error ? err.message : "Unknown error" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });

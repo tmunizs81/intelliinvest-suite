@@ -216,7 +216,7 @@ SEMPRE identifique pelo menos 3-5 padrões. Use a ferramenta para retornar o res
     if (toolCall?.function?.arguments) {
       try {
         const parsed = JSON.parse(toolCall.function.arguments);
-        return new Response(JSON.stringify(parsed), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        return new Response(JSON.stringify(parsed), { headers: { ...corsHeaders, "Content-Type": "application/json", "x-ai-provider": provider } });
       } catch {}
     }
 

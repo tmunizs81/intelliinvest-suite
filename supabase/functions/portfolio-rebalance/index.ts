@@ -130,8 +130,7 @@ Deno.serve(async (req) => {
     const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
     if (!toolCall?.function?.arguments) throw new Error("No structured response");
 
-    return new Response(toolCall.function.arguments, {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    return new Response(toolCall.function.arguments, { headers: { ...corsHeaders, "Content-Type": "application/json", "x-ai-provider": provider },
     });
   } catch (err) {
     console.error("portfolio-rebalance error:", err);

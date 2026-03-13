@@ -138,7 +138,7 @@ Gere insights inteligentes, alertas e recomendações baseados nestes dados reai
     if (!toolCall?.function?.arguments) throw new Error("No structured response from AI");
 
     const parsed = JSON.parse(toolCall.function.arguments);
-    return new Response(JSON.stringify({ insights: parsed.insights, summary: parsed.summary, timestamp: new Date().toISOString() }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ insights: parsed.insights, summary: parsed.summary, timestamp: new Date().toISOString() }), { headers: { ...corsHeaders, "Content-Type": "application/json", "x-ai-provider": provider } });
   } catch (err) {
     console.error("ai-insights error:", err);
     return new Response(JSON.stringify({ error: err instanceof Error ? err.message : "Unknown error" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });

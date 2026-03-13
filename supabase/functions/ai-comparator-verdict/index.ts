@@ -84,7 +84,7 @@ Deno.serve(async (req) => {
 
     const data = await response.json();
     const verdict = data.choices?.[0]?.message?.content || "Não foi possível gerar o veredito.";
-    return new Response(JSON.stringify({ verdict }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ verdict }), { headers: { ...corsHeaders, "Content-Type": "application/json", "x-ai-provider": provider } });
   } catch (e) {
     console.error("ai-comparator-verdict error:", e);
     return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Erro desconhecido" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
