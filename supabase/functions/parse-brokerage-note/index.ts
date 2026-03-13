@@ -10,7 +10,7 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY is not configured");
+    if (!DEEPSEEK_API_KEY && !GEMINI_API_KEY) throw new Error("No AI API key configured");
 
     const { text_content } = await req.json();
     if (!text_content) {
@@ -26,14 +26,14 @@ ${text_content}
 Para cada operação identifique: ticker, nome, tipo (Ação/FII/ETF/BDR), operação (buy/sell), quantidade, preço unitário, total, taxas.
 Identifique também a data da nota e a corretora.`;
 
-    const response = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
+    const response = await fetch(DEEPSEEK_API_KEY ? "https://api.deepseek.com/v1/chat/completions" : "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${GEMINI_API_KEY}`,
+        Authorization: `Bearer ${DEEPSEEK_API_KEY || GEMINI_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gemini-2.5-flash",
+        model: DEEPSEEK_API_KEY ? "deepseek-chat" : "gemini-2.5-flash",
         messages: [
           { role: "system", content: "Você é um especialista em extrair dados de notas de corretagem da B3 (bolsa brasileira). Extraia com precisão todos os dados de operações. Tickers brasileiros terminam em números (ex: PETR4, VALE3). FIIs terminam em 11 (ex: HGLG11)." },
           { role: "user", content: prompt },
