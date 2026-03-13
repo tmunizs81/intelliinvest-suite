@@ -47,13 +47,17 @@ export default function MonthlyReportPanel({ assets }: { assets: Asset[] }) {
         body: { portfolio },
       });
       if (fnError) {
-        // Try to parse the error body for a friendly message
+        // Extract meaningful error from response
+        const msg = fnError.message || '';
+        if (msg.includes('non-2xx')) {
+          throw new Error('Falha temporária ao gerar relatório. Tente novamente.');
+        }
         try {
-          const errBody = JSON.parse(fnError.message);
-          throw new Error(errBody.error || fnError.message);
+          const errBody = JSON.parse(msg);
+          throw new Error(errBody.error || msg);
         } catch (parseErr) {
           if (parseErr instanceof SyntaxError) {
-            throw new Error(fnError.message);
+            throw new Error(msg || 'Erro ao gerar relatório');
           }
           throw parseErr;
         }
