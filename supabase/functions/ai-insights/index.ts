@@ -34,8 +34,9 @@ async function callAI(body: any): Promise<{ response: Response; provider: string
       body: JSON.stringify({ ...body, model: body.model || "google/gemini-2.5-flash-preview-09-2025" }),
     });
     if (resp.ok) return { response: resp, provider: "openrouter" };
-    console.warn(`OpenRouter failed (${resp.status}), trying Gemini...`);
-    try { await resp.text(); } catch {}
+    const errBody = await resp.text().catch(() => "");
+    console.warn(`OpenRouter failed (${resp.status}): ${errBody}`);
+    
   }
 
   if (GEMINI_API_KEY) {
