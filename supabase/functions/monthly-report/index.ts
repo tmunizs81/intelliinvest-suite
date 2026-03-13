@@ -131,7 +131,7 @@ Deno.serve(async (req) => {
       try {
         result = await callAI(
           "https://openrouter.ai/api/v1/chat/completions",
-          OPENROUTER_API_KEY, "google/gemini-2.5-flash", messages
+          OPENROUTER_API_KEY, "google/gemini-2.5-flash-preview-09-2025", messages
         );
       } catch (e) {
         console.error("OpenRouter failed, trying Gemini:", e);
