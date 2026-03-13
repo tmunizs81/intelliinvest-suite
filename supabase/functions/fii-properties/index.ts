@@ -113,28 +113,54 @@ function dedupeProperties(properties: Property[]): Property[] {
 }
 
 function extractFocusedSection(html: string): string {
-  const markers = [
-    "lista de imóveis",
-    "lista de imoveis",
-    "portfólio",
-    "portfolio",
-    "imóveis",
-    "imoveis",
-    "propriedades",
-  ];
+  // Strip scripts/styles first to reduce noise
+  const cleaned = html
+    .replace(/<script[\s\S]*?<\/script>/gi, "")
+    .replace(/<style[\s\S]*?<\/style>/gi, "");
+  return cleaned;
+}
 
-  const lower = html.toLowerCase();
-  for (const marker of markers) {
-    const idx = lower.indexOf(marker);
-    if (idx !== -1) {
-      const start = Math.max(0, idx - 2000);
-      const end = Math.min(html.length, idx + 22000);
-      return html.slice(start, end);
-    }
+// Dedicated parser for Investidor10's property cards structure:
+// Pattern in HTML: heading with property name, then "Estado:" with state name
+function parseInvestidor10Properties(html: string): Property[] {
+  const properties: Property[] = [];
+  const seen = new Set<string>();
+
+  // State name to code mapping
+  const stateMap: Record<string, string> = {
+    "são paulo": "SP", "rio de janeiro": "RJ", "minas gerais": "MG",
+    "paraná": "PR", "rio grande do sul": "RS", "santa catarina": "SC",
+    "bahia": "BA", "pernambuco": "PE", "ceará": "CE", "goiás": "GO",
+    "distrito federal": "DF", "espírito santo": "ES", "mato grosso": "MT",
+    "mato grosso do sul": "MS", "pará": "PA", "paraíba": "PB",
+    "piauí": "PI", "rio grande do norte": "RN", "rondônia": "RO",
+    "roraima": "RR", "sergipe": "SE", "tocantins": "TO",
+    "alagoas": "AL", "amapá": "AP", "amazonas": "AM", "acre": "AC",
+    "maranhão": "MA",
+  };
+
+  // Pattern: <h3/h4/strong>NAME</h3> ... Estado: STATE ... Área bruta locável: X m²
+  const regex = /<(?:h[2-5]|strong)[^>]*>\s*([^<]{2,80})\s*<\/(?:h[2-5]|strong)>[\s\S]{0,300}?Estado:\s*([A-Za-zÀ-Úà-ú\s]+?)(?:\s*<|$)/gi;
+  let m;
+  while ((m = regex.exec(html)) !== null && properties.length < 80) {
+    const name = cleanText(m[1]);
+    const stateRaw = m[2].trim().toLowerCase();
+    const stateCode = stateMap[stateRaw] || (stateRaw.length === 2 ? stateRaw.toUpperCase() : null);
+
+    if (!stateCode || !isValidState(stateCode)) continue;
+    if (!name || name.length < 2) continue;
+    const key = name.toLowerCase();
+    if (seen.has(key)) continue;
+
+    // Extract area if present
+    const areaChunk = html.substring(m.index!, m.index! + 500);
+    const areaMatch = areaChunk.match(/[Áá]rea\s*(?:bruta\s*)?(?:loc[áa]vel)?:\s*([\d.,]+)\s*m/i);
+
+    seen.add(key);
+    properties.push({ name, state: stateCode });
   }
 
-  // fallback to limited HTML chunk to reduce noisy parsing
-  return html.slice(0, 25000);
+  return properties;
 }
 
 async function fetchHtml(url: string, timeoutMs = 10000): Promise<string | null> {
@@ -348,40 +374,50 @@ Deno.serve(async (req) => {
     const collected: Property[] = [];
     let textForAI = "";
 
-    // Sequential fetch to avoid aggressive concurrent timeouts
+    // Fetch sources sequentially
     for (const url of sources) {
       const html = await fetchHtml(url, 10000);
       if (!html) continue;
 
+      // Try dedicated Investidor10 parser first (most reliable)
+      if (url.includes("investidor10")) {
+        const inv10Props = parseInvestidor10Properties(html);
+        console.log(`Investidor10 structured parser: ${inv10Props.length} properties`);
+        if (inv10Props.length >= 3) {
+          // Great result from structured parser - cache and return
+          const result = JSON.stringify({
+            fund_name: ticker.toUpperCase(),
+            total_properties: inv10Props.length,
+            properties: inv10Props,
+          });
+          cache.set(t, { data: result, ts: Date.now() });
+          return new Response(result, {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        collected.push(...inv10Props);
+      }
+
+      // Generic regex parsing
       const parsed = filterQuality(parseByPatterns(html));
       if (parsed.length > 0) {
         collected.push(...parsed);
       }
 
-      textForAI += `\n\n[${url}]\n${stripHtmlText(html).slice(0, 3500)}`;
-
-      // Fast path: if we already have enough items, stop early
-      const mergedFast = dedupeProperties(collected);
-      if (mergedFast.length >= 5) {
-        const resultFast = JSON.stringify({
-          fund_name: ticker.toUpperCase(),
-          total_properties: mergedFast.length,
-          properties: mergedFast,
-        });
-        cache.set(t, { data: resultFast, ts: Date.now() });
-        return new Response(resultFast, {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
+      // Keep more text for AI (property lists are deep in the page)
+      textForAI += `\n\n[${url}]\n${stripHtmlText(html).slice(0, 8000)}`;
     }
 
-    const merged = dedupeProperties(collected);
+    const regexMerged = dedupeProperties(collected);
+    console.log(`Total parsing found ${regexMerged.length} properties for ${ticker}`);
 
-    // If direct parsing is sparse, try AI enrichment (DeepSeek first)
-    if (merged.length < 5 && textForAI.length > 500) {
+    // ALWAYS try AI if we have text, since regex is unreliable for property extraction
+    if (textForAI.length > 500) {
+      console.log(`Trying DeepSeek AI extraction for ${ticker}...`);
       const deepseekProps = await callDeepSeek(textForAI, ticker);
       if (deepseekProps && deepseekProps.length > 0) {
-        const combined = dedupeProperties([...merged, ...deepseekProps]);
+        console.log(`DeepSeek found ${deepseekProps.length} properties`);
+        const combined = dedupeProperties([...deepseekProps, ...regexMerged]);
         const result = JSON.stringify({
           fund_name: ticker.toUpperCase(),
           total_properties: combined.length,
@@ -392,10 +428,12 @@ Deno.serve(async (req) => {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
+      console.log(`DeepSeek failed, trying Lovable fallback for ${ticker}...`);
 
       const lovableProps = await callLovableFallback(textForAI, ticker);
       if (lovableProps && lovableProps.length > 0) {
-        const combined = dedupeProperties([...merged, ...lovableProps]);
+        console.log(`Lovable found ${lovableProps.length} properties`);
+        const combined = dedupeProperties([...lovableProps, ...regexMerged]);
         const result = JSON.stringify({
           fund_name: ticker.toUpperCase(),
           total_properties: combined.length,
@@ -408,12 +446,12 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Return direct parsed result when enrichment is not needed or not available
-    if (merged.length > 0) {
+    // Fallback: return regex results if AI failed
+    if (regexMerged.length > 0) {
       const result = JSON.stringify({
         fund_name: ticker.toUpperCase(),
-        total_properties: merged.length,
-        properties: merged,
+        total_properties: regexMerged.length,
+        properties: regexMerged,
       });
       cache.set(t, { data: result, ts: Date.now() });
       return new Response(result, {
