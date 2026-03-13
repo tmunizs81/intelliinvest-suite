@@ -43,7 +43,7 @@ export function useAIInsights() {
       }
       checkAIProviderFallback(data);
 
-      if (data.error) {
+      if (data.error && !data._fallback) {
         throw new Error(data.error);
       }
 
