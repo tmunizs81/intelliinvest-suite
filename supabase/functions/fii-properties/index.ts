@@ -348,7 +348,7 @@ Deno.serve(async (req) => {
     const collected: Property[] = [];
     let textForAI = "";
 
-    // Sequential fetch to avoid aggressive concurrent timeouts
+    // Fetch all sources (sequential to avoid resource exhaustion)
     for (const url of sources) {
       const html = await fetchHtml(url, 10000);
       if (!html) continue;
@@ -358,30 +358,19 @@ Deno.serve(async (req) => {
         collected.push(...parsed);
       }
 
-      textForAI += `\n\n[${url}]\n${stripHtmlText(html).slice(0, 3500)}`;
-
-      // Fast path: if we already have enough items, stop early
-      const mergedFast = dedupeProperties(collected);
-      if (mergedFast.length >= 5) {
-        const resultFast = JSON.stringify({
-          fund_name: ticker.toUpperCase(),
-          total_properties: mergedFast.length,
-          properties: mergedFast,
-        });
-        cache.set(t, { data: resultFast, ts: Date.now() });
-        return new Response(resultFast, {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
+      textForAI += `\n\n[${url}]\n${stripHtmlText(html).slice(0, 4000)}`;
     }
 
-    const merged = dedupeProperties(collected);
+    const regexMerged = dedupeProperties(collected);
+    console.log(`Regex parsing found ${regexMerged.length} properties for ${ticker}`);
 
-    // If direct parsing is sparse, try AI enrichment (DeepSeek first)
-    if (merged.length < 5 && textForAI.length > 500) {
+    // ALWAYS try AI if we have text, since regex is unreliable for property extraction
+    if (textForAI.length > 500) {
+      console.log(`Trying DeepSeek AI extraction for ${ticker}...`);
       const deepseekProps = await callDeepSeek(textForAI, ticker);
       if (deepseekProps && deepseekProps.length > 0) {
-        const combined = dedupeProperties([...merged, ...deepseekProps]);
+        console.log(`DeepSeek found ${deepseekProps.length} properties`);
+        const combined = dedupeProperties([...deepseekProps, ...regexMerged]);
         const result = JSON.stringify({
           fund_name: ticker.toUpperCase(),
           total_properties: combined.length,
@@ -392,10 +381,12 @@ Deno.serve(async (req) => {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
+      console.log(`DeepSeek failed, trying Lovable fallback for ${ticker}...`);
 
       const lovableProps = await callLovableFallback(textForAI, ticker);
       if (lovableProps && lovableProps.length > 0) {
-        const combined = dedupeProperties([...merged, ...lovableProps]);
+        console.log(`Lovable found ${lovableProps.length} properties`);
+        const combined = dedupeProperties([...lovableProps, ...regexMerged]);
         const result = JSON.stringify({
           fund_name: ticker.toUpperCase(),
           total_properties: combined.length,
@@ -408,12 +399,12 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Return direct parsed result when enrichment is not needed or not available
-    if (merged.length > 0) {
+    // Fallback: return regex results if AI failed
+    if (regexMerged.length > 0) {
       const result = JSON.stringify({
         fund_name: ticker.toUpperCase(),
-        total_properties: merged.length,
-        properties: merged,
+        total_properties: regexMerged.length,
+        properties: regexMerged,
       });
       cache.set(t, { data: result, ts: Date.now() });
       return new Response(result, {
