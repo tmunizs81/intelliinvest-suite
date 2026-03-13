@@ -145,8 +145,26 @@ Deno.serve(async (req) => {
     });
 
     if (!response.ok) {
-      if (response.status === 429) return new Response(JSON.stringify({ error: "Rate limit." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      if (response.status === 402) return new Response(JSON.stringify({ error: "Créditos insuficientes." }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      if (response.status === 429 || response.status === 402) {
+        const fallbackNews = uniqueNews.slice(0, 8).map((item) => ({
+          title: item.title,
+          summary: item.description?.slice(0, 220) || item.title,
+          impact: "neutral",
+          related_tickers: tickers.slice(0, 3),
+          category: "macro",
+          source_url: item.link,
+        }));
+
+        return new Response(JSON.stringify({
+          news: fallbackNews,
+          _provider: provider,
+          _fallback: true,
+          _fallback_reason: response.status === 429 ? "rate_limit" : "credits",
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json", "x-ai-provider": provider },
+        });
+      }
+
       throw new Error(`AI error: ${response.status}`);
     }
 
