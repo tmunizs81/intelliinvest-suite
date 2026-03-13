@@ -41,8 +41,6 @@ async function callAI(body: any): Promise<{ response: Response; provider: string
   });
   return { response: groqResp, provider: "groq" };
 }
-  return { response: groqResp, provider: "groq" };
-}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
