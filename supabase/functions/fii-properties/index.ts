@@ -113,28 +113,54 @@ function dedupeProperties(properties: Property[]): Property[] {
 }
 
 function extractFocusedSection(html: string): string {
-  const markers = [
-    "lista de imóveis",
-    "lista de imoveis",
-    "portfólio",
-    "portfolio",
-    "imóveis",
-    "imoveis",
-    "propriedades",
-  ];
+  // Strip scripts/styles first to reduce noise
+  const cleaned = html
+    .replace(/<script[\s\S]*?<\/script>/gi, "")
+    .replace(/<style[\s\S]*?<\/style>/gi, "");
+  return cleaned;
+}
 
-  const lower = html.toLowerCase();
-  for (const marker of markers) {
-    const idx = lower.indexOf(marker);
-    if (idx !== -1) {
-      const start = Math.max(0, idx - 2000);
-      const end = Math.min(html.length, idx + 22000);
-      return html.slice(start, end);
-    }
+// Dedicated parser for Investidor10's property cards structure:
+// Pattern in HTML: heading with property name, then "Estado:" with state name
+function parseInvestidor10Properties(html: string): Property[] {
+  const properties: Property[] = [];
+  const seen = new Set<string>();
+
+  // State name to code mapping
+  const stateMap: Record<string, string> = {
+    "são paulo": "SP", "rio de janeiro": "RJ", "minas gerais": "MG",
+    "paraná": "PR", "rio grande do sul": "RS", "santa catarina": "SC",
+    "bahia": "BA", "pernambuco": "PE", "ceará": "CE", "goiás": "GO",
+    "distrito federal": "DF", "espírito santo": "ES", "mato grosso": "MT",
+    "mato grosso do sul": "MS", "pará": "PA", "paraíba": "PB",
+    "piauí": "PI", "rio grande do norte": "RN", "rondônia": "RO",
+    "roraima": "RR", "sergipe": "SE", "tocantins": "TO",
+    "alagoas": "AL", "amapá": "AP", "amazonas": "AM", "acre": "AC",
+    "maranhão": "MA",
+  };
+
+  // Pattern: <h3/h4/strong>NAME</h3> ... Estado: STATE ... Área bruta locável: X m²
+  const regex = /<(?:h[2-5]|strong)[^>]*>\s*([^<]{2,80})\s*<\/(?:h[2-5]|strong)>[\s\S]{0,300}?Estado:\s*([A-Za-zÀ-Úà-ú\s]+?)(?:\s*<|$)/gi;
+  let m;
+  while ((m = regex.exec(html)) !== null && properties.length < 80) {
+    const name = cleanText(m[1]);
+    const stateRaw = m[2].trim().toLowerCase();
+    const stateCode = stateMap[stateRaw] || (stateRaw.length === 2 ? stateRaw.toUpperCase() : null);
+
+    if (!stateCode || !isValidState(stateCode)) continue;
+    if (!name || name.length < 2) continue;
+    const key = name.toLowerCase();
+    if (seen.has(key)) continue;
+
+    // Extract area if present
+    const areaChunk = html.substring(m.index!, m.index! + 500);
+    const areaMatch = areaChunk.match(/[Áá]rea\s*(?:bruta\s*)?(?:loc[áa]vel)?:\s*([\d.,]+)\s*m/i);
+
+    seen.add(key);
+    properties.push({ name, state: stateCode });
   }
 
-  // fallback to limited HTML chunk to reduce noisy parsing
-  return html.slice(0, 25000);
+  return properties;
 }
 
 async function fetchHtml(url: string, timeoutMs = 10000): Promise<string | null> {
