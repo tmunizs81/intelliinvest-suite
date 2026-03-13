@@ -1186,8 +1186,8 @@ Após adicionar os ativos:
 ---
 
 **T2-SimplyNvest** — Investimentos Inteligentes  
-*Versão 3.0 — Manual do Usuário*  
-*© 2025 T2 Systems. Todos os direitos reservados.*
+*Versão 3.1 — Manual do Usuário*  
+*© 2026 T2 Systems. Todos os direitos reservados.*
     `,
   },
 ];
