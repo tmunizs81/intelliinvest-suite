@@ -7,21 +7,17 @@ const corsHeaders = {
 const userCalls = new Map<string, number[]>();
 const MAX_CALLS_PER_MIN = 10;
 
-function checkRateLimit(req: Request): Response | null {
+function isRateLimited(req: Request): boolean {
   const auth = req.headers.get("authorization") || "";
   const parts = auth.replace("Bearer ", "").split(".");
   let userId = "anon";
   try { if (parts[1]) { const p = JSON.parse(atob(parts[1])); userId = p.sub || "anon"; } } catch {}
   const now = Date.now();
   const calls = (userCalls.get(userId) || []).filter(t => now - t < 60000);
-  if (calls.length >= MAX_CALLS_PER_MIN) {
-    return new Response(JSON.stringify({ error: "Rate limit: máximo de 10 chamadas/minuto." }), {
-      status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
+  if (calls.length >= MAX_CALLS_PER_MIN) return true;
   calls.push(now);
   userCalls.set(userId, calls);
-  return null;
+  return false;
 }
 
 async function callAI(body: any): Promise<{ response: Response; provider: string }> {
@@ -132,8 +128,15 @@ async function fetchHistory(ticker: string, req: Request): Promise<any[]> {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
-  const rateLimited = checkRateLimit(req);
-  if (rateLimited) return rateLimited;
+  const emptyFallback = (reason: string) => new Response(
+    JSON.stringify({ patterns: [], _provider: "local", _fallback: true, _reason: reason }),
+    { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+  );
+
+  if (isRateLimited(req)) {
+    console.warn("Rate limited, returning empty patterns");
+    return emptyFallback("limite de chamadas");
+  }
 
   try {
     const { tickers, assets } = await req.json();
@@ -203,8 +206,10 @@ SEMPRE identifique pelo menos 3-5 padrões. Use a ferramenta para retornar o res
     });
 
     if (!response.ok) {
-      if (response.status === 429) return new Response(JSON.stringify({ error: "Rate limit." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      if (response.status === 402) return new Response(JSON.stringify({ error: "Créditos insuficientes." }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      if (response.status === 429 || response.status === 402) {
+        console.warn(`AI provider returned ${response.status}, returning empty patterns`);
+        return emptyFallback("provedor indisponível");
+      }
       const errText = await response.text();
       console.error("AI error:", response.status, errText);
       throw new Error(`AI error: ${response.status}`);

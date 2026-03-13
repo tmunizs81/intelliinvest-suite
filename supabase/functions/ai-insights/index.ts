@@ -9,21 +9,17 @@ const corsHeaders = {
 const userCalls = new Map<string, number[]>();
 const MAX_CALLS_PER_MIN = 10;
 
-function checkRateLimit(req: Request): Response | null {
+function isRateLimited(req: Request): boolean {
   const auth = req.headers.get("authorization") || "";
   const parts = auth.replace("Bearer ", "").split(".");
   let userId = "anon";
   try { if (parts[1]) { const p = JSON.parse(atob(parts[1])); userId = p.sub || "anon"; } } catch {}
   const now = Date.now();
   const calls = (userCalls.get(userId) || []).filter(t => now - t < 60000);
-  if (calls.length >= MAX_CALLS_PER_MIN) {
-    return new Response(JSON.stringify({ error: "Rate limit: máximo de 10 chamadas/minuto." }), {
-      status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
+  if (calls.length >= MAX_CALLS_PER_MIN) return true;
   calls.push(now);
   userCalls.set(userId, calls);
-  return null;
+  return false;
 }
 
 async function callAI(body: any): Promise<{ response: Response; provider: string }> {
@@ -53,9 +49,6 @@ async function callAI(body: any): Promise<{ response: Response; provider: string
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
-  const rateLimited = checkRateLimit(req);
-  if (rateLimited) return rateLimited;
-
   try {
     const { portfolio } = await req.json();
     if (!portfolio || !Array.isArray(portfolio)) return new Response(JSON.stringify({ error: "portfolio array required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -63,6 +56,30 @@ Deno.serve(async (req) => {
     const totalValue = portfolio.reduce((s: number, a: any) => s + (a.currentPrice * a.quantity), 0);
     const totalCost = portfolio.reduce((s: number, a: any) => s + (a.avgPrice * a.quantity), 0);
     const totalReturn = totalCost > 0 ? ((totalValue - totalCost) / totalCost * 100) : 0;
+
+    // Helper to build local fallback insights
+    const buildFallback = (reason: string) => {
+      const topAsset = portfolio.reduce((a: any, b: any) => ((b.allocation || 0) > (a.allocation || 0) ? b : a), portfolio[0]);
+      const negativeAssets = portfolio.filter((a: any) => (a.change24h || 0) < -3);
+      const fallbackInsights: any[] = [
+        { type: "analysis", title: "Resumo da carteira", description: `Patrimônio de R$${totalValue.toFixed(0)} com ${portfolio.length} ativos. Retorno total: ${totalReturn.toFixed(1)}%.`, severity: "info" },
+        { type: "alert", title: `Maior posição: ${topAsset.ticker}`, description: `${topAsset.ticker} representa ${(topAsset.allocation || 0).toFixed(1)}% da carteira. Avalie concentração.`, severity: (topAsset.allocation || 0) > 20 ? "warning" : "info", ticker: topAsset.ticker },
+      ];
+      if (negativeAssets.length > 0) {
+        fallbackInsights.push({ type: "alert", title: `${negativeAssets.length} ativo(s) em queda forte`, description: negativeAssets.map((a: any) => `${a.ticker} (${(a.change24h || 0).toFixed(1)}%)`).join(", "), severity: "warning", ticker: negativeAssets[0].ticker });
+      }
+      return new Response(JSON.stringify({
+        insights: fallbackInsights,
+        summary: `Carteira com ${portfolio.length} ativos e retorno de ${totalReturn.toFixed(1)}% (${reason})`,
+        _provider: "local", _fallback: true, timestamp: new Date().toISOString(),
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    };
+
+    // Rate limit → return local fallback instead of 429
+    if (isRateLimited(req)) {
+      console.warn("Rate limited, returning local fallback");
+      return buildFallback("limite de chamadas");
+    }
 
     const portfolioText = portfolio.map((a: any) => {
       const value = a.currentPrice * a.quantity;
@@ -128,22 +145,7 @@ Gere insights inteligentes, alertas e recomendações baseados nestes dados reai
 
     if (!response.ok) {
       if (response.status === 429 || response.status === 402) {
-        // Graceful degradation: return basic portfolio-derived insights
-        const topAsset = portfolio.reduce((a: any, b: any) => (b.allocation > a.allocation ? b : a), portfolio[0]);
-        const negativeAssets = portfolio.filter((a: any) => a.change24h < -3);
-        const fallbackInsights = [
-          { type: "analysis", title: "Resumo da carteira", description: `Patrimônio de R$${totalValue.toFixed(0)} com ${portfolio.length} ativos. Retorno total: ${totalReturn.toFixed(1)}%.`, severity: "info" },
-          { type: "alert", title: `Maior posição: ${topAsset.ticker}`, description: `${topAsset.ticker} representa ${topAsset.allocation?.toFixed(1)}% da carteira. Avalie concentração.`, severity: topAsset.allocation > 20 ? "warning" : "info", ticker: topAsset.ticker },
-        ];
-        if (negativeAssets.length > 0) {
-          fallbackInsights.push({ type: "alert", title: `${negativeAssets.length} ativo(s) em queda forte`, description: negativeAssets.map((a: any) => `${a.ticker} (${a.change24h?.toFixed(1)}%)`).join(", "), severity: "warning" as const, ticker: negativeAssets[0].ticker });
-        }
-        return new Response(JSON.stringify({
-          insights: fallbackInsights,
-          summary: `Carteira com ${portfolio.length} ativos e retorno de ${totalReturn.toFixed(1)}% (análise local)`,
-          _provider: provider, _fallback: true,
-          timestamp: new Date().toISOString(),
-        }), { headers: { ...corsHeaders, "Content-Type": "application/json", "x-ai-provider": provider } });
+        return buildFallback("análise local");
       }
       const text = await response.text();
       console.error("AI gateway error:", response.status, text);
