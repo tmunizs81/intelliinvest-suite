@@ -70,7 +70,7 @@ Faça uma análise técnica completa incluindo:
     const response = await callAI({
       model: "gemini-2.5-flash",
       messages: [
-        { role: "system", content: SYSTEM_PROMPT },
+        { role: "system", content: "Você é um analista técnico e fundamentalista especializado no mercado brasileiro. Analise o ativo fornecido e dê uma recomendação clara (compra_forte, compra, manter, venda, venda_forte) com justificativa técnica. Responda em português." },
         { role: "user", content: userPrompt },
       ],
       tools: [

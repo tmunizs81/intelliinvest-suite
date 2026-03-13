@@ -80,7 +80,7 @@ Data: ${new Date().toLocaleDateString('pt-BR')}`;
 
     const response = await callAI({
       model: "gemini-2.5-flash",
-      messages: [{ role: "system", content: SYSTEM_PROMPT + portfolioContext }, ...messages],
+      messages: [{ role: "system", content: "Você é um assistente financeiro inteligente especializado no mercado brasileiro. Responda perguntas sobre a carteira do investidor de forma clara e prática. Use os dados reais fornecidos. Responda em português.\n\n" + portfolioContext }, ...messages],
       stream: true,
     });
 

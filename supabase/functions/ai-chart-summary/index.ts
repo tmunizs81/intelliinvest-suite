@@ -50,7 +50,7 @@ Forneça um resumo do que os indicadores do gráfico estão mostrando.`;
     const response = await callAI({
       model: "gemini-2.5-flash",
       messages: [
-        { role: "system", content: SYSTEM_PROMPT },
+        { role: "system", content: "Você é um analista técnico especializado em leitura de gráficos de ativos do mercado brasileiro. Analise os dados de candles e indicadores técnicos fornecidos e gere um resumo conciso da situação técnica do ativo. Responda em português." },
         { role: "user", content: userPrompt },
       ],
       tools: [{
