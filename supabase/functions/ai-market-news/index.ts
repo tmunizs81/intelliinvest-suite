@@ -167,7 +167,7 @@ async function callAI(body: any): Promise<{ response: Response; provider: string
         method: "POST",
         headers: { Authorization: `Bearer ${DEEPSEEK_API_KEY}`, "Content-Type": "application/json" },
         body: JSON.stringify({ ...rest, model: "deepseek-chat" }),
-        signal: AbortSignal.timeout(12000),
+        signal: AbortSignal.timeout(7000),
       });
       if (resp.ok) return { response: resp, provider: "deepseek" };
     } catch {
