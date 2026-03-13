@@ -1,15 +1,12 @@
-
-
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-async function callAI(body) {
+async function callAI(body: any): Promise<{ response: Response; provider: string }> {
   const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-
   if (DEEPSEEK_API_KEY) {
     try {
       const { model, ...rest } = body;
@@ -22,13 +19,12 @@ async function callAI(body) {
       console.warn("DeepSeek failed:", resp.status, "falling back to Lovable AI");
     } catch (e) { console.warn("DeepSeek error, falling back:", e); }
   }
-
   if (!LOVABLE_API_KEY) throw new Error("No AI provider available");
   const { model, ...rest } = body;
   const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
     headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ ...rest, model: model && model.startsWith("google/") ? model : `google/${model || "gemini-2.5-flash"}` }),
+    body: JSON.stringify({ ...rest, model: model?.startsWith("google/") ? model : `google/${model || "gemini-2.5-flash"}` }),
   });
   return { response: resp, provider: "lovable" };
 }
@@ -57,73 +53,66 @@ ${portfolioText}
 
 Use dados históricos reais do mercado brasileiro. Calcule drawdown máximo, recuperação e retorno total no período.`;
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          { role: "system", content: "Você é um analista quantitativo especializado em backtesting de carteiras brasileiras. Use dados históricos reais para simular cenários." },
-          { role: "user", content: prompt },
-        ],
-        tools: [{
-          type: "function",
-          function: {
-            name: "backtest_result",
-            description: "Return backtesting results",
-            parameters: {
-              type: "object",
-              properties: {
-                scenario_name: { type: "string" },
-                period: { type: "string", description: "e.g. Mar/2020 - Jun/2020" },
-                initial_value: { type: "number" },
-                lowest_value: { type: "number" },
-                final_value: { type: "number" },
-                max_drawdown_pct: { type: "number" },
-                total_return_pct: { type: "number" },
-                recovery_days: { type: "number", description: "Days to recover from lowest point" },
-                timeline: {
-                  type: "array",
-                  items: {
-                    type: "object",
-                    properties: {
-                      label: { type: "string", description: "Month/year label" },
-                      value_pct: { type: "number", description: "Portfolio value as % of initial (100=no change)" },
-                    },
-                    required: ["label", "value_pct"],
-                    additionalProperties: false,
+    const { response } = await callAI({
+      model: "gemini-2.5-flash",
+      messages: [
+        { role: "system", content: "Você é um analista quantitativo especializado em backtesting de carteiras brasileiras. Use dados históricos reais para simular cenários." },
+        { role: "user", content: prompt },
+      ],
+      tools: [{
+        type: "function",
+        function: {
+          name: "backtest_result",
+          description: "Return backtesting results",
+          parameters: {
+            type: "object",
+            properties: {
+              scenario_name: { type: "string" },
+              period: { type: "string", description: "e.g. Mar/2020 - Jun/2020" },
+              initial_value: { type: "number" },
+              lowest_value: { type: "number" },
+              final_value: { type: "number" },
+              max_drawdown_pct: { type: "number" },
+              total_return_pct: { type: "number" },
+              recovery_days: { type: "number", description: "Days to recover from lowest point" },
+              timeline: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    label: { type: "string", description: "Month/year label" },
+                    value_pct: { type: "number", description: "Portfolio value as % of initial (100=no change)" },
                   },
+                  required: ["label", "value_pct"],
+                  additionalProperties: false,
                 },
-                asset_impacts: {
-                  type: "array",
-                  items: {
-                    type: "object",
-                    properties: {
-                      ticker: { type: "string" },
-                      return_pct: { type: "number" },
-                      worst_drawdown_pct: { type: "number" },
-                    },
-                    required: ["ticker", "return_pct", "worst_drawdown_pct"],
-                    additionalProperties: false,
-                  },
-                },
-                lessons: {
-                  type: "array",
-                  items: { type: "string" },
-                  description: "2-4 lessons learned in Portuguese",
-                },
-                summary: { type: "string", description: "Brief summary in Portuguese (max 120 chars)" },
               },
-              required: ["scenario_name", "period", "initial_value", "lowest_value", "final_value", "max_drawdown_pct", "total_return_pct", "recovery_days", "timeline", "asset_impacts", "lessons", "summary"],
-              additionalProperties: false,
+              asset_impacts: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    ticker: { type: "string" },
+                    return_pct: { type: "number" },
+                    worst_drawdown_pct: { type: "number" },
+                  },
+                  required: ["ticker", "return_pct", "worst_drawdown_pct"],
+                  additionalProperties: false,
+                },
+              },
+              lessons: {
+                type: "array",
+                items: { type: "string" },
+                description: "2-4 lessons learned in Portuguese",
+              },
+              summary: { type: "string", description: "Brief summary in Portuguese (max 120 chars)" },
             },
+            required: ["scenario_name", "period", "initial_value", "lowest_value", "final_value", "max_drawdown_pct", "total_return_pct", "recovery_days", "timeline", "asset_impacts", "lessons", "summary"],
+            additionalProperties: false,
           },
-        }],
-        tool_choice: { type: "function", function: { name: "backtest_result" } },
-      }),
+        },
+      }],
+      tool_choice: { type: "function", function: { name: "backtest_result" } },
     });
 
     if (!response.ok) {

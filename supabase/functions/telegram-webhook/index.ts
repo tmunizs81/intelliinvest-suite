@@ -1,4 +1,3 @@
-
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 const corsHeaders = {
@@ -6,6 +5,36 @@ const corsHeaders = {
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type",
 };
+
+async function callAISimple(messages: any[], maxTokens = 800): Promise<string | null> {
+  const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
+  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+
+  if (DEEPSEEK_API_KEY) {
+    try {
+      const resp = await fetch("https://api.deepseek.com/v1/chat/completions", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${DEEPSEEK_API_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ model: "deepseek-chat", messages, max_tokens: maxTokens }),
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        return data.choices?.[0]?.message?.content || null;
+      }
+      console.warn("DeepSeek failed, falling back");
+    } catch (e) { console.warn("DeepSeek error:", e); }
+  }
+
+  if (!LOVABLE_API_KEY) return null;
+  const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ model: "google/gemini-2.5-flash", messages, max_tokens: maxTokens }),
+  });
+  if (!resp.ok) return null;
+  const data = await resp.json();
+  return data.choices?.[0]?.message?.content || null;
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -17,7 +46,6 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN")!;
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY")!;
     const adminClient = createClient(supabaseUrl, supabaseServiceKey);
 
     const body = await req.json();
@@ -430,7 +458,6 @@ Deno.serve(async (req) => {
         });
       }
 
-      // Get portfolio context
       const { holdings, quotes } = await getPortfolioData();
       const portfolioContext = holdings.map((h: any) => {
         const q = quotes[h.ticker];
@@ -445,27 +472,14 @@ Deno.serve(async (req) => {
       }, 0);
 
       try {
-        const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${LOVABLE_API_KEY}`,
+        const reply = await callAISimple([
+          {
+            role: "system",
+            content: `Você é o consultor financeiro IA do T2-Simplynvest. Responda de forma concisa e objetiva (max 500 palavras). Use emojis. Contexto da carteira do usuário:\n\nPatrimônio: R$${totalValue.toFixed(2)}\n${portfolioContext}\n\nResponda em português brasileiro.`,
           },
-          body: JSON.stringify({
-            model: "google/gemini-2.5-flash",
-            messages: [
-              {
-                role: "system",
-                content: `Você é o consultor financeiro IA do T2-Simplynvest. Responda de forma concisa e objetiva (max 500 palavras). Use emojis. Contexto da carteira do usuário:\n\nPatrimônio: R$${totalValue.toFixed(2)}\n${portfolioContext}\n\nResponda em português brasileiro.`,
-              },
-              { role: "user", content: question },
-            ],
-            max_tokens: 800,
-          }),
-        });
-        const aiData = await aiResp.json();
-        const reply = aiData.choices?.[0]?.message?.content || "Não consegui processar sua pergunta.";
-        await sendMsg(reply);
+          { role: "user", content: question },
+        ], 800);
+        await sendMsg(reply || "Não consegui processar sua pergunta.");
       } catch {
         await sendMsg("❌ Erro ao consultar IA. Tente novamente.");
       }
