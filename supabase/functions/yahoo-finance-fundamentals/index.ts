@@ -363,6 +363,58 @@ function getGoogleFinanceTicker(ticker: string, category: string): string {
   return `${ticker}:BVMF`;
 }
 
+// ─── Brapi API (primary source for Brazilian assets) ───
+async function tryBrapi(ticker: string): Promise<Partial<FundamentalResult> | null> {
+  const token = Deno.env.get("BRAPI_TOKEN");
+  if (!token) return null;
+  try {
+    const url = `https://brapi.dev/api/quote/${ticker}?fundamental=true&modules=financialData&token=${token}`;
+    const resp = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    const r = data?.results?.[0];
+    if (!r) return null;
+
+    const getRaw = (obj: any) => {
+      if (obj == null) return null;
+      if (typeof obj === "number") return obj;
+      return obj?.raw ?? obj?.rawValue ?? null;
+    };
+
+    const fin = r.financialData || {};
+
+    const result: Partial<FundamentalResult> = {
+      pe: r.priceEarnings ?? null,
+      eps: r.earningsPerShare ?? null,
+      dividendYield: r.dividendYield != null ? r.dividendYield * 100 : null,
+      marketCap: r.marketCap ?? null,
+      fiftyTwoWeekHigh: r.fiftyTwoWeekHigh ?? null,
+      fiftyTwoWeekLow: r.fiftyTwoWeekLow ?? null,
+      avgVolume: r.averageDailyVolume10Day ?? null,
+      // financialData module
+      roe: getRaw(fin.returnOnEquity) != null ? getRaw(fin.returnOnEquity) * 100 : null,
+      netMargin: getRaw(fin.profitMargins) != null ? getRaw(fin.profitMargins) * 100 : null,
+      grossMargin: getRaw(fin.grossMargins) != null ? getRaw(fin.grossMargins) * 100 : null,
+      revenue: getRaw(fin.totalRevenue),
+      ebitda: getRaw(fin.ebitda),
+      freeCashFlow: getRaw(fin.freeCashflow),
+      debtToEquity: getRaw(fin.debtToEquity) != null ? getRaw(fin.debtToEquity) / 100 : null,
+      currentRatio: getRaw(fin.currentRatio),
+    };
+
+    // P/VP from Brapi
+    if (r.regularMarketPrice && r.bookValue) {
+      result.pb = r.regularMarketPrice / r.bookValue;
+      result.bookValue = r.bookValue;
+    }
+
+    return Object.values(result).some(v => v != null) ? result : null;
+  } catch (e) {
+    console.warn("Brapi error:", e);
+    return null;
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
