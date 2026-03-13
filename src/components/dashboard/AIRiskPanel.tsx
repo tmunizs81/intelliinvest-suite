@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { type Asset } from '@/lib/mockData';
 import { useAIRateLimit } from '@/hooks/useAIRateLimit';
+import { checkAIProviderFallback } from '@/lib/aiProviderToast';
 import { Shield, Loader2, AlertTriangle, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
 
 interface RiskAnalysis {
