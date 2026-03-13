@@ -128,8 +128,15 @@ async function fetchHistory(ticker: string, req: Request): Promise<any[]> {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
-  const rateLimited = checkRateLimit(req);
-  if (rateLimited) return rateLimited;
+  const emptyFallback = (reason: string) => new Response(
+    JSON.stringify({ patterns: [], _provider: "local", _fallback: true, _reason: reason }),
+    { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+  );
+
+  if (isRateLimited(req)) {
+    console.warn("Rate limited, returning empty patterns");
+    return emptyFallback("limite de chamadas");
+  }
 
   try {
     const { tickers, assets } = await req.json();
