@@ -5,11 +5,41 @@ const corsHeaders = {
   "Access-Control-Expose-Headers": "x-ai-provider",
 };
 
-async function callAI(body) {
+function getAssetCategory(ticker: string, type?: string): string {
+  if (type === "FII") return "fii";
+  if (type === "ETF") return "etf";
+  if (type === "BDR") return "bdr";
+  if (type === "Crypto") return "crypto";
+  const t = ticker.toUpperCase();
+  if (/^[A-Z]{4}11$/.test(t)) return "fii";
+  if (/^[A-Z]{4}(34|35|39)$/.test(t)) return "bdr";
+  if (/^[A-Z]{4}\d{1,2}$/.test(t)) return "stock";
+  return "other";
+}
+
+function isBrazilian(ticker: string): boolean {
+  return /^[A-Z]{4}\d{1,2}$/i.test(ticker);
+}
+
+async function fetchBrapiData(ticker: string): Promise<any | null> {
+  const token = Deno.env.get("BRAPI_TOKEN");
+  if (!token) return null;
+  try {
+    const url = `https://brapi.dev/api/quote/${ticker}?modules=summaryProfile,financialData&fundamental=true&token=${token}`;
+    const resp = await fetch(url, { signal: AbortSignal.timeout(10000) });
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    return data?.results?.[0] || null;
+  } catch (e) {
+    console.warn("Brapi fetch error:", e);
+    return null;
+  }
+}
+
+async function callAI(body: any) {
   const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
-  // Primary: DeepSeek
   if (DEEPSEEK_API_KEY) {
     try {
       const { model, ...rest } = body;
@@ -23,7 +53,6 @@ async function callAI(body) {
     } catch (e) { console.warn("DeepSeek error, falling back:", e); }
   }
 
-  // Fallback: Lovable AI
   if (!LOVABLE_API_KEY) throw new Error("No AI provider available");
   const { model, ...rest } = body;
   const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -33,6 +62,53 @@ async function callAI(body) {
   });
   return { response: resp, provider: "lovable" };
 }
+
+function formatBrapiContext(brapi: any, ticker: string): string {
+  if (!brapi) return "";
+  const parts: string[] = [`[Brapi - ${ticker}]`];
+
+  if (brapi.longName) parts.push(`Nome: ${brapi.longName}`);
+  if (brapi.regularMarketPrice) parts.push(`Preço: R$ ${brapi.regularMarketPrice}`);
+  if (brapi.regularMarketChangePercent != null) parts.push(`Variação dia: ${brapi.regularMarketChangePercent?.toFixed(2)}%`);
+  if (brapi.marketCap) parts.push(`Market Cap: R$ ${(brapi.marketCap / 1e9).toFixed(2)}B`);
+  if (brapi.earningsPerShare) parts.push(`LPA: R$ ${brapi.earningsPerShare}`);
+  if (brapi.priceEarnings) parts.push(`P/L: ${brapi.priceEarnings}`);
+  if (brapi.dividendYield) parts.push(`Dividend Yield: ${(brapi.dividendYield * 100).toFixed(2)}%`);
+  if (brapi.fiftyTwoWeekHigh) parts.push(`Máxima 52 sem: R$ ${brapi.fiftyTwoWeekHigh}`);
+  if (brapi.fiftyTwoWeekLow) parts.push(`Mínima 52 sem: R$ ${brapi.fiftyTwoWeekLow}`);
+  if (brapi.averageDailyVolume10Day) parts.push(`Volume médio 10d: ${brapi.averageDailyVolume10Day}`);
+
+  // summaryProfile module
+  const profile = brapi.summaryProfile;
+  if (profile) {
+    if (profile.sector) parts.push(`Setor: ${profile.sector}`);
+    if (profile.industry) parts.push(`Indústria: ${profile.industry}`);
+    if (profile.longBusinessSummary) parts.push(`Descrição: ${profile.longBusinessSummary.substring(0, 2000)}`);
+    if (profile.website) parts.push(`Website: ${profile.website}`);
+    if (profile.fullTimeEmployees) parts.push(`Funcionários: ${profile.fullTimeEmployees}`);
+    if (profile.city) parts.push(`Cidade: ${profile.city}`);
+    if (profile.state) parts.push(`Estado: ${profile.state}`);
+  }
+
+  // financialData module
+  const fin = brapi.financialData;
+  if (fin) {
+    if (fin.totalRevenue?.raw) parts.push(`Receita Total: R$ ${(fin.totalRevenue.raw / 1e9).toFixed(2)}B`);
+    if (fin.grossProfits?.raw) parts.push(`Lucro Bruto: R$ ${(fin.grossProfits.raw / 1e9).toFixed(2)}B`);
+    if (fin.ebitda?.raw) parts.push(`EBITDA: R$ ${(fin.ebitda.raw / 1e9).toFixed(2)}B`);
+    if (fin.totalDebt?.raw) parts.push(`Dívida Total: R$ ${(fin.totalDebt.raw / 1e9).toFixed(2)}B`);
+    if (fin.freeCashflow?.raw) parts.push(`Free Cash Flow: R$ ${(fin.freeCashflow.raw / 1e9).toFixed(2)}B`);
+    if (fin.returnOnEquity?.raw) parts.push(`ROE: ${(fin.returnOnEquity.raw * 100).toFixed(2)}%`);
+    if (fin.grossMargins?.raw) parts.push(`Margem Bruta: ${(fin.grossMargins.raw * 100).toFixed(2)}%`);
+    if (fin.operatingMargins?.raw) parts.push(`Margem Operacional: ${(fin.operatingMargins.raw * 100).toFixed(2)}%`);
+    if (fin.profitMargins?.raw) parts.push(`Margem Líquida: ${(fin.profitMargins.raw * 100).toFixed(2)}%`);
+    if (fin.currentRatio?.raw) parts.push(`Liquidez Corrente: ${fin.currentRatio.raw}`);
+    if (fin.debtToEquity?.raw) parts.push(`Dívida/PL: ${fin.debtToEquity.raw}`);
+  }
+
+  return parts.join("\n");
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -41,26 +117,26 @@ Deno.serve(async (req) => {
     if (!ticker) return new Response(JSON.stringify({ error: "ticker required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
     const category = getAssetCategory(ticker, type);
-    const urls = getScrapingUrls(ticker, category);
-    let scrapedContent = "", coinGeckoContent = "";
+    const isBR = isBrazilian(ticker);
 
-    if (category === "crypto") {
-      const coinId = getCoinGeckoId(ticker);
-      if (coinId) coinGeckoContent = await fetchCoinGeckoData(coinId) || "";
+    let dataContext = "";
+
+    // For Brazilian assets, use Brapi as primary source (fast API, no scraping)
+    if (isBR) {
+      const brapiData = await fetchBrapiData(ticker);
+      dataContext = formatBrapiContext(brapiData, ticker);
+      if (!dataContext) {
+        dataContext = `Ativo brasileiro: ${ticker} (${name || ticker}), tipo: ${type || category}. Dados da Brapi indisponíveis, use seu conhecimento.`;
+      }
+    } else {
+      dataContext = `Ativo internacional: ${ticker} (${name || ticker}), tipo: ${type || category}. Use seu conhecimento para gerar o perfil.`;
     }
-
-    if (urls.length > 0) {
-      const pageTexts = await Promise.all(urls.map(fetchPageText));
-      scrapedContent = pageTexts.filter(Boolean).map((text, i) => `[Fonte ${i + 1}: ${urls[i]}]\n${text!.substring(0, 7000)}`).join("\n\n---\n\n");
-    }
-
-    const dataSection = [coinGeckoContent ? `CoinGecko:\n${coinGeckoContent}` : "", scrapedContent ? `Fontes brasileiras:\n${scrapedContent}` : ""].filter(Boolean).join("\n\n---\n\n");
 
     const { response, provider } = await callAI({
       model: "gemini-2.5-flash",
       messages: [
-        { role: "system", content: "Você é um analista financeiro especializado no mercado brasileiro. Gere resumos completos sobre ativos." },
-        { role: "user", content: `Gere resumo sobre ${ticker} (${name || ticker}, tipo: ${type || category}).\n\n${dataSection}` },
+        { role: "system", content: "Você é um analista financeiro especializado no mercado brasileiro e internacional. Gere resumos completos sobre ativos financeiros com base nos dados fornecidos. Seja preciso e detalhado." },
+        { role: "user", content: `Gere um resumo completo e perfil detalhado sobre o ativo ${ticker} (${name || ticker}, tipo: ${type || category}).\n\nDADOS DISPONÍVEIS:\n${dataContext}` },
       ],
       tools: [{
         type: "function",
@@ -70,11 +146,15 @@ Deno.serve(async (req) => {
           parameters: {
             type: "object",
             properties: {
-              description: { type: "string" },
-              administrator: { type: "string" }, manager: { type: "string" },
-              segment: { type: "string" }, classification: { type: "string" },
-              listing_date: { type: "string" }, admin_fee: { type: "string" },
-              performance_fee: { type: "string" }, ticker_exchange: { type: "string" },
+              description: { type: "string", description: "Descrição completa do ativo em 2-4 parágrafos" },
+              administrator: { type: "string", description: "Administrador (para FIIs)" },
+              manager: { type: "string", description: "Gestor (para FIIs)" },
+              segment: { type: "string", description: "Segmento ou setor do ativo" },
+              classification: { type: "string", description: "Classificação do ativo" },
+              listing_date: { type: "string", description: "Data de listagem" },
+              admin_fee: { type: "string", description: "Taxa de administração" },
+              performance_fee: { type: "string", description: "Taxa de performance" },
+              ticker_exchange: { type: "string", description: "Bolsa onde é negociado" },
               sections: {
                 type: "array",
                 items: { type: "object", properties: { title: { type: "string" }, content: { type: "string" } }, required: ["title", "content"], additionalProperties: false },

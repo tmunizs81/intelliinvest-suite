@@ -363,6 +363,58 @@ function getGoogleFinanceTicker(ticker: string, category: string): string {
   return `${ticker}:BVMF`;
 }
 
+// ─── Brapi API (primary source for Brazilian assets) ───
+async function tryBrapi(ticker: string): Promise<Partial<FundamentalResult> | null> {
+  const token = Deno.env.get("BRAPI_TOKEN");
+  if (!token) return null;
+  try {
+    const url = `https://brapi.dev/api/quote/${ticker}?fundamental=true&modules=financialData&token=${token}`;
+    const resp = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    const r = data?.results?.[0];
+    if (!r) return null;
+
+    const getRaw = (obj: any) => {
+      if (obj == null) return null;
+      if (typeof obj === "number") return obj;
+      return obj?.raw ?? obj?.rawValue ?? null;
+    };
+
+    const fin = r.financialData || {};
+
+    const result: Partial<FundamentalResult> = {
+      pe: r.priceEarnings ?? null,
+      eps: r.earningsPerShare ?? null,
+      dividendYield: r.dividendYield != null ? r.dividendYield * 100 : null,
+      marketCap: r.marketCap ?? null,
+      fiftyTwoWeekHigh: r.fiftyTwoWeekHigh ?? null,
+      fiftyTwoWeekLow: r.fiftyTwoWeekLow ?? null,
+      avgVolume: r.averageDailyVolume10Day ?? null,
+      // financialData module
+      roe: getRaw(fin.returnOnEquity) != null ? getRaw(fin.returnOnEquity) * 100 : null,
+      netMargin: getRaw(fin.profitMargins) != null ? getRaw(fin.profitMargins) * 100 : null,
+      grossMargin: getRaw(fin.grossMargins) != null ? getRaw(fin.grossMargins) * 100 : null,
+      revenue: getRaw(fin.totalRevenue),
+      ebitda: getRaw(fin.ebitda),
+      freeCashFlow: getRaw(fin.freeCashflow),
+      debtToEquity: getRaw(fin.debtToEquity) != null ? getRaw(fin.debtToEquity) / 100 : null,
+      currentRatio: getRaw(fin.currentRatio),
+    };
+
+    // P/VP from Brapi
+    if (r.regularMarketPrice && r.bookValue) {
+      result.pb = r.regularMarketPrice / r.bookValue;
+      result.bookValue = r.bookValue;
+    }
+
+    return Object.values(result).some(v => v != null) ? result : null;
+  } catch (e) {
+    console.warn("Brapi error:", e);
+    return null;
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -380,16 +432,23 @@ Deno.serve(async (req) => {
 
     console.log(`Fetching fundamentals for ${ticker} → ${yahooTicker} (category: ${category})`);
 
-    const auth = await getCrumbAndCookie();
     const t = ticker.toLowerCase();
+    const activeSources: string[] = [];
 
-    // Build parallel fetch promises based on asset type
+    // For Brazilian assets: Brapi FIRST (fast API), then scraping as fallback
+    let brapiData: Partial<FundamentalResult> | null = null;
+    if (isBrazilian) {
+      brapiData = await tryBrapi(ticker);
+      if (brapiData) activeSources.push("Brapi");
+    }
+
+    // Parallel fetch: Yahoo + scraping sources
+    const auth = await getCrumbAndCookie();
     const fetches: Promise<any>[] = [
       tryYahooV10(yahooTicker, auth),
       tryYahooChart(yahooTicker),
     ];
 
-    // Google Finance for all Brazilian assets
     if (isBrazilian) {
       const gfTicker = getGoogleFinanceTicker(ticker.toUpperCase(), category);
       fetches.push(fetchHtml(`https://www.google.com/finance/quote/${gfTicker}`));
@@ -402,27 +461,18 @@ Deno.serve(async (req) => {
       fetches.push(fetchHtml(`https://statusinvest.com.br/fundos-imobiliarios/${t}`));
       fetches.push(fetchHtml(`https://www.fundsexplorer.com.br/funds/${t}`));
       fetches.push(fetchHtml(`https://fiis.com.br/${t}/`));
-      fetches.push(Promise.resolve(null)); // stock statusinvest
-      fetches.push(Promise.resolve(null)); // stock investidor10
+      fetches.push(Promise.resolve(null));
+      fetches.push(Promise.resolve(null));
     } else if (category === 'stock' && isBrazilian) {
-      fetches.push(Promise.resolve(null)); // fii investidor10
-      fetches.push(Promise.resolve(null)); // fii statusinvest
-      fetches.push(Promise.resolve(null)); // fundsexplorer
-      fetches.push(Promise.resolve(null)); // fiis.com.br
+      fetches.push(Promise.resolve(null), Promise.resolve(null), Promise.resolve(null), Promise.resolve(null));
       fetches.push(fetchHtml(`https://statusinvest.com.br/acoes/${t}`));
       fetches.push(fetchHtml(`https://investidor10.com.br/acoes/${t}/`));
     } else if (category === 'etf' && isBrazilian) {
-      fetches.push(Promise.resolve(null));
-      fetches.push(Promise.resolve(null));
-      fetches.push(Promise.resolve(null));
-      fetches.push(Promise.resolve(null));
+      fetches.push(Promise.resolve(null), Promise.resolve(null), Promise.resolve(null), Promise.resolve(null));
       fetches.push(fetchHtml(`https://statusinvest.com.br/etfs/${t}`));
       fetches.push(Promise.resolve(null));
     } else if (category === 'bdr' && isBrazilian) {
-      fetches.push(Promise.resolve(null));
-      fetches.push(Promise.resolve(null));
-      fetches.push(Promise.resolve(null));
-      fetches.push(Promise.resolve(null));
+      fetches.push(Promise.resolve(null), Promise.resolve(null), Promise.resolve(null), Promise.resolve(null));
       fetches.push(fetchHtml(`https://statusinvest.com.br/bdrs/${t}`));
       fetches.push(Promise.resolve(null));
     } else {
@@ -431,10 +481,6 @@ Deno.serve(async (req) => {
 
     const [yahooV10, yahooChart, googleFinanceHtml, fiiInvestidorHtml, fiiStatusInvestHtml, fundsExplorerHtml, fiisComBrHtml, stockStatusInvestHtml, stockInvestidor10Html] = await Promise.all(fetches);
 
-    // Track which sources returned data
-    const activeSources: string[] = [];
-
-    // Parse results
     let brazilianParsed1: Partial<FundamentalResult> | null = null;
     let brazilianParsed2: Partial<FundamentalResult> | null = null;
     let fundsExplorerParsed: Partial<FundamentalResult> | null = null;
@@ -465,9 +511,9 @@ Deno.serve(async (req) => {
       if (brazilianParsed2) activeSources.push("Investidor10");
     }
 
-    // For Brazilian assets, prioritize local sources; for international, Yahoo only
+    // Brapi first (primary), then scraping sources, then Yahoo as fallback
     const result = isBrazilian
-      ? mergeData(brazilianParsed1, brazilianParsed2, fundsExplorerParsed, fiisComBrParsed, googleFinanceParsed, yahooV10, yahooChart)
+      ? mergeData(brapiData, brazilianParsed1, brazilianParsed2, fundsExplorerParsed, fiisComBrParsed, googleFinanceParsed, yahooV10, yahooChart)
       : mergeData(yahooV10, yahooChart, googleFinanceParsed);
 
     result.sources = activeSources;
