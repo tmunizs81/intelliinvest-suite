@@ -374,21 +374,42 @@ Deno.serve(async (req) => {
     const collected: Property[] = [];
     let textForAI = "";
 
-    // Fetch all sources (sequential to avoid resource exhaustion)
+    // Fetch sources sequentially
     for (const url of sources) {
       const html = await fetchHtml(url, 10000);
       if (!html) continue;
 
+      // Try dedicated Investidor10 parser first (most reliable)
+      if (url.includes("investidor10")) {
+        const inv10Props = parseInvestidor10Properties(html);
+        console.log(`Investidor10 structured parser: ${inv10Props.length} properties`);
+        if (inv10Props.length >= 3) {
+          // Great result from structured parser - cache and return
+          const result = JSON.stringify({
+            fund_name: ticker.toUpperCase(),
+            total_properties: inv10Props.length,
+            properties: inv10Props,
+          });
+          cache.set(t, { data: result, ts: Date.now() });
+          return new Response(result, {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        collected.push(...inv10Props);
+      }
+
+      // Generic regex parsing
       const parsed = filterQuality(parseByPatterns(html));
       if (parsed.length > 0) {
         collected.push(...parsed);
       }
 
-      textForAI += `\n\n[${url}]\n${stripHtmlText(html).slice(0, 4000)}`;
+      // Keep more text for AI (property lists are deep in the page)
+      textForAI += `\n\n[${url}]\n${stripHtmlText(html).slice(0, 8000)}`;
     }
 
     const regexMerged = dedupeProperties(collected);
-    console.log(`Regex parsing found ${regexMerged.length} properties for ${ticker}`);
+    console.log(`Total parsing found ${regexMerged.length} properties for ${ticker}`);
 
     // ALWAYS try AI if we have text, since regex is unreliable for property extraction
     if (textForAI.length > 500) {
