@@ -28,7 +28,8 @@ function checkRateLimit(req: Request): Response | null {
 const AI_TIMEOUT_MS = 12000;
 
 async function callAI(body: any): Promise<Response> {
-  const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+  const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
+    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
   const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
 
   if (GEMINI_API_KEY) {
