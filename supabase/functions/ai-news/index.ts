@@ -27,6 +27,55 @@ async function callAI(body: any): Promise<Response> {
     body: JSON.stringify({ ...body, model: "llama-3.3-70b-versatile" }),
   });
 }
+
+async function fetchGoogleNews(query: string): Promise<{title: string; description: string; link: string}[]> {
+  try {
+    const url = `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=pt-BR&gl=BR&ceid=BR:pt-419`;
+    const resp = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" } });
+    if (!resp.ok) { try { await resp.text(); } catch {} return []; }
+    const xml = await resp.text();
+    const items: {title: string; description: string; link: string}[] = [];
+    const regex = /<item>[\s\S]*?<title><!\[CDATA\[(.*?)\]\]><\/title>[\s\S]*?<link>(.*?)<\/link>[\s\S]*?<\/item>/g;
+    let match;
+    while ((match = regex.exec(xml)) !== null && items.length < 5) {
+      items.push({ title: match[1], description: match[1], link: match[2] });
+    }
+    // Fallback: simpler regex
+    if (items.length === 0) {
+      const regex2 = /<item>[\s\S]*?<title>(.*?)<\/title>[\s\S]*?<link>(.*?)<\/link>[\s\S]*?<\/item>/g;
+      while ((match = regex2.exec(xml)) !== null && items.length < 5) {
+        const title = match[1].replace(/<!\[CDATA\[|\]\]>/g, '');
+        items.push({ title, description: title, link: match[2] });
+      }
+    }
+    return items;
+  } catch (e) {
+    console.warn("fetchGoogleNews error:", e);
+    return [];
+  }
+}
+
+async function fetchRssItems(url: string, limit: number): Promise<{title: string; description: string; link: string}[]> {
+  try {
+    const resp = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" } });
+    if (!resp.ok) { try { await resp.text(); } catch {} return []; }
+    const xml = await resp.text();
+    const items: {title: string; description: string; link: string}[] = [];
+    const regex = /<item>[\s\S]*?<title>(.*?)<\/title>[\s\S]*?<link>(.*?)<\/link>[\s\S]*?(?:<description>(.*?)<\/description>)?[\s\S]*?<\/item>/g;
+    let match;
+    while ((match = regex.exec(xml)) !== null && items.length < limit) {
+      const title = match[1].replace(/<!\[CDATA\[|\]\]>/g, '').trim();
+      const link = match[2].trim();
+      const desc = (match[3] || title).replace(/<!\[CDATA\[|\]\]>/g, '').replace(/<[^>]*>/g, '').trim();
+      items.push({ title, description: desc, link });
+    }
+    return items;
+  } catch (e) {
+    console.warn("fetchRssItems error:", e);
+    return [];
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
