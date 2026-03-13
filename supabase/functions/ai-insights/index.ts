@@ -89,7 +89,7 @@ Gere insights inteligentes, alertas e recomendações baseados nestes dados reai
     const response = await callAI({
       model: "gemini-2.5-flash",
       messages: [
-        { role: "system", content: SYSTEM_PROMPT },
+        { role: "system", content: "Você é um analista de investimentos sênior especializado no mercado brasileiro. Analise a carteira e gere insights acionáveis, alertas de risco e recomendações práticas. Responda sempre em português." },
         { role: "user", content: userPrompt },
       ],
       tools: [{
