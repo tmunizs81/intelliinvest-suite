@@ -144,9 +144,13 @@ O Dashboard é a tela principal do sistema, oferecendo uma visão completa e per
 - Defina metas financeiras (aposentadoria, reserva, etc.)
 - Acompanhe o progresso visualmente
 
-#### 📰 Notícias
-- Notícias relevantes do mercado financeiro
-- Atualizadas via IA
+#### 📰 Notícias IA
+- Feed de notícias reais do mercado financeiro brasileiro
+- **Fontes**: Google News, InfoMoney, Valor Investe, MarketAux, NewsAPI
+- Classificação de impacto por IA (positivo, negativo, neutro)
+- Categorias: Macro, Setorial, Empresa, Global, Regulatório
+- **Cache local** de 5 minutos para evitar chamadas repetidas
+- Fallback gracioso: exibe notícias em cache quando a API falha
 
 #### 🤖 Insights IA
 - Análises automáticas da sua carteira
