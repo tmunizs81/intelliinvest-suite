@@ -5,56 +5,29 @@ const corsHeaders = {
 };
 
 async function callAI(body: any): Promise<Response> {
-  const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
   const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
-  if (GEMINI_API_KEY) {
-    const resp = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
+  const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+
+  if (DEEPSEEK_API_KEY) {
+    const resp = await fetch("https://api.deepseek.com/v1/chat/completions", {
       method: "POST",
-      headers: { Authorization: `Bearer ${GEMINI_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify(body),
+      headers: { Authorization: `Bearer ${DEEPSEEK_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ ...body, model: "deepseek-chat" }),
     });
     if (resp.ok || resp.status === 402) return resp;
     if (resp.status !== 429 && resp.status < 500) return resp;
-    console.warn(`Lovable AI failed (${resp.status}), trying DeepSeek fallback...`);
+    console.warn(`DeepSeek failed (${resp.status}), trying Gemini fallback...`);
     try { await resp.text(); } catch {}
   }
-  if (!DEEPSEEK_API_KEY) throw new Error("No AI provider available");
-  console.log("Using DeepSeek fallback");
-  return fetch("https://api.deepseek.com/v1/chat/completions", {
+
+  if (!GEMINI_API_KEY) throw new Error("No AI provider available");
+  console.log("Using Gemini fallback");
+  return fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
     method: "POST",
-    headers: { Authorization: `Bearer ${DEEPSEEK_API_KEY}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ ...body, model: "deepseek-chat" }),
+    headers: { Authorization: `Bearer ${GEMINI_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ ...body, model: "gemini-2.5-flash" }),
   });
 }
-
-const userAgents = [
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
-];
-
-async function fetchRssItems(url: string, maxItems = 5): Promise<Array<{ title: string; link: string; description: string }>> {
-  try {
-    const resp = await fetch(url, { headers: { "User-Agent": userAgents[0] }, signal: AbortSignal.timeout(8000) });
-    if (!resp.ok) return [];
-    const xml = await resp.text();
-    const items: Array<{ title: string; link: string; description: string }> = [];
-    const itemRegex = /<item>([\s\S]*?)<\/item>/gi;
-    let match;
-    while ((match = itemRegex.exec(xml)) !== null && items.length < maxItems) {
-      const itemXml = match[1];
-      const title = itemXml.match(/<title[^>]*>(?:<!\[CDATA\[)?(.*?)(?:\]\]>)?<\/title>/i)?.[1]?.trim() || "";
-      const link = itemXml.match(/<link[^>]*>(.*?)<\/link>/i)?.[1]?.trim() || "";
-      const desc = itemXml.match(/<description[^>]*>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/description>/i)?.[1]?.trim() || "";
-      const cleanDesc = desc.replace(/<[^>]+>/g, "").replace(/&[^;]+;/g, " ").substring(0, 300);
-      if (title) items.push({ title, link, description: cleanDesc });
-    }
-    return items;
-  } catch { return []; }
-}
-
-async function fetchGoogleNews(query: string) {
-  return fetchRssItems(`https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=pt-BR&gl=BR&ceid=BR:pt-419`, 5);
-}
-
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 

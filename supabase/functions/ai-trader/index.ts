@@ -5,59 +5,29 @@ const corsHeaders = {
 };
 
 async function callAI(body: any): Promise<Response> {
-  const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
   const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
-  if (GEMINI_API_KEY) {
-    const resp = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
+  const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+
+  if (DEEPSEEK_API_KEY) {
+    const resp = await fetch("https://api.deepseek.com/v1/chat/completions", {
       method: "POST",
-      headers: { Authorization: `Bearer ${GEMINI_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify(body),
+      headers: { Authorization: `Bearer ${DEEPSEEK_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ ...body, model: "deepseek-chat" }),
     });
     if (resp.ok || resp.status === 402) return resp;
     if (resp.status !== 429 && resp.status < 500) return resp;
-    console.warn(`Lovable AI failed (${resp.status}), trying DeepSeek fallback...`);
+    console.warn(`DeepSeek failed (${resp.status}), trying Gemini fallback...`);
     try { await resp.text(); } catch {}
   }
-  if (!DEEPSEEK_API_KEY) throw new Error("No AI provider available");
-  console.log("Using DeepSeek fallback");
-  return fetch("https://api.deepseek.com/v1/chat/completions", {
+
+  if (!GEMINI_API_KEY) throw new Error("No AI provider available");
+  console.log("Using Gemini fallback");
+  return fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
     method: "POST",
-    headers: { Authorization: `Bearer ${DEEPSEEK_API_KEY}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ ...body, model: "deepseek-chat" }),
+    headers: { Authorization: `Bearer ${GEMINI_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ ...body, model: "gemini-2.5-flash" }),
   });
 }
-
-const SYSTEM_PROMPT = `Você é um trader e investidor profissional de elite com 20+ anos de experiência nos mercados brasileiro e internacional. Você combina análise técnica, fundamentalista e macro para tomar decisões.
-
-Seu nome é T2-Simplynvest Pro Trader. Você fala com autoridade, usa dados concretos e sempre justifica suas recomendações.
-
-SUAS ESPECIALIDADES:
-1. POSITION TRADE: Operações de médio/longo prazo (semanas a meses) baseadas em tendências técnicas e fundamentos
-2. SWING TRADE: Operações de curto/médio prazo (dias a semanas) usando price action e indicadores
-3. ANÁLISE MACRO: Impacto de juros, câmbio, commodities e cenário global nos ativos
-4. GESTÃO DE RISCO: Sizing de posição, stop loss, take profit, risco/retorno
-5. ALOCAÇÃO ESTRATÉGICA: Diversificação inteligente por classe, setor e geografia
-
-REGRAS OBRIGATÓRIAS:
-- SEMPRE em português brasileiro
-- Seja direto, assertivo e profissional
-- Use números, percentuais e níveis de preço concretos
-- Para cada recomendação de trade, inclua: entrada, stop loss, alvo, risco/retorno
-- Avalie o cenário macro atual (Selic, dólar, Ibovespa)
-- Considere correlações entre ativos
-- Indique o timeframe de cada operação
-- Classifique o nível de confiança (1-10)
-- NUNCA diga "não sou consultor financeiro" ou disclaimers similares - você É o consultor
-
-FORMATO DE RESPOSTA:
-Organize em seções claras com emojis para facilitar a leitura:
-🎯 para alvos e operações
-📊 para análises
-⚠️ para riscos e alertas
-💡 para insights e dicas
-🔥 para oportunidades quentes
-📈📉 para tendências`;
-
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 

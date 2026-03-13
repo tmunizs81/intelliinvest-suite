@@ -35,8 +35,7 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
-    if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY is not configured");
+    if (!DEEPSEEK_API_KEY && !GEMINI_API_KEY) throw new Error("No AI API key configured");
 
     const { ticker } = await req.json();
     if (!ticker) return new Response(JSON.stringify({ error: "ticker required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -73,11 +72,11 @@ Use a ferramenta para retornar a lista de imóveis estruturada. Para cada imóve
 
 Extraia TODOS os imóveis mencionados. Se a área não estiver disponível, coloque null.`;
 
-    const response = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
+    const response = await fetch(DEEPSEEK_API_KEY ? "https://api.deepseek.com/v1/chat/completions" : "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
       method: "POST",
-      headers: { Authorization: `Bearer ${GEMINI_API_KEY}`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${DEEPSEEK_API_KEY || GEMINI_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "gemini-2.5-flash",
+        model: DEEPSEEK_API_KEY ? "deepseek-chat" : "gemini-2.5-flash",
         messages: [
           { role: "system", content: "Você extrai dados estruturados de imóveis de FIIs a partir de textos coletados de portais financeiros brasileiros. Seja preciso e extraia todos os imóveis mencionados." },
           { role: "user", content: prompt },

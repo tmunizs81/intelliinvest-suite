@@ -120,31 +120,31 @@ Deno.serve(async (req) => {
       { role: "user", content: `Gere um relatório mensal completo da carteira para o período ${periodStr}:\n\nPatrimônio: R$${totalValue.toFixed(2)} | Custo: R$${totalCost.toFixed(2)} | Retorno Total: ${totalReturn.toFixed(2)}%\n${portfolio.length} ativos:\n${portfolioText}\n\nInclua: resumo executivo, performance geral, top 3 melhores e piores, análise de dividendos, recomendações para o próximo mês, e avaliação de risco.` },
     ];
 
-    // Try Gemini first, then Lovable AI gateway as fallback
+    // Try DeepSeek first, then Gemini as fallback
+    const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
     const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
     let result: string | null = null;
 
-    if (GEMINI_API_KEY) {
+    if (DEEPSEEK_API_KEY) {
+      try {
+        result = await callAI(
+          "https://api.deepseek.com/v1/chat/completions",
+          DEEPSEEK_API_KEY, "deepseek-chat", messages
+        );
+      } catch (e) {
+        console.error("DeepSeek failed, trying fallback:", e);
+      }
+    }
+
+    if (!result && GEMINI_API_KEY) {
       try {
         result = await callAI(
           "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
           GEMINI_API_KEY, "gemini-2.5-flash", messages
         );
       } catch (e) {
-        console.error("Gemini failed, trying fallback:", e);
-      }
-    }
-
-    if (!result && LOVABLE_API_KEY) {
-      try {
-        result = await callAI(
-          "https://ai.gateway.lovable.dev/v1/chat/completions",
-          LOVABLE_API_KEY, "google/gemini-2.5-flash", messages
-        );
-      } catch (e) {
-        console.error("Lovable AI fallback also failed:", e);
+        console.error("Gemini fallback also failed:", e);
       }
     }
 

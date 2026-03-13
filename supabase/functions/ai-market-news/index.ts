@@ -5,72 +5,29 @@ const corsHeaders = {
 };
 
 async function callAI(body: any): Promise<Response> {
-  const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
   const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
-  if (GEMINI_API_KEY) {
-    const resp = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
+  const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+
+  if (DEEPSEEK_API_KEY) {
+    const resp = await fetch("https://api.deepseek.com/v1/chat/completions", {
       method: "POST",
-      headers: { Authorization: `Bearer ${GEMINI_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify(body),
+      headers: { Authorization: `Bearer ${DEEPSEEK_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ ...body, model: "deepseek-chat" }),
     });
     if (resp.ok || resp.status === 402) return resp;
     if (resp.status !== 429 && resp.status < 500) return resp;
-    console.warn(`Lovable AI failed (${resp.status}), trying DeepSeek fallback...`);
+    console.warn(`DeepSeek failed (${resp.status}), trying Gemini fallback...`);
     try { await resp.text(); } catch {}
   }
-  if (!DEEPSEEK_API_KEY) throw new Error("No AI provider available");
-  console.log("Using DeepSeek fallback");
-  return fetch("https://api.deepseek.com/v1/chat/completions", {
+
+  if (!GEMINI_API_KEY) throw new Error("No AI provider available");
+  console.log("Using Gemini fallback");
+  return fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
     method: "POST",
-    headers: { Authorization: `Bearer ${DEEPSEEK_API_KEY}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ ...body, model: "deepseek-chat" }),
+    headers: { Authorization: `Bearer ${GEMINI_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ ...body, model: "gemini-2.5-flash" }),
   });
 }
-
-const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
-
-async function fetchRssItems(url: string, max = 5): Promise<Array<{ title: string; link: string; desc: string; source: string }>> {
-  try {
-    const resp = await fetch(url, { headers: { "User-Agent": UA }, signal: AbortSignal.timeout(8000) });
-    if (!resp.ok) return [];
-    const xml = await resp.text();
-    const items: Array<{ title: string; link: string; desc: string; source: string }> = [];
-    const re = /<item>([\s\S]*?)<\/item>/gi;
-    let m;
-    while ((m = re.exec(xml)) !== null && items.length < max) {
-      const x = m[1];
-      const title = x.match(/<title[^>]*>(?:<!\[CDATA\[)?(.*?)(?:\]\]>)?<\/title>/i)?.[1]?.trim() || "";
-      const link = x.match(/<link[^>]*>(.*?)<\/link>/i)?.[1]?.trim() || "";
-      const desc = (x.match(/<description[^>]*>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/description>/i)?.[1] || "")
-        .replace(/<[^>]+>/g, "").replace(/&[^;]+;/g, " ").substring(0, 300).trim();
-      const src = x.match(/<source[^>]*>(.*?)<\/source>/i)?.[1]?.trim() || "";
-      if (title) items.push({ title, link, desc, source: src });
-    }
-    return items;
-  } catch { return []; }
-}
-
-async function fetchGoogleNews(query: string, max = 6) {
-  return fetchRssItems(`https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=pt-BR&gl=BR&ceid=BR:pt-419`, max);
-}
-
-function buildFallbackOpinion(ticker: string, name: string | undefined, type: string | undefined, uniqueNews: Array<{ title: string; link: string; desc: string; source: string }>) {
-  const fallbackNews = uniqueNews.slice(0, 5).map((n) => ({
-    title: n.title, impact: "neutral" as const,
-    summary: n.desc || "Notícia coletada sem resumo detalhado.", source: n.source || n.link,
-  }));
-  return {
-    sentiment: "neutral", sentiment_label: "Neutro",
-    executive_summary: `No momento há limitação temporária de análise avançada para ${ticker}. Exibindo leitura neutra baseada nas notícias coletadas em tempo real.`,
-    market_position: `Para ${ticker} (${name || ticker}, tipo ${type || "Ação"}), a leitura atual é neutra por indisponibilidade momentânea da camada de IA.`,
-    positive_catalysts: ["Monitoramento contínuo de notícias habilitado"],
-    negative_catalysts: ["Limite temporário de requisições de IA"],
-    relevant_news: fallbackNews,
-    conclusion: "Recomendação neutra temporária: aguarde alguns instantes e atualize.",
-    confidence: 35,
-  };
-}
-
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 

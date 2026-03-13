@@ -28,44 +28,29 @@ function checkRateLimit(req: Request): Response | null {
 const AI_TIMEOUT_MS = 12000;
 
 async function callAI(body: any): Promise<Response> {
-  const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
   const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
+  const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
 
-  if (GEMINI_API_KEY) {
-    try {
-      const resp = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${GEMINI_API_KEY}`, "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-        signal: AbortSignal.timeout(AI_TIMEOUT_MS),
-      });
-      if (resp.ok || resp.status === 402) return resp;
-      if (resp.status !== 429 && resp.status < 500) return resp;
-      console.warn(`Lovable AI failed (${resp.status}), trying DeepSeek fallback...`);
-      try { await resp.text(); } catch {}
-    } catch (err) {
-      console.warn("Lovable AI request failed, trying fallback:", err);
-    }
-  }
-
-  if (!DEEPSEEK_API_KEY) {
-    throw new Error("A análise de IA demorou para responder. Tente novamente em instantes.");
-  }
-
-  console.log("Using DeepSeek fallback");
-  try {
-    return await fetch("https://api.deepseek.com/v1/chat/completions", {
+  if (DEEPSEEK_API_KEY) {
+    const resp = await fetch("https://api.deepseek.com/v1/chat/completions", {
       method: "POST",
       headers: { Authorization: `Bearer ${DEEPSEEK_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({ ...body, model: "deepseek-chat" }),
-      signal: AbortSignal.timeout(AI_TIMEOUT_MS),
     });
-  } catch (err) {
-    console.error("DeepSeek fallback failed:", err);
-    throw new Error("A análise de IA demorou para responder. Tente novamente.");
+    if (resp.ok || resp.status === 402) return resp;
+    if (resp.status !== 429 && resp.status < 500) return resp;
+    console.warn(`DeepSeek failed (${resp.status}), trying Gemini fallback...`);
+    try { await resp.text(); } catch {}
   }
-}
 
+  if (!GEMINI_API_KEY) throw new Error("No AI provider available");
+  console.log("Using Gemini fallback");
+  return fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${GEMINI_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ ...body, model: "gemini-2.5-flash" }),
+  });
+}
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 

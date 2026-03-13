@@ -5,28 +5,29 @@ const corsHeaders = {
 };
 
 async function callAI(body: any): Promise<Response> {
-  const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
   const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
-  if (GEMINI_API_KEY) {
-    const resp = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
+  const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+
+  if (DEEPSEEK_API_KEY) {
+    const resp = await fetch("https://api.deepseek.com/v1/chat/completions", {
       method: "POST",
-      headers: { Authorization: `Bearer ${GEMINI_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify(body),
+      headers: { Authorization: `Bearer ${DEEPSEEK_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ ...body, model: "deepseek-chat" }),
     });
     if (resp.ok || resp.status === 402) return resp;
     if (resp.status !== 429 && resp.status < 500) return resp;
-    console.warn(`Lovable AI failed (${resp.status}), trying DeepSeek fallback...`);
+    console.warn(`DeepSeek failed (${resp.status}), trying Gemini fallback...`);
     try { await resp.text(); } catch {}
   }
-  if (!DEEPSEEK_API_KEY) throw new Error("No AI provider available");
-  console.log("Using DeepSeek fallback");
-  return fetch("https://api.deepseek.com/v1/chat/completions", {
+
+  if (!GEMINI_API_KEY) throw new Error("No AI provider available");
+  console.log("Using Gemini fallback");
+  return fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
     method: "POST",
-    headers: { Authorization: `Bearer ${DEEPSEEK_API_KEY}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ ...body, model: "deepseek-chat" }),
+    headers: { Authorization: `Bearer ${GEMINI_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ ...body, model: "gemini-2.5-flash" }),
   });
 }
-
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
