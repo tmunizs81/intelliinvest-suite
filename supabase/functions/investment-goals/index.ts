@@ -10,7 +10,7 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    if (!GEMINI_API_KEY && !GROQ_API_KEY) throw new Error("No AI API key configured");
+    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
     const { portfolio, goal_amount, goal_years, monthly_contribution } = await req.json();
 
@@ -21,14 +21,14 @@ ${monthly_contribution ? `Ele pode investir R$${monthly_contribution}/mês.` : '
 
 Calcule: aporte mensal necessário, taxa de retorno necessária, probabilidade de sucesso e sugira alocação ideal.`;
 
-    const response = await fetch(GEMINI_API_KEY ? "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions" : "https://api.groq.com/openai/v1/chat/completions", {
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${GEMINI_API_KEY || GROQ_API_KEY}`,
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: GEMINI_API_KEY ? "gemini-2.5-flash" : "llama-3.3-70b-versatile",
+        model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: "Você é um planejador financeiro especialista brasileiro. Calcule metas de investimento com precisão e sugira alocações realistas." },
           { role: "user", content: prompt },

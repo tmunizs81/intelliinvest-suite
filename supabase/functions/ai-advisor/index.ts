@@ -27,40 +27,20 @@ function checkRateLimit(req: Request): Response | null {
 }
 
 async function callAI(body: any): Promise<{ response: Response; provider: string }> {
-  const OPENROUTER_API_KEY = Deno.env.get("OPENROUTER_API_KEY");
-  const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
-  const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
+  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+  if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-  if (OPENROUTER_API_KEY) {
-    const resp = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${OPENROUTER_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ ...body, model: "google/gemini-2.5-flash" }),
-    });
-    if (resp.ok) return { response: resp, provider: "openrouter" };
-    console.warn(`OpenRouter failed (${resp.status}), trying Gemini...`);
-    try { await resp.text(); } catch {}
-  }
-
-  if (GEMINI_API_KEY) {
-    const resp = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${GEMINI_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ ...body, model: "gemini-2.5-flash" }),
-    });
-    if (resp.ok) return { response: resp, provider: "gemini" };
-    console.warn(`Gemini failed (${resp.status}), trying Groq...`);
-    try { await resp.text(); } catch {}
-  }
-
-  if (!GROQ_API_KEY) throw new Error("No AI provider available");
-  console.log("Using Groq fallback");
-  const groqResp = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+  const { model, ...rest } = body;
+  const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
-    headers: { Authorization: `Bearer ${GROQ_API_KEY}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ ...body, model: "llama-3.3-70b-versatile" }),
+    headers: {
+      Authorization: `Bearer ${LOVABLE_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ ...rest, model: model && model.startsWith("google/") ? model : `google/${model || "gemini-2.5-flash"}` }),
   });
-  return { response: groqResp, provider: "groq" };
+
+  return { response: resp, provider: "lovable" };
 }
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
