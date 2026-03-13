@@ -62,7 +62,7 @@ export default function MarketNewsPanel({ ticker, name, type }: Props) {
     setShowNews(true);
   }
 
-  const fetchOpinion = useCallback(async (retries = 1) => {
+  const fetchOpinion = useCallback(async (retries = 0) => {
     const cached = cache.get(ticker);
     if (cached && Date.now() - cached.ts < CACHE_TTL) {
       setOpinion(cached.data);

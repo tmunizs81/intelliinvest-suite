@@ -181,7 +181,7 @@ async function callAI(body: any): Promise<{ response: Response; provider: string
     method: "POST",
     headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
     body: JSON.stringify({ ...rest, model: model && model.startsWith("google/") ? model : `google/${model || "gemini-2.5-flash"}` }),
-    signal: AbortSignal.timeout(7000),
+    signal: AbortSignal.timeout(3500),
   });
   return { response: resp, provider: "lovable" };
 }
