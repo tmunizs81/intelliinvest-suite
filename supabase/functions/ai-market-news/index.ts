@@ -59,7 +59,7 @@ function cleanText(input?: string): string {
 
 async function fetchGoogleNews(query: string, limit = 4): Promise<NewsItem[]> {
   const url = `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=pt-BR&gl=BR&ceid=BR:pt-419`;
-  const xml = await safeFetchText(url, 4500);
+  const xml = await safeFetchText(url, REQUEST_TIMEOUT_MS);
   if (!xml) return [];
 
   const items: NewsItem[] = [];
