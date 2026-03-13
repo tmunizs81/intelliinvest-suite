@@ -18,7 +18,7 @@ Deno.serve(async (req) => {
     const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN")!;
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
 
-    if (!botToken || !GEMINI_API_KEY) {
+    if (!botToken) {
       return new Response(JSON.stringify({ error: "Missing configuration" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
