@@ -46,6 +46,70 @@ async function callAI(body: any): Promise<Response> {
   });
 }
 
+async function fetchHistory(ticker: string, req: Request): Promise<any[]> {
+  try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
+    if (!supabaseUrl || !anonKey) return [];
+
+    const resp = await fetch(`${supabaseUrl}/functions/v1/yahoo-finance-history`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": req.headers.get("authorization") || `Bearer ${anonKey}`,
+        "apikey": anonKey,
+      },
+      body: JSON.stringify({ ticker, range: "3mo", interval: "1d" }),
+      signal: AbortSignal.timeout(8000),
+    });
+
+    if (!resp.ok) { await resp.text(); return []; }
+    const data = await resp.json();
+    return data.candles || [];
+  } catch (err) {
+    console.warn(`Failed to fetch history for ${ticker}:`, err);
+    return [];
+  }
+}
+
+function summarizeCandles(candles: any[]): string {
+  if (!candles.length) return "Sem dados históricos disponíveis.";
+
+  const last30 = candles.slice(-30);
+  const last10 = candles.slice(-10);
+  const first = last30[0];
+  const last = last30[last30.length - 1];
+
+  const highs = last30.map((c: any) => c.high);
+  const lows = last30.map((c: any) => c.low);
+  const closes = last30.map((c: any) => c.close);
+  const volumes = last30.map((c: any) => c.volume);
+
+  const maxHigh = Math.max(...highs);
+  const minLow = Math.min(...lows);
+  const avgVolume = Math.round(volumes.reduce((a: number, b: number) => a + b, 0) / volumes.length);
+
+  // Simple moving averages
+  const sma10 = closes.slice(-10).reduce((a: number, b: number) => a + b, 0) / Math.min(10, closes.length);
+  const sma20 = closes.slice(-20).reduce((a: number, b: number) => a + b, 0) / Math.min(20, closes.length);
+
+  // Trend
+  const change30d = first.close > 0 ? ((last.close - first.close) / first.close * 100).toFixed(2) : "N/A";
+  const change10d = last10.length > 1 && last10[0].close > 0
+    ? ((last10[last10.length - 1].close - last10[0].close) / last10[0].close * 100).toFixed(2) : "N/A";
+
+  // Recent price action (last 10 candles)
+  const recentPrices = last10.map((c: any) =>
+    `${c.date}: O=${c.open?.toFixed(2)} H=${c.high?.toFixed(2)} L=${c.low?.toFixed(2)} C=${c.close?.toFixed(2)} V=${c.volume}`
+  ).join('\n');
+
+  return `Últimos 30 dias: Máxima=${maxHigh.toFixed(2)}, Mínima=${minLow.toFixed(2)}, Var30d=${change30d}%, Var10d=${change10d}%
+SMA10=${sma10.toFixed(2)}, SMA20=${sma20.toFixed(2)}, Vol.Médio=${avgVolume}
+Preço atual: ${last.close?.toFixed(2)}
+Últimos 10 candles:
+${recentPrices}`;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -54,9 +118,20 @@ Deno.serve(async (req) => {
 
   try {
     const { tickers, assets } = await req.json();
-    const assetsInfo = (assets || []).map((a: any) =>
-      `${a.ticker} (${a.name}): Preço atual R$${a.currentPrice?.toFixed(2)}, variação 24h: ${a.change24h?.toFixed(2)}%`
-    ).join('\n');
+    const assetList = (assets || []).slice(0, 8);
+
+    // Fetch historical data for top assets in parallel
+    const historyPromises = assetList.map((a: any) => fetchHistory(a.ticker, req));
+    const histories = await Promise.all(historyPromises);
+
+    // Build rich context with historical data
+    const assetsInfo = assetList.map((a: any, i: number) => {
+      const candles = histories[i] || [];
+      const summary = summarizeCandles(candles);
+      return `── ${a.ticker} (${a.name}) ──
+Preço: R$${a.currentPrice?.toFixed(2)}, Var.24h: ${a.change24h?.toFixed(2)}%
+${summary}`;
+    }).join('\n\n');
 
     const response = await callAI({
       model: "gemini-2.5-flash",
@@ -64,18 +139,22 @@ Deno.serve(async (req) => {
         {
           role: "system",
           content: `Você é um analista técnico especializado em padrões gráficos do mercado financeiro.
-Analise os ativos fornecidos e identifique padrões gráficos prováveis baseando-se no preço atual e variação recente.
-Considere padrões como: OCO, OCO Invertido, Triângulo Ascendente/Descendente/Simétrico, Bandeira de Alta/Baixa, 
-Canal de Alta/Baixa, Cunha, Retângulo, Topo/Fundo Duplo, Cup and Handle, Suporte/Resistência.
-SEMPRE identifique pelo menos 3 padrões mesmo que com confiabilidade baixa. Use a ferramenta para retornar o resultado.`,
+Analise os dados históricos de preços (OHLCV) fornecidos e identifique padrões gráficos reais.
+
+Padrões a considerar: OCO, OCO Invertido, Triângulo Ascendente/Descendente/Simétrico, Bandeira de Alta/Baixa,
+Canal de Alta/Baixa, Cunha Ascendente/Descendente, Retângulo, Topo/Fundo Duplo, Cup and Handle, 
+Suporte/Resistência, Engolfo de Alta/Baixa, Martelo, Doji, Estrela Cadente, Harami.
+
+Use os dados de preço reais (OHLCV) para fundamentar sua análise. Compare máximas, mínimas, médias móveis e volume.
+SEMPRE identifique pelo menos 3-5 padrões. Use a ferramenta para retornar o resultado.`,
         },
-        { role: "user", content: `Identifique padrões gráficos para estes ativos:\n${assetsInfo}` },
+        { role: "user", content: `Analise os padrões gráficos com base nos dados históricos reais:\n\n${assetsInfo}` },
       ],
       tools: [{
         type: "function",
         function: {
           name: "report_patterns",
-          description: "Report detected chart patterns",
+          description: "Report detected chart patterns based on historical price data",
           parameters: {
             type: "object",
             properties: {
@@ -85,10 +164,10 @@ SEMPRE identifique pelo menos 3 padrões mesmo que com confiabilidade baixa. Use
                   type: "object",
                   properties: {
                     ticker: { type: "string" },
-                    pattern: { type: "string", description: "Nome do padrão gráfico" },
+                    pattern: { type: "string", description: "Nome do padrão gráfico detectado" },
                     type: { type: "string", enum: ["bullish", "bearish", "neutral"] },
                     reliability: { type: "string", enum: ["Alta", "Média", "Baixa"] },
-                    description: { type: "string", description: "Breve explicação do padrão" },
+                    description: { type: "string", description: "Explicação baseada nos dados de preço" },
                     target: { type: "string", description: "Preço alvo estimado, ex: R$35.50" },
                   },
                   required: ["ticker", "pattern", "type", "reliability", "description"],
@@ -113,7 +192,7 @@ SEMPRE identifique pelo menos 3 padrões mesmo que com confiabilidade baixa. Use
     }
 
     const aiData = await response.json();
-    
+
     // Try tool_calls first
     const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
     if (toolCall?.function?.arguments) {
