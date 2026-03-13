@@ -67,7 +67,7 @@ Faça uma análise técnica completa incluindo:
 5. Padrões gráficos identificados
 6. Recomendação clara com alvos de preço`;
 
-    const response = await callAI({
+    const { response, provider } = await callAI({
       model: "gemini-2.5-flash",
       messages: [
         { role: "system", content: "Você é um analista técnico e fundamentalista especializado no mercado brasileiro. Analise o ativo fornecido e dê uma recomendação clara (compra_forte, compra, manter, venda, venda_forte) com justificativa técnica. Responda em português." },

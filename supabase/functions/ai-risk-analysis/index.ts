@@ -91,7 +91,7 @@ ${JSON.stringify(portfolioData, null, 2)}
 DISTRIBUIÇÃO POR TIPO: ${JSON.stringify(typeDistribution)}
 DISTRIBUIÇÃO POR SETOR: ${JSON.stringify(sectorDistribution)}`;
 
-    const response = await callAI({
+    const { response, provider } = await callAI({
       model: "gemini-2.5-flash",
       messages: [
         { role: "system", content: systemPrompt },

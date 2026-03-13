@@ -104,7 +104,7 @@ Deno.serve(async (req) => {
 
     const newsContext = uniqueNews.map((n, i) => `[${i + 1}] ${n.title}\n${n.description}\nFonte: ${n.link}`).join("\n\n");
 
-    const response = await callAI({
+    const { response, provider } = await callAI({
       model: "gemini-2.5-flash",
       messages: [
         { role: "system", content: "Você classifica notícias financeiras reais para investidores brasileiros." },

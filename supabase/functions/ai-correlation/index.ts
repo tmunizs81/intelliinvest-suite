@@ -39,7 +39,7 @@ Deno.serve(async (req) => {
       `${a.ticker} (${a.type}, ${a.sector || 'N/A'}): ${a.quantity}un, R$${a.currentPrice?.toFixed(2)}, Aloc: ${a.allocation?.toFixed(1)}%`
     ).join("\n");
 
-    const response = await callAI({
+    const { response, provider } = await callAI({
       model: "gemini-2.5-flash-lite",
       messages: [
         { role: "system", content: "Você é um analista quantitativo especialista em correlações e risco de carteira." },

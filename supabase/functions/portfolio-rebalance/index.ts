@@ -57,7 +57,7 @@ Deno.serve(async (req) => {
 
     const prompt = `Analise esta carteira e sugira rebalanceamento:\n\nPatrimônio: R$${totalValue.toFixed(2)} | ${portfolio.length} ativos\n${portfolioText}\n\nConsidere: diversificação ideal por tipo (Ações, FIIs, ETFs, Cripto, Renda Fixa), concentração setorial, e mercado atual.`;
 
-    const response = await callAI({
+    const { response, provider } = await callAI({
       messages: [
         { role: "system", content: "Você é um consultor financeiro especialista em alocação de ativos no mercado brasileiro. Sugira rebalanceamento prático e acionável." },
         { role: "user", content: prompt },

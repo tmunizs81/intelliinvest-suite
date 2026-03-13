@@ -51,7 +51,7 @@ Deno.serve(async (req) => {
 
     const dataSection = [coinGeckoContent ? `CoinGecko:\n${coinGeckoContent}` : "", scrapedContent ? `Fontes brasileiras:\n${scrapedContent}` : ""].filter(Boolean).join("\n\n---\n\n");
 
-    const response = await callAI({
+    const { response, provider } = await callAI({
       model: "gemini-2.5-flash",
       messages: [
         { role: "system", content: "Você é um analista financeiro especializado no mercado brasileiro. Gere resumos completos sobre ativos." },

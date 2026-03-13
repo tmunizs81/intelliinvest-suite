@@ -78,7 +78,7 @@ ${portfolioText}
 Data: ${new Date().toLocaleDateString('pt-BR')}`;
     }
 
-    const response = await callAI({
+    const { response, provider } = await callAI({
       model: "gemini-2.5-flash",
       messages: [{ role: "system", content: "Você é um assistente financeiro inteligente especializado no mercado brasileiro. Responda perguntas sobre a carteira do investidor de forma clara e prática. Use os dados reais fornecidos. Responda em português.\n\n" + portfolioContext }, ...messages],
       stream: true,
@@ -92,7 +92,7 @@ Data: ${new Date().toLocaleDateString('pt-BR')}`;
       throw new Error(`AI gateway error: ${response.status}`);
     }
 
-    return new Response(response.body, { headers: { ...corsHeaders, "Content-Type": "text/event-stream" } });
+    return new Response(response.body, { headers: { ...corsHeaders, "Content-Type": "text/event-stream", "x-ai-provider": provider } });
   } catch (err) {
     console.error("portfolio-chat error:", err);
     return new Response(JSON.stringify({ error: err instanceof Error ? err.message : "Unknown error" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });

@@ -75,7 +75,7 @@ NOTA FINAL: Média ponderada (Valuation 30%, Momento 25%, Dividendos 25%, Risco 
       allocation: a.allocation, sector: a.sector,
     })), null, 2)}`;
 
-    const response = await callAI({
+    const { response, provider } = await callAI({
       model: "gemini-2.5-flash",
       messages: [
         { role: "system", content: systemPrompt },

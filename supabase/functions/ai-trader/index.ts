@@ -78,7 +78,7 @@ Ativos:\n${portfolioText}\n\nData: ${new Date().toLocaleDateString('pt-BR')}`;
       contextPrompt += typePrompts[analysisType] || "";
     }
 
-    const response = await callAI({
+    const { response, provider } = await callAI({
       model: "gemini-2.5-flash",
       messages: [{ role: "system", content: contextPrompt }, ...messages],
       stream: true,
@@ -92,7 +92,7 @@ Ativos:\n${portfolioText}\n\nData: ${new Date().toLocaleDateString('pt-BR')}`;
       return new Response(JSON.stringify({ error: "Erro no serviço de IA" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    return new Response(response.body, { headers: { ...corsHeaders, "Content-Type": "text/event-stream" } });
+    return new Response(response.body, { headers: { ...corsHeaders, "Content-Type": "text/event-stream", "x-ai-provider": provider } });
   } catch (err) {
     console.error("ai-trader error:", err);
     return new Response(JSON.stringify({ error: err instanceof Error ? err.message : "Unknown error" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });

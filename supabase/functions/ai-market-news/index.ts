@@ -49,7 +49,7 @@ Deno.serve(async (req) => {
 
     const newsContext = unique.map((n, i) => `[${i + 1}] ${n.title}\n${n.desc}\nFonte: ${n.source || n.link}`).join("\n\n");
 
-    const response = await callAI({
+    const { response, provider } = await callAI({
       model: "gemini-2.5-flash",
       messages: [
         { role: "system", content: "Você é um analista de mercado financeiro sênior especializado em Brasil e mercados globais." },

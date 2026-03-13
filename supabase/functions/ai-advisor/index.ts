@@ -91,7 +91,7 @@ ${portfolioSummary}`;
 
     const userMessage = question || "Analise minha carteira e me dê recomendações de investimento personalizadas. Quais ativos devo comprar, manter ou vender? Sugira também novos ativos.";
 
-    const response = await callAI({
+    const { response, provider } = await callAI({
       model: "gemini-2.5-flash",
       messages: [
         { role: "system", content: systemPrompt },
@@ -115,7 +115,7 @@ ${portfolioSummary}`;
     }
 
     return new Response(response.body, {
-      headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
+      headers: { ...corsHeaders, "Content-Type": "text/event-stream", "x-ai-provider": provider },
     });
   } catch (err) {
     console.error("ai-advisor error:", err);

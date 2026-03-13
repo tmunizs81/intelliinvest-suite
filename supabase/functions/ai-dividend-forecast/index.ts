@@ -37,7 +37,7 @@ Deno.serve(async (req) => {
 
     const holdingsText = holdings.map((a: any) => `${a.ticker} (${a.type}): ${a.quantity}un a R$${a.currentPrice?.toFixed(2)}`).join("\n");
 
-    const response = await callAI({
+    const { response, provider } = await callAI({
       model: "gemini-2.5-flash-lite",
       messages: [
         { role: "system", content: "Você é um especialista em dividendos do mercado brasileiro. Projete dividendos futuros com base em dados históricos típicos." },

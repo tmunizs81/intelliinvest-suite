@@ -61,7 +61,7 @@ Deno.serve(async (req) => {
       `${a.ticker} (${a.name}): Tipo=${a.type}, Qtd=${a.quantity}, PM=R$${a.avgPrice?.toFixed(2)}, Atual=R$${a.currentPrice?.toFixed(2)}`
     ).join('\n');
 
-    const response = await callAI({
+    const { response, provider } = await callAI({
       model: "gemini-2.5-flash",
       messages: [
         {

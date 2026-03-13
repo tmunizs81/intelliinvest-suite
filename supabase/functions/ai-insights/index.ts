@@ -86,7 +86,7 @@ Data atual: ${new Date().toLocaleDateString('pt-BR')}
 
 Gere insights inteligentes, alertas e recomendações baseados nestes dados reais.`;
 
-    const response = await callAI({
+    const { response, provider } = await callAI({
       model: "gemini-2.5-flash",
       messages: [
         { role: "system", content: "Você é um analista de investimentos sênior especializado no mercado brasileiro. Analise a carteira e gere insights acionáveis, alertas de risco e recomendações práticas. Responda sempre em português." },

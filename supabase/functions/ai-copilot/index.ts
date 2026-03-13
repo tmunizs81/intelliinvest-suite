@@ -91,7 +91,7 @@ Responda APENAS com JSON válido neste formato exato:
   "confidence": 7
 }`;
 
-    const response = await callAI({
+    const { response, provider } = await callAI({
       model: "gemini-2.5-flash",
       messages: [
         { role: "system", content: "Você é um copilot de investimentos. Analise operações e dê sinais rápidos: verde (favorável), amarelo (atenção), vermelho (desfavorável). Responda APENAS com JSON válido, sem markdown." },

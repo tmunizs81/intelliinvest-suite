@@ -68,7 +68,7 @@ Deno.serve(async (req) => {
       return desc;
     }).join("\n");
 
-    const response = await callAI({
+    const { response, provider } = await callAI({
       model: "gemini-2.5-flash",
       messages: [
         { role: "system", content: "Você é um analista de investimentos brasileiro. Determine o VENCEDOR da comparação. Responda em português." },
