@@ -72,10 +72,39 @@ function parseBrNumber(raw: string): number | null {
   if (!raw) return null;
   const cleaned = raw.replace(/[R$%\s]/g, '').trim();
   if (!cleaned || cleaned === '-') return null;
-  // "536.031" = thousands, "0,95" = decimal
+
+  // Check for abbreviations (B = bilhão, M = milhão, K/mil)
+  const abbrevMatch = cleaned.match(/^([0-9.,]+)\s*(B|M|K|mil|bi|mi)$/i);
+  if (abbrevMatch) {
+    const base = parseBrNumberCore(abbrevMatch[1]);
+    if (base == null) return null;
+    const unit = abbrevMatch[2].toLowerCase();
+    if (unit === 'b' || unit === 'bi') return base * 1e9;
+    if (unit === 'm' || unit === 'mi') return base * 1e6;
+    if (unit === 'k' || unit === 'mil') return base * 1e3;
+  }
+
+  return parseBrNumberCore(cleaned);
+}
+
+function parseBrNumberCore(cleaned: string): number | null {
+  if (!cleaned || cleaned === '-') return null;
+  // Has comma → BR format: dots are thousands, comma is decimal
+  // e.g. "7.062.901.362,00" or "0,95"
   if (cleaned.includes(',')) {
     const num = parseFloat(cleaned.replace(/\./g, '').replace(',', '.'));
     return isNaN(num) ? null : num;
+  }
+  // Only dots, no comma: check if dots are thousands separators
+  // Pattern: "536.031" or "7.062.901.362" → 3-digit groups after each dot
+  if (cleaned.includes('.')) {
+    const parts = cleaned.split('.');
+    // If ALL parts after the first have exactly 3 digits → thousands separator
+    const isThousands = parts.length > 1 && parts.slice(1).every(p => /^\d{3}$/.test(p));
+    if (isThousands) {
+      const num = parseFloat(parts.join(''));
+      return isNaN(num) ? null : num;
+    }
   }
   const num = parseFloat(cleaned);
   return isNaN(num) ? null : num;
