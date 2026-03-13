@@ -376,38 +376,44 @@ Deno.serve(async (req) => {
     }
 
     const merged = dedupeProperties(collected);
+
+    // If direct parsing is sparse, try AI enrichment (DeepSeek first)
+    if (merged.length < 5 && textForAI.length > 500) {
+      const deepseekProps = await callDeepSeek(textForAI, ticker);
+      if (deepseekProps && deepseekProps.length > 0) {
+        const combined = dedupeProperties([...merged, ...deepseekProps]);
+        const result = JSON.stringify({
+          fund_name: ticker.toUpperCase(),
+          total_properties: combined.length,
+          properties: combined,
+        });
+        cache.set(t, { data: result, ts: Date.now() });
+        return new Response(result, {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const lovableProps = await callLovableFallback(textForAI, ticker);
+      if (lovableProps && lovableProps.length > 0) {
+        const combined = dedupeProperties([...merged, ...lovableProps]);
+        const result = JSON.stringify({
+          fund_name: ticker.toUpperCase(),
+          total_properties: combined.length,
+          properties: combined,
+        });
+        cache.set(t, { data: result, ts: Date.now() });
+        return new Response(result, {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
+    // Return direct parsed result when enrichment is not needed or not available
     if (merged.length > 0) {
       const result = JSON.stringify({
         fund_name: ticker.toUpperCase(),
         total_properties: merged.length,
         properties: merged,
-      });
-      cache.set(t, { data: result, ts: Date.now() });
-      return new Response(result, {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // AI fallback strategy requested: DeepSeek first, then Lovable
-    const deepseekProps = await callDeepSeek(textForAI, ticker);
-    if (deepseekProps && deepseekProps.length > 0) {
-      const result = JSON.stringify({
-        fund_name: ticker.toUpperCase(),
-        total_properties: deepseekProps.length,
-        properties: deepseekProps,
-      });
-      cache.set(t, { data: result, ts: Date.now() });
-      return new Response(result, {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const lovableProps = await callLovableFallback(textForAI, ticker);
-    if (lovableProps && lovableProps.length > 0) {
-      const result = JSON.stringify({
-        fund_name: ticker.toUpperCase(),
-        total_properties: lovableProps.length,
-        properties: lovableProps,
       });
       cache.set(t, { data: result, ts: Date.now() });
       return new Response(result, {
