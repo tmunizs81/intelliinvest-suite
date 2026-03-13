@@ -9,13 +9,15 @@ const TOAST_COOLDOWN_MS = 30000; // Show at most once every 30s
  */
 export function checkAIProviderFallback(data: any) {
   if (!data || typeof data !== "object") return;
-  if (data._provider === "groq") {
+  const provider = data._provider;
+  if (provider === "groq" || provider === "gemini") {
     const now = Date.now();
     if (now - lastToastTime > TOAST_COOLDOWN_MS) {
       lastToastTime = now;
+      const label = provider === "groq" ? "Groq" : "Gemini (secundário)";
       toast({
         title: "⚡ IA alternativa ativa",
-        description: "Provedor principal indisponível. Usando modelo alternativo (Groq).",
+        description: `Provedor principal indisponível. Usando ${label}.`,
         duration: 5000,
       });
     }

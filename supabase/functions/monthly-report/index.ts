@@ -120,20 +120,32 @@ Deno.serve(async (req) => {
       { role: "user", content: `Gere um relatório mensal completo da carteira para o período ${periodStr}:\n\nPatrimônio: R$${totalValue.toFixed(2)} | Custo: R$${totalCost.toFixed(2)} | Retorno Total: ${totalReturn.toFixed(2)}%\n${portfolio.length} ativos:\n${portfolioText}\n\nInclua: resumo executivo, performance geral, top 3 melhores e piores, análise de dividendos, recomendações para o próximo mês, e avaliação de risco.` },
     ];
 
-    // Try Gemini first, then Groq as fallback
+    // Try OpenRouter first, then Gemini, then Groq as fallback
+    const OPENROUTER_API_KEY = Deno.env.get("OPENROUTER_API_KEY");
     const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
     const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
 
     let result: string | null = null;
 
-    if (GEMINI_API_KEY) {
+    if (OPENROUTER_API_KEY) {
+      try {
+        result = await callAI(
+          "https://openrouter.ai/api/v1/chat/completions",
+          OPENROUTER_API_KEY, "google/gemini-2.5-flash", messages
+        );
+      } catch (e) {
+        console.error("OpenRouter failed, trying Gemini:", e);
+      }
+    }
+
+    if (!result && GEMINI_API_KEY) {
       try {
         result = await callAI(
           "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
           GEMINI_API_KEY, "gemini-2.5-flash", messages
         );
       } catch (e) {
-        console.error("Gemini failed, trying fallback:", e);
+        console.error("Gemini failed, trying Groq:", e);
       }
     }
 
