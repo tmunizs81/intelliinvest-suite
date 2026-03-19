@@ -307,7 +307,11 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
             <div className="space-y-1">
               <label className="text-xs font-medium text-muted-foreground">Tipo *</label>
               <select
-                value={type} onChange={e => setType(e.target.value)}
+                value={type} onChange={e => {
+                  const newType = e.target.value;
+                  setType(newType);
+                  if (newType === 'Renda Fixa' && !quantity) setQuantity('1');
+                }}
                 className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
               >
                 {TYPES.map(t => <option key={t} value={t}>{t}</option>)}
@@ -407,24 +411,45 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-muted-foreground">Quantidade *</label>
-              <input
-                type="number" step="any" min="0.00001" value={quantity} onChange={e => setQuantity(e.target.value)} required
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                placeholder="100"
-              />
+          {type === 'Renda Fixa' ? (
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground">Quantidade *</label>
+                <input
+                  type="number" step="1" min="1" value={quantity} onChange={e => setQuantity(e.target.value)} required
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  placeholder="1"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground">Valor Investido *</label>
+                <input
+                  type="number" step="0.01" min="0" value={avgPrice} onChange={e => setAvgPrice(e.target.value)} required
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  placeholder="10000.00"
+                />
+              </div>
             </div>
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-muted-foreground">Preço Médio *</label>
-              <input
-                type="number" step="0.01" min="0" value={avgPrice} onChange={e => setAvgPrice(e.target.value)} required
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                placeholder="28.50"
-              />
+          ) : (
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground">Quantidade *</label>
+                <input
+                  type="number" step="any" min="0.00001" value={quantity} onChange={e => setQuantity(e.target.value)} required
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  placeholder="100"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground">Preço Médio *</label>
+                <input
+                  type="number" step="0.01" min="0" value={avgPrice} onChange={e => setAvgPrice(e.target.value)} required
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  placeholder="28.50"
+                />
+              </div>
             </div>
-          </div>
+          )}
 
           {/* AI Copilot Signal */}
           {ticker && quantity && avgPrice && !editData && (
