@@ -4,7 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { type Asset } from '@/lib/mockData';
 import { classifyAssetType } from '@/lib/assetClassification';
-import { calculateFixedIncomeValue } from '@/lib/fixedIncomeCalculator';
+import { calculateFixedIncomeValue, fetchReferenceRates } from '@/lib/fixedIncomeCalculator';
 
 const POLL_INTERVAL = 5 * 60 * 1000; // 5 minutes
 
@@ -178,6 +178,8 @@ export function usePortfolio() {
     }
     
     const init = async () => {
+      // Fetch live BCB rates (Selic, CDI, IPCA) before calculating fixed income
+      await fetchReferenceRates().catch(() => {});
       const h = await loadHoldings();
       await loadCashBalance();
       if (h.length > 0) {
