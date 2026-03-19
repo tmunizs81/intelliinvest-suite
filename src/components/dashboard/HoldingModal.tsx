@@ -307,7 +307,11 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
             <div className="space-y-1">
               <label className="text-xs font-medium text-muted-foreground">Tipo *</label>
               <select
-                value={type} onChange={e => setType(e.target.value)}
+                value={type} onChange={e => {
+                  const newType = e.target.value;
+                  setType(newType);
+                  if (newType === 'Renda Fixa' && !quantity) setQuantity('1');
+                }}
                 className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
               >
                 {TYPES.map(t => <option key={t} value={t}>{t}</option>)}
