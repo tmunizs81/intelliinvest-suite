@@ -54,7 +54,7 @@ export function usePortfolio() {
     if (!user) return [];
     const { data, error } = await supabase
       .from('holdings')
-      .select('*')
+      .select('*, yield_rate, indexer_type, maturity_date')
       .eq('user_id', user.id);
     if (error) {
       console.error('Error loading holdings:', error);
