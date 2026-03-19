@@ -4,6 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { type Asset } from '@/lib/mockData';
 import { classifyAssetType } from '@/lib/assetClassification';
+import { calculateFixedIncomeValue } from '@/lib/fixedIncomeCalculator';
 
 const POLL_INTERVAL = 5 * 60 * 1000; // 5 minutes
 
