@@ -75,17 +75,27 @@ export function usePortfolio() {
 
     try {
       setError(null);
-      const tickers = h.map((item) => item.ticker);
-      const { data, error: fnError } = await supabase.functions.invoke('yahoo-finance', {
-        body: { tickers },
-      });
 
-      if (fnError) throw new Error(fnError.message || 'Failed to fetch quotes');
+      // Separate fixed income from market assets
+      const fixedIncomeHoldings = h.filter(item => item.type === 'Renda Fixa');
+      const marketHoldings = h.filter(item => item.type !== 'Renda Fixa');
 
-      const quotes = data.quotes || {};
+      let quotes: Record<string, any> = {};
+
+      // Only call Yahoo Finance for market assets
+      if (marketHoldings.length > 0) {
+        const tickers = marketHoldings.map((item) => item.ticker);
+        const { data, error: fnError } = await supabase.functions.invoke('yahoo-finance', {
+          body: { tickers },
+        });
+        if (fnError) throw new Error(fnError.message || 'Failed to fetch quotes');
+        quotes = data.quotes || {};
+      }
+
       let totalValue = 0;
 
-      const enriched = h.map((item) => {
+      // Enrich market assets
+      const marketEnriched = marketHoldings.map((item) => {
         const quote = quotes[item.ticker];
         const currency = quote?.currency || 'BRL';
         const originalPrice = quote?.currentPrice || 0;
@@ -111,7 +121,39 @@ export function usePortfolio() {
         };
       });
 
-      const assetsWithAllocation: Asset[] = enriched.map((a) => ({
+      // Calculate fixed income values locally
+      const fixedEnriched = fixedIncomeHoldings.map((item) => {
+        const investedAmount = item.avg_price * item.quantity;
+        const result = calculateFixedIncomeValue({
+          investedAmount,
+          yieldRate: (item as any).yield_rate || null,
+          indexerType: (item as any).indexer_type || null,
+          purchaseDate: (item as any).created_at || new Date().toISOString(),
+          maturityDate: (item as any).maturity_date || null,
+        });
+        const currentPricePerUnit = item.quantity > 0 ? result.currentValue / item.quantity : item.avg_price;
+        totalValue += result.currentValue;
+        return {
+          ticker: item.ticker,
+          name: item.name,
+          type: 'Renda Fixa' as Asset['type'],
+          quantity: item.quantity,
+          avgPrice: item.avg_price,
+          currentPrice: currentPricePerUnit,
+          change24h: result.grossReturnPct,
+          allocation: 0,
+          sector: item.sector || undefined,
+          source: 'calculated' as string,
+          currency: 'BRL',
+          currentPriceBRL: currentPricePerUnit,
+          exchangeRate: 1,
+          originalPrice: currentPricePerUnit,
+        };
+      });
+
+      const allEnriched = [...marketEnriched, ...fixedEnriched];
+
+      const assetsWithAllocation: Asset[] = allEnriched.map((a) => ({
         ...a,
         allocation: totalValue > 0 ? Math.round(((a.currentPrice * a.quantity) / totalValue) * 1000) / 10 : 0,
       }));
