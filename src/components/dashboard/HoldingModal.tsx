@@ -433,28 +433,55 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
 
           {/* Campos de Imóvel */}
           {type === 'Imóvel' && (
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-muted-foreground">Valorização (% ) *</label>
-                <input
-                  value={appreciationRate}
-                  onChange={e => setAppreciationRate(e.target.value)}
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                  placeholder={appreciationPeriod === 'mensal' ? 'Ex: 0.5' : 'Ex: 6.0'}
-                />
+            <>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">Finalidade *</label>
+                  <select
+                    value={propertyPurpose}
+                    onChange={e => setPropertyPurpose(e.target.value)}
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  >
+                    <option value="holding">Patrimônio (Holding)</option>
+                    <option value="aluguel">Alugado</option>
+                  </select>
+                </div>
+                {propertyPurpose === 'aluguel' && (
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-muted-foreground">Valor do Aluguel (R$/mês) *</label>
+                    <input
+                      type="number" step="0.01" min="0"
+                      value={rentalValue}
+                      onChange={e => setRentalValue(e.target.value)}
+                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                      placeholder="2500.00"
+                    />
+                  </div>
+                )}
               </div>
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-muted-foreground">Período</label>
-                <select
-                  value={appreciationPeriod}
-                  onChange={e => setAppreciationPeriod(e.target.value)}
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                >
-                  <option value="mensal">Mensal</option>
-                  <option value="anual">Anual</option>
-                </select>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">Valorização (%) *</label>
+                  <input
+                    value={appreciationRate}
+                    onChange={e => setAppreciationRate(e.target.value)}
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                    placeholder={appreciationPeriod === 'mensal' ? 'Ex: 0.5' : 'Ex: 6.0'}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">Período</label>
+                  <select
+                    value={appreciationPeriod}
+                    onChange={e => setAppreciationPeriod(e.target.value)}
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  >
+                    <option value="mensal">Mensal</option>
+                    <option value="anual">Anual</option>
+                  </select>
+                </div>
               </div>
-            </div>
+            </>
           )}
 
           <div className="space-y-1">
