@@ -259,70 +259,104 @@ export function usePortfolio() {
     await fetchQuotes(h);
   }, [loadHoldings, loadCashBalance, fetchQuotes]);
 
-  // CRUD operations
+  // CRUD operations with optimistic updates
   const addHolding = useCallback(async (holding: Omit<HoldingRow, 'id'>) => {
     if (!user) return;
-    const { error } = await supabase.from('holdings').insert({
-      user_id: user.id,
-      ticker: holding.ticker.toUpperCase(),
-      name: holding.name,
-      type: holding.type,
-      quantity: holding.quantity,
-      avg_price: holding.avg_price,
-      sector: holding.sector,
-      broker: holding.broker || null,
-      ...((holding as any).yield_rate && { yield_rate: (holding as any).yield_rate }),
-      ...((holding as any).indexer_type && { indexer_type: (holding as any).indexer_type }),
-      ...((holding as any).maturity_date && { maturity_date: (holding as any).maturity_date }),
-    } as any);
-    if (error) throw error;
 
-    await supabase.from('transactions').insert({
-      user_id: user.id,
-      ticker: holding.ticker.toUpperCase(),
-      name: holding.name,
-      type: holding.type,
-      operation: 'buy',
-      quantity: holding.quantity,
-      price: holding.avg_price,
-      total: holding.quantity * holding.avg_price,
-      fees: 0,
-      date: new Date().toISOString().split('T')[0],
-      is_daytrade: false,
-      notes: 'Lançamento automático via Meus Ativos',
-    });
+    // Optimistic: add to local state immediately
+    const tempId = crypto.randomUUID();
+    const optimisticHolding = { ...holding, id: tempId } as HoldingRow;
+    setHoldings(prev => [...prev, optimisticHolding]);
 
-    await auditLog('buy', 'holding', holding.ticker.toUpperCase(), {
-      ticker: holding.ticker.toUpperCase(), quantity: holding.quantity, price: holding.avg_price,
-    });
-    await refresh();
+    try {
+      const { error } = await supabase.from('holdings').insert({
+        user_id: user.id,
+        ticker: holding.ticker.toUpperCase(),
+        name: holding.name,
+        type: holding.type,
+        quantity: holding.quantity,
+        avg_price: holding.avg_price,
+        sector: holding.sector,
+        broker: holding.broker || null,
+        ...((holding as any).yield_rate && { yield_rate: (holding as any).yield_rate }),
+        ...((holding as any).indexer_type && { indexer_type: (holding as any).indexer_type }),
+        ...((holding as any).maturity_date && { maturity_date: (holding as any).maturity_date }),
+      } as any);
+      if (error) throw error;
+
+      await supabase.from('transactions').insert({
+        user_id: user.id,
+        ticker: holding.ticker.toUpperCase(),
+        name: holding.name,
+        type: holding.type,
+        operation: 'buy',
+        quantity: holding.quantity,
+        price: holding.avg_price,
+        total: holding.quantity * holding.avg_price,
+        fees: 0,
+        date: new Date().toISOString().split('T')[0],
+        is_daytrade: false,
+        notes: 'Lançamento automático via Meus Ativos',
+      });
+
+      await auditLog('buy', 'holding', holding.ticker.toUpperCase(), {
+        ticker: holding.ticker.toUpperCase(), quantity: holding.quantity, price: holding.avg_price,
+      });
+      await refresh();
+    } catch (err) {
+      // Rollback on error
+      setHoldings(prev => prev.filter(h => h.id !== tempId));
+      throw err;
+    }
   }, [user, refresh, auditLog]);
 
   const updateHolding = useCallback(async (id: string, updates: Partial<HoldingRow>) => {
     if (!user) return;
-    const { error } = await supabase.from('holdings').update({
-      ...(updates.ticker && { ticker: updates.ticker.toUpperCase() }),
-      ...(updates.name && { name: updates.name }),
-      ...(updates.type && { type: updates.type }),
-      ...(updates.quantity !== undefined && { quantity: updates.quantity }),
-      ...(updates.avg_price !== undefined && { avg_price: updates.avg_price }),
-      ...(updates.sector !== undefined && { sector: updates.sector }),
-      ...(updates.broker !== undefined && { broker: updates.broker }),
-      ...((updates as any).yield_rate !== undefined && { yield_rate: (updates as any).yield_rate }),
-      ...((updates as any).indexer_type !== undefined && { indexer_type: (updates as any).indexer_type }),
-      ...((updates as any).maturity_date !== undefined && { maturity_date: (updates as any).maturity_date }),
-    } as any).eq('id', id).eq('user_id', user.id);
-    if (error) throw error;
-    await refresh();
-  }, [user, refresh]);
+
+    // Optimistic: apply update locally
+    const previousHoldings = [...holdings];
+    setHoldings(prev => prev.map(h => h.id === id ? { ...h, ...updates } : h));
+
+    try {
+      const { error } = await supabase.from('holdings').update({
+        ...(updates.ticker && { ticker: updates.ticker.toUpperCase() }),
+        ...(updates.name && { name: updates.name }),
+        ...(updates.type && { type: updates.type }),
+        ...(updates.quantity !== undefined && { quantity: updates.quantity }),
+        ...(updates.avg_price !== undefined && { avg_price: updates.avg_price }),
+        ...(updates.sector !== undefined && { sector: updates.sector }),
+        ...(updates.broker !== undefined && { broker: updates.broker }),
+        ...((updates as any).yield_rate !== undefined && { yield_rate: (updates as any).yield_rate }),
+        ...((updates as any).indexer_type !== undefined && { indexer_type: (updates as any).indexer_type }),
+        ...((updates as any).maturity_date !== undefined && { maturity_date: (updates as any).maturity_date }),
+      } as any).eq('id', id).eq('user_id', user.id);
+      if (error) throw error;
+      await refresh();
+    } catch (err) {
+      // Rollback on error
+      setHoldings(previousHoldings);
+      throw err;
+    }
+  }, [user, refresh, holdings]);
 
   const deleteHolding = useCallback(async (id: string) => {
     if (!user) return;
+
+    // Optimistic: remove locally
+    const previousHoldings = [...holdings];
     const holding = holdings.find(h => h.id === id);
-    const { error } = await supabase.from('holdings').delete().eq('id', id).eq('user_id', user.id);
-    if (error) throw error;
-    await auditLog('delete', 'holding', id, { ticker: holding?.ticker });
-    await refresh();
+    setHoldings(prev => prev.filter(h => h.id !== id));
+
+    try {
+      const { error } = await supabase.from('holdings').delete().eq('id', id).eq('user_id', user.id);
+      if (error) throw error;
+      await auditLog('delete', 'holding', id, { ticker: holding?.ticker });
+      await refresh();
+    } catch (err) {
+      // Rollback on error
+      setHoldings(previousHoldings);
+      throw err;
+    }
   }, [user, refresh, holdings, auditLog]);
 
   const sellHolding = useCallback(async (holdingId: string, sellQty: number, sellPrice: number, fees: number = 0) => {
