@@ -250,6 +250,7 @@ function TabResumo({ assets, lastUpdate, nextUpdate, snapshots, snapshotsLoading
           <Panel title="Calendário de Eventos"><EventsCalendarPanel assets={assets} /></Panel>
           <Panel title="Evolução Patrimonial"><PortfolioChart assets={assets} /></Panel>
           <Panel title="Histórico Patrimonial"><PortfolioHistoryChart snapshots={snapshots} loading={snapshotsLoading} /></Panel>
+          <Panel title="Patrimônio Imobiliário"><RealEstatePanel assets={assets} /></Panel>
           <Panel title="🏆 Conquistas"><AchievementsPanel assets={assets} /></Panel>
         </>
       ) : (
