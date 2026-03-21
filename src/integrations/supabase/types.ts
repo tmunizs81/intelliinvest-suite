@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_cache: {
+        Row: {
+          created_at: string
+          expires_at: string
+          function_name: string
+          hit_count: number
+          id: string
+          model: string | null
+          prompt_hash: string
+          response_text: string
+          tokens_used: number | null
+        }
+        Insert: {
+          created_at?: string
+          expires_at: string
+          function_name: string
+          hit_count?: number
+          id?: string
+          model?: string | null
+          prompt_hash: string
+          response_text: string
+          tokens_used?: number | null
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          function_name?: string
+          hit_count?: number
+          id?: string
+          model?: string | null
+          prompt_hash?: string
+          response_text?: string
+          tokens_used?: number | null
+        }
+        Relationships: []
+      }
       ai_conversations: {
         Row: {
           analysis_type: string | null
