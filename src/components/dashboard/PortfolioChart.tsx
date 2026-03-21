@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useId } from 'react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { formatCurrency } from '@/lib/mockData';
 import { type SnapshotRow } from '@/hooks/usePortfolioSnapshots';
@@ -23,6 +23,7 @@ interface Props {
 
 export default function PortfolioChart({ assets, snapshots, loading, showCostLine = false }: Props) {
   const [activePeriod, setActivePeriod] = useState(4);
+  const gradientId = useId().replace(/:/g, '');
 
   const data = useMemo(() => {
     if (snapshots.length === 0) return [];
@@ -44,7 +45,7 @@ export default function PortfolioChart({ assets, snapshots, loading, showCostLin
 
   if (loading) {
     return (
-      <div className="rounded-lg border border-border bg-card p-5 animate-fade-in flex items-center justify-center h-[300px]">
+      <div className="rounded-lg border border-border bg-card p-5 animate-fade-in flex items-center justify-center h-[320px]">
         <Loader2 className="h-6 w-6 animate-spin text-primary" />
       </div>
     );
@@ -102,11 +103,11 @@ export default function PortfolioChart({ assets, snapshots, loading, showCostLin
         </div>
       </div>
 
-      <div className="flex-1 min-h-[280px]">
-        <ResponsiveContainer width="100%" height="100%">
+      <div className="h-[320px] w-full">
+        <ResponsiveContainer width="100%" height={320}>
           <AreaChart data={data} margin={{ top: 4, right: 4, left: 4, bottom: 0 }}>
             <defs>
-              <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
+              <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor={isPositive ? 'hsl(160,84%,39%)' : 'hsl(0,72%,51%)'} stopOpacity={0.3} />
                 <stop offset="95%" stopColor={isPositive ? 'hsl(160,84%,39%)' : 'hsl(0,72%,51%)'} stopOpacity={0} />
               </linearGradient>
@@ -150,7 +151,7 @@ export default function PortfolioChart({ assets, snapshots, loading, showCostLin
               dataKey="value"
               stroke={isPositive ? 'hsl(160,84%,39%)' : 'hsl(0,72%,51%)'}
               strokeWidth={2}
-              fill="url(#colorValue)"
+              fill={`url(#${gradientId})`}
             />
             {showCostLine && (
               <Area
