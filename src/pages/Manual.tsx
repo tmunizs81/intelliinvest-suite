@@ -1052,7 +1052,7 @@ O sistema permite controlar o saldo disponível em caixa nas suas corretoras.
   },
   {
     id: 'pwa',
-    title: '16. Instalação como App (PWA)',
+    title: '17. Instalação como App (PWA)',
     content: `
 ## Instalar no Celular ou Desktop
 
