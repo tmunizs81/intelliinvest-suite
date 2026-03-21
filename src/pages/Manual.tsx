@@ -1150,7 +1150,7 @@ Após adicionar os ativos:
   },
   {
     id: 'shortcuts',
-    title: '19. Dicas e Atalhos',
+    title: '20. Dicas e Atalhos',
     content: `
 ## Dicas para Melhor Uso
 
