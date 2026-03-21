@@ -72,7 +72,10 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
       setBroker(editData?.broker || '');
       setYieldRate(editData?.yield_rate || '');
       setIndexerType(editData?.indexer_type || 'Pós-fixado');
-      setFixedIncomeSubtype(editData?.sector && type === 'Renda Fixa' ? editData.sector : 'CDB');
+      setFixedIncomeSubtype(editData?.sector && editData?.type === 'Renda Fixa' ? editData.sector : 'CDB');
+      setPropertySubtype(editData?.sector && editData?.type === 'Imóvel' ? editData.sector : 'Casa');
+      setAppreciationRate(editData?.type === 'Imóvel' && editData?.yield_rate ? editData.yield_rate : '');
+      setAppreciationPeriod(editData?.type === 'Imóvel' && editData?.indexer_type ? editData.indexer_type : 'anual');
       setMaturityDate(editData?.maturity_date ? new Date(editData.maturity_date) : undefined);
       setError('');
       setSuggestions([]);
