@@ -89,11 +89,37 @@ export function usePortfolio() {
       // Only call Yahoo Finance for market assets
       if (marketHoldings.length > 0) {
         const tickers = marketHoldings.map((item) => item.ticker);
-        const { data, error: fnError } = await supabase.functions.invoke('yahoo-finance', {
-          body: { tickers },
-        });
-        if (fnError) throw new Error(fnError.message || 'Failed to fetch quotes');
-        quotes = data.quotes || {};
+        const cacheKey = `quotes:${tickers.sort().join(',')}`;
+
+        // Try IndexedDB cache first
+        const cached = await getCached<Record<string, any>>(cacheKey);
+        if (cached) {
+          quotes = cached;
+        } else {
+          // Rate limit check
+          const { allowed, retryAfterMs } = checkRateLimit('yahoo-finance', { maxTokens: 6, refillRate: 0.2 });
+          if (!allowed) {
+            toast.warning(`Aguarde ${Math.ceil(retryAfterMs / 1000)}s antes de atualizar novamente`);
+            setLoading(false);
+            return;
+          }
+
+          // Dedup + Circuit Breaker + Retry
+          const result = await deduplicateRequest(cacheKey, () =>
+            withCircuitBreaker('yahoo-finance', () =>
+              fetchWithRetry(async () => {
+                const { data, error: fnError } = await supabase.functions.invoke('yahoo-finance', {
+                  body: { tickers },
+                });
+                if (fnError) throw new Error(fnError.message || 'Failed to fetch quotes');
+                return data.quotes || {};
+              })
+            )
+          );
+          quotes = result;
+          // Cache for 5 min
+          await setCache(cacheKey, quotes, CACHE_TTL.QUOTES);
+        }
       }
 
       let totalValue = 0;
