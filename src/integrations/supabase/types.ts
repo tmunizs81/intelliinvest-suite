@@ -277,7 +277,9 @@ export type Database = {
           indexer_type: string | null
           maturity_date: string | null
           name: string
+          property_purpose: string | null
           quantity: number
+          rental_value: number | null
           sector: string | null
           ticker: string
           type: string
@@ -293,7 +295,9 @@ export type Database = {
           indexer_type?: string | null
           maturity_date?: string | null
           name: string
+          property_purpose?: string | null
           quantity: number
+          rental_value?: number | null
           sector?: string | null
           ticker: string
           type: string
@@ -309,7 +313,9 @@ export type Database = {
           indexer_type?: string | null
           maturity_date?: string | null
           name?: string
+          property_purpose?: string | null
           quantity?: number
+          rental_value?: number | null
           sector?: string | null
           ticker?: string
           type?: string

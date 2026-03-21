@@ -54,7 +54,7 @@ export function usePortfolio() {
     if (!user) return [];
     const { data, error } = await supabase
       .from('holdings')
-      .select('*, yield_rate, indexer_type, maturity_date')
+      .select('*, yield_rate, indexer_type, maturity_date, property_purpose, rental_value')
       .eq('user_id', user.id);
     if (error) {
       console.error('Error loading holdings:', error);
@@ -152,12 +152,14 @@ export function usePortfolio() {
         };
       });
 
-      // Calculate real estate values locally
+      // Calculate real estate values locally (appreciation + rental ROI)
       const propertyEnriched = propertyHoldings.map((item) => {
         const investedAmount = item.avg_price * item.quantity;
         const yieldRateStr = (item as any).yield_rate || '0';
-        const period = (item as any).indexer_type || 'anual'; // 'mensal' or 'anual'
+        const period = (item as any).indexer_type || 'anual';
         const rateNum = parseFloat(yieldRateStr.replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
+        const rentalValueMonthly = parseFloat((item as any).rental_value) || 0;
+        const purpose = (item as any).property_purpose || 'holding';
         
         // Convert to annual rate
         const annualRate = period === 'mensal' ? (Math.pow(1 + rateNum / 100, 12) - 1) * 100 : rateNum;
@@ -167,11 +169,21 @@ export function usePortfolio() {
         const now = new Date();
         const elapsedMonths = (now.getFullYear() - start.getFullYear()) * 12 + (now.getMonth() - start.getMonth()) + (now.getDate() - start.getDate()) / 30;
         
-        // Monthly rate from annual
+        // Property appreciation
         const monthlyRate = Math.pow(1 + annualRate / 100, 1 / 12) - 1;
-        const currentValue = investedAmount * Math.pow(1 + monthlyRate, Math.max(0, elapsedMonths));
-        const grossReturn = currentValue - investedAmount;
-        const grossReturnPct = investedAmount > 0 ? (grossReturn / investedAmount) * 100 : 0;
+        const appreciatedValue = investedAmount * Math.pow(1 + monthlyRate, Math.max(0, elapsedMonths));
+        
+        // Rental income accumulated
+        const totalRentalIncome = purpose === 'aluguel' ? rentalValueMonthly * Math.max(0, elapsedMonths) : 0;
+        
+        // Total return = appreciation + rental income
+        const currentValue = appreciatedValue;
+        const totalReturn = (appreciatedValue - investedAmount) + totalRentalIncome;
+        const totalReturnPct = investedAmount > 0 ? (totalReturn / investedAmount) * 100 : 0;
+        
+        // Monthly ROI for rental
+        const monthlyROI = purpose === 'aluguel' && investedAmount > 0 ? (rentalValueMonthly / investedAmount) * 100 : 0;
+        const annualROI = purpose === 'aluguel' && investedAmount > 0 ? ((rentalValueMonthly * 12) / investedAmount) * 100 : 0;
         
         const currentPricePerUnit = item.quantity > 0 ? currentValue / item.quantity : item.avg_price;
         totalValue += currentValue;
@@ -182,9 +194,9 @@ export function usePortfolio() {
           quantity: item.quantity,
           avgPrice: item.avg_price,
           currentPrice: currentPricePerUnit,
-          change24h: grossReturnPct,
+          change24h: totalReturnPct,
           allocation: 0,
-          sector: item.sector || undefined,
+          sector: item.sector ? `${item.sector}${purpose === 'aluguel' ? ` • Aluguel R$${rentalValueMonthly.toLocaleString('pt-BR')}/mês • ROI ${monthlyROI.toFixed(2)}%/mês (${annualROI.toFixed(1)}%/ano)` : ' • Patrimônio'}` : undefined,
           source: 'calculated' as string,
           currency: 'BRL',
           currentPriceBRL: currentPricePerUnit,
