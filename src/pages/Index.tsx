@@ -291,6 +291,7 @@ function TabCarteira({ assets, holdings, loading, isMobile, onAdd, onEdit, onDel
           <Panel title="Dividendos"><DividendsPanel assets={assets} /></Panel>
           <Panel title="Calculadora PM"><AvgPriceCalculator assets={assets} /></Panel>
           <Panel title="Renda Fixa"><FixedIncomePanel assets={assets} /></Panel>
+          <Panel title="Patrimônio Imobiliário"><RealEstatePanel assets={assets} /></Panel>
           <Panel title="Câmbio"><CurrencyDashboard /></Panel>
         </>
       ) : (
