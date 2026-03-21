@@ -11,9 +11,11 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 
-const TYPES = ['Ação', 'FII', 'ETF', 'ETF Internacional', 'REIT', 'BDR', 'Internacional', 'Cripto', 'Renda Fixa'] as const;
+const TYPES = ['Ação', 'FII', 'ETF', 'ETF Internacional', 'REIT', 'BDR', 'Internacional', 'Cripto', 'Renda Fixa', 'Imóvel'] as const;
 
 const FIXED_INCOME_SUBTYPES = ['CDB', 'LCI', 'LCA', 'Tesouro Selic', 'Tesouro IPCA+', 'Tesouro Pré', 'Debênture', 'CRA', 'CRI', 'LC', 'Outro'] as const;
+
+const PROPERTY_SUBTYPES = ['Casa', 'Apartamento', 'Terreno', 'Lote', 'Galpão', 'Sala Comercial', 'Prédio Comercial', 'Chácara', 'Fazenda', 'Outro'] as const;
 
 interface SearchResult {
   symbol: string;
@@ -43,6 +45,9 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
   const [yieldRate, setYieldRate] = useState('');
   const [indexerType, setIndexerType] = useState<string>('Pós-fixado');
   const [fixedIncomeSubtype, setFixedIncomeSubtype] = useState<string>('CDB');
+  const [propertySubtype, setPropertySubtype] = useState<string>('Casa');
+  const [appreciationRate, setAppreciationRate] = useState('');
+  const [appreciationPeriod, setAppreciationPeriod] = useState<string>('anual');
   const [maturityDate, setMaturityDate] = useState<Date | undefined>(undefined);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -67,7 +72,10 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
       setBroker(editData?.broker || '');
       setYieldRate(editData?.yield_rate || '');
       setIndexerType(editData?.indexer_type || 'Pós-fixado');
-      setFixedIncomeSubtype(editData?.sector && type === 'Renda Fixa' ? editData.sector : 'CDB');
+      setFixedIncomeSubtype(editData?.sector && editData?.type === 'Renda Fixa' ? editData.sector : 'CDB');
+      setPropertySubtype(editData?.sector && editData?.type === 'Imóvel' ? editData.sector : 'Casa');
+      setAppreciationRate(editData?.type === 'Imóvel' && editData?.yield_rate ? editData.yield_rate : '');
+      setAppreciationPeriod(editData?.type === 'Imóvel' && editData?.indexer_type ? editData.indexer_type : 'anual');
       setMaturityDate(editData?.maturity_date ? new Date(editData.maturity_date) : undefined);
       setError('');
       setSuggestions([]);
@@ -183,16 +191,17 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
 
     try {
       const isFixedIncome = type === 'Renda Fixa';
+      const isProperty = type === 'Imóvel';
       const data: any = {
-        ticker: ticker.toUpperCase().trim(),
+        ticker: isProperty ? `IMOVEL-${name.trim().substring(0, 10).toUpperCase().replace(/\s/g, '')}` : ticker.toUpperCase().trim(),
         name: name.trim(),
         type,
-        quantity: parseFloat(quantity),
+        quantity: isProperty ? 1 : parseFloat(quantity),
         avg_price: parseFloat(avgPrice),
-        sector: isFixedIncome ? fixedIncomeSubtype : (sector.trim() || null),
+        sector: isFixedIncome ? fixedIncomeSubtype : isProperty ? propertySubtype : (sector.trim() || null),
         broker: broker.trim() || null,
-        yield_rate: isFixedIncome ? yieldRate.trim() || null : null,
-        indexer_type: isFixedIncome ? indexerType : null,
+        yield_rate: isFixedIncome ? yieldRate.trim() || null : isProperty ? appreciationRate.trim() || null : null,
+        indexer_type: isFixedIncome ? indexerType : isProperty ? appreciationPeriod : null,
         maturity_date: isFixedIncome && maturityDate ? format(maturityDate, 'yyyy-MM-dd') : null,
       };
 
@@ -247,7 +256,8 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
             <div className="rounded-md bg-destructive/10 border border-destructive/20 p-3 text-sm text-destructive">{error}</div>
           )}
 
-          {/* Ticker with autocomplete */}
+          {/* Ticker with autocomplete - hidden for Imóvel */}
+          {type !== 'Imóvel' && (
           <div className="relative">
             <div className="space-y-1">
               <label className="text-xs font-medium text-muted-foreground">Ticker *</label>
@@ -302,6 +312,7 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
               </div>
             )}
           </div>
+          )}
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
@@ -310,14 +321,14 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
                 value={type} onChange={e => {
                   const newType = e.target.value;
                   setType(newType);
-                  if (newType === 'Renda Fixa' && !quantity) setQuantity('1');
+                  if ((newType === 'Renda Fixa' || newType === 'Imóvel') && !quantity) setQuantity('1');
                 }}
                 className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
               >
                 {TYPES.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
             </div>
-            {type !== 'Renda Fixa' && (
+            {type !== 'Renda Fixa' && type !== 'Imóvel' && (
               <div className="space-y-1">
                 <label className="text-xs font-medium text-muted-foreground">Setor</label>
                 <input
@@ -336,6 +347,18 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                 >
                   {FIXED_INCOME_SUBTYPES.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
+            )}
+            {type === 'Imóvel' && (
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground">Tipo de Imóvel *</label>
+                <select
+                  value={propertySubtype}
+                  onChange={e => setPropertySubtype(e.target.value)}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                >
+                  {PROPERTY_SUBTYPES.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
               </div>
             )}
@@ -402,33 +425,53 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
             </>
           )}
 
+          {/* Campos de Imóvel */}
+          {type === 'Imóvel' && (
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground">Valorização (% ) *</label>
+                <input
+                  value={appreciationRate}
+                  onChange={e => setAppreciationRate(e.target.value)}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  placeholder={appreciationPeriod === 'mensal' ? 'Ex: 0.5' : 'Ex: 6.0'}
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground">Período</label>
+                <select
+                  value={appreciationPeriod}
+                  onChange={e => setAppreciationPeriod(e.target.value)}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                >
+                  <option value="mensal">Mensal</option>
+                  <option value="anual">Anual</option>
+                </select>
+              </div>
+            </div>
+          )}
+
           <div className="space-y-1">
-            <label className="text-xs font-medium text-muted-foreground">Nome *</label>
+            <label className="text-xs font-medium text-muted-foreground">
+              {type === 'Imóvel' ? 'Descrição / Endereço *' : 'Nome *'}
+            </label>
             <input
               value={name} onChange={e => setName(e.target.value)} required
               className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-              placeholder="Nome do ativo (preenchido automaticamente)"
+              placeholder={type === 'Imóvel' ? 'Ex: Apartamento Centro SP' : 'Nome do ativo (preenchido automaticamente)'}
             />
           </div>
 
-          {type === 'Renda Fixa' ? (
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-muted-foreground">Quantidade *</label>
-                <input
-                  type="number" step="1" min="1" value={quantity} onChange={e => setQuantity(e.target.value)} required
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                  placeholder="1"
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-muted-foreground">Valor Investido *</label>
-                <input
-                  type="number" step="0.01" min="0" value={avgPrice} onChange={e => setAvgPrice(e.target.value)} required
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                  placeholder="10000.00"
-                />
-              </div>
+          {type === 'Renda Fixa' || type === 'Imóvel' ? (
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">
+                {type === 'Imóvel' ? 'Valor do Imóvel *' : 'Valor Investido *'}
+              </label>
+              <input
+                type="number" step="0.01" min="0" value={avgPrice} onChange={e => setAvgPrice(e.target.value)} required
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                placeholder={type === 'Imóvel' ? '350000.00' : '10000.00'}
+              />
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-4">
