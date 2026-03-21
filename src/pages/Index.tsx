@@ -248,7 +248,7 @@ function TabResumo({ assets, lastUpdate, nextUpdate, snapshots, snapshotsLoading
           <Panel title="Mapa de Calor"><TreemapPanel assets={assets} /></Panel>
           <Panel title="Concentração Setorial"><SectorRadarPanel assets={assets} /></Panel>
           <Panel title="Calendário de Eventos"><EventsCalendarPanel assets={assets} /></Panel>
-          <Panel title="Evolução Patrimonial"><PortfolioChart assets={assets} /></Panel>
+          <Panel title="Evolução Patrimonial"><PortfolioChart assets={assets} snapshots={snapshots} loading={snapshotsLoading} /></Panel>
           <Panel title="Histórico Patrimonial"><PortfolioHistoryChart snapshots={snapshots} loading={snapshotsLoading} /></Panel>
           <Panel title="Patrimônio Imobiliário"><RealEstatePanel assets={assets} /></Panel>
           <Panel title="🏆 Conquistas"><AchievementsPanel assets={assets} /></Panel>
@@ -257,7 +257,7 @@ function TabResumo({ assets, lastUpdate, nextUpdate, snapshots, snapshotsLoading
         <>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <Panel title="Saúde da Carteira"><HealthScorePanel assets={assets} /></Panel>
-            <Panel title="Evolução Patrimonial" className="lg:col-span-2"><PortfolioChart assets={assets} /></Panel>
+            <Panel title="Evolução Patrimonial" className="lg:col-span-2"><PortfolioChart assets={assets} snapshots={snapshots} loading={snapshotsLoading} /></Panel>
           </div>
           <Panel title="🗺️ Mapa de Calor (Treemap)"><TreemapPanel assets={assets} /></Panel>
           <Grid2>
