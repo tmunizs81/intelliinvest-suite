@@ -974,6 +974,59 @@ O painel de **Renda Fixa** permite gerenciar seus investimentos em títulos.
     `,
   },
   {
+    id: 'real-estate',
+    title: '15. Patrimônio Imobiliário',
+    content: \`
+## Gestão de Patrimônio Imobiliário
+
+O painel de **Patrimônio Imobiliário** permite cadastrar e acompanhar imóveis físicos como parte da sua carteira de investimentos.
+
+### Tipos de Imóvel Suportados:
+- **Casa**, **Apartamento**, **Terreno**, **Lote**
+- **Galpão**, **Sala Comercial**, **Prédio Comercial**
+- **Chácara**, **Fazenda**, **Outro**
+
+### Finalidade do Imóvel:
+- **Patrimônio (Holding)**: Imóvel mantido para valorização patrimonial
+- **Alugado**: Imóvel que gera renda mensal de aluguel
+
+### Campos de Cadastro:
+- Tipo de imóvel (Casa, Apartamento, etc.)
+- Descrição / Endereço
+- Valor do imóvel (preço de compra)
+- Finalidade (Patrimônio ou Alugado)
+- Valor do aluguel mensal (se alugado)
+- Taxa de valorização (% mensal ou anual)
+- Período da valorização (mensal ou anual)
+
+### Cálculos Automáticos:
+O sistema calcula automaticamente:
+- **Valorização do imóvel** com base na taxa informada (juros compostos)
+- **ROI do aluguel** mensal e anual (Aluguel ÷ Valor do Imóvel × 100)
+- **Renda acumulada** de aluguéis desde o cadastro
+- **Retorno total** = Valorização + Renda de Aluguel
+
+### Painel de Patrimônio Imobiliário:
+Na aba **Carteira**, o painel dedicado exibe:
+- **Patrimônio imobiliário total** (valor atual de todos os imóveis)
+- **Valorização total** em R$ e %
+- **Renda mensal total** de aluguéis
+- **Quantidade de imóveis** cadastrados
+- **Detalhes individuais** de cada imóvel com badges (tipo, alugado/patrimônio)
+- **ROI individual** por imóvel (mensal e anual)
+
+### Exemplo de Uso:
+1. Clique em **"+ Adicionar"** no painel Meus Ativos
+2. Selecione tipo **"Imóvel"**
+3. Escolha o tipo (ex: Apartamento)
+4. Informe finalidade: **Alugado**
+5. Preencha: Aluguel R$ 2.500/mês, Valor R$ 350.000, Valorização 6% ao ano
+6. O sistema calculará: ROI Aluguel 0.71%/mês (8.57%/ano) + Valorização
+
+> 💡 O ticker é gerado automaticamente para imóveis. Não é necessário buscá-lo.
+    \`,
+  },
+  {
     id: 'cash',
     title: '15. Saldo em Caixa',
     content: `
