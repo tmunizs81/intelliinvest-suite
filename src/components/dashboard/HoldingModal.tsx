@@ -78,6 +78,8 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
       setPropertySubtype(editData?.sector && editData?.type === 'Imóvel' ? editData.sector : 'Casa');
       setAppreciationRate(editData?.type === 'Imóvel' && editData?.yield_rate ? editData.yield_rate : '');
       setAppreciationPeriod(editData?.type === 'Imóvel' && editData?.indexer_type ? editData.indexer_type : 'anual');
+      setPropertyPurpose((editData as any)?.property_purpose || 'holding');
+      setRentalValue((editData as any)?.rental_value?.toString() || '');
       setMaturityDate(editData?.maturity_date ? new Date(editData.maturity_date) : undefined);
       setError('');
       setSuggestions([]);
