@@ -312,6 +312,7 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
               </div>
             )}
           </div>
+          )}
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
