@@ -976,7 +976,7 @@ O painel de **Renda Fixa** permite gerenciar seus investimentos em títulos.
   {
     id: 'real-estate',
     title: '15. Patrimônio Imobiliário',
-    content: \`
+    content: `
 ## Gestão de Patrimônio Imobiliário
 
 O painel de **Patrimônio Imobiliário** permite cadastrar e acompanhar imóveis físicos como parte da sua carteira de investimentos.
@@ -1002,7 +1002,7 @@ O painel de **Patrimônio Imobiliário** permite cadastrar e acompanhar imóveis
 ### Cálculos Automáticos:
 O sistema calcula automaticamente:
 - **Valorização do imóvel** com base na taxa informada (juros compostos)
-- **ROI do aluguel** mensal e anual (Aluguel ÷ Valor do Imóvel × 100)
+- **ROI do aluguel** mensal e anual (Aluguel / Valor do Imóvel x 100)
 - **Renda acumulada** de aluguéis desde o cadastro
 - **Retorno total** = Valorização + Renda de Aluguel
 
@@ -1020,11 +1020,11 @@ Na aba **Carteira**, o painel dedicado exibe:
 2. Selecione tipo **"Imóvel"**
 3. Escolha o tipo (ex: Apartamento)
 4. Informe finalidade: **Alugado**
-5. Preencha: Aluguel R$ 2.500/mês, Valor R$ 350.000, Valorização 6% ao ano
-6. O sistema calculará: ROI Aluguel 0.71%/mês (8.57%/ano) + Valorização
+5. Preencha: Aluguel R$ 2.500/mes, Valor R$ 350.000, Valorização 6% ao ano
+6. O sistema calculará: ROI Aluguel 0.71%/mes (8.57%/ano) + Valorização
 
-> 💡 O ticker é gerado automaticamente para imóveis. Não é necessário buscá-lo.
-    \`,
+> O ticker é gerado automaticamente para imóveis. Não é necessário buscá-lo.
+    `,
   },
   {
     id: 'cash',
