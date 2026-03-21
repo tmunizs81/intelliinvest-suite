@@ -245,9 +245,9 @@ O Dashboard é **totalmente personalizável**:
 3. Preencha os campos:
    - **Ticker**: Código do ativo (ex: PETR4, HGLG11, IVVB11)
    - **Nome**: Nome descritivo
-   - **Tipo**: Ação, FII, ETF, ETF Internacional, BDR, Cripto ou Renda Fixa
-   - **Quantidade**: Número de cotas/ações
-   - **Preço Médio**: Preço médio de aquisição
+   - **Tipo**: Ação, FII, ETF, ETF Internacional, BDR, Cripto, Renda Fixa ou Imóvel
+   - **Quantidade**: Número de cotas/ações (automático para Renda Fixa e Imóvel)
+   - **Preço Médio / Valor Investido**: Preço médio ou valor total investido
    - **Corretora**: (Opcional) Nome da corretora — suporta XTB, Webull, Interactive Brokers, eToro, DEGIRO, Trading 212 e todas as principais corretoras brasileiras
    - **Setor**: (Opcional) Setor do ativo
 4. Clique em **"Salvar"**
@@ -974,8 +974,61 @@ O painel de **Renda Fixa** permite gerenciar seus investimentos em títulos.
     `,
   },
   {
+    id: 'real-estate',
+    title: '15. Patrimônio Imobiliário',
+    content: `
+## Gestão de Patrimônio Imobiliário
+
+O painel de **Patrimônio Imobiliário** permite cadastrar e acompanhar imóveis físicos como parte da sua carteira de investimentos.
+
+### Tipos de Imóvel Suportados:
+- **Casa**, **Apartamento**, **Terreno**, **Lote**
+- **Galpão**, **Sala Comercial**, **Prédio Comercial**
+- **Chácara**, **Fazenda**, **Outro**
+
+### Finalidade do Imóvel:
+- **Patrimônio (Holding)**: Imóvel mantido para valorização patrimonial
+- **Alugado**: Imóvel que gera renda mensal de aluguel
+
+### Campos de Cadastro:
+- Tipo de imóvel (Casa, Apartamento, etc.)
+- Descrição / Endereço
+- Valor do imóvel (preço de compra)
+- Finalidade (Patrimônio ou Alugado)
+- Valor do aluguel mensal (se alugado)
+- Taxa de valorização (% mensal ou anual)
+- Período da valorização (mensal ou anual)
+
+### Cálculos Automáticos:
+O sistema calcula automaticamente:
+- **Valorização do imóvel** com base na taxa informada (juros compostos)
+- **ROI do aluguel** mensal e anual (Aluguel / Valor do Imóvel x 100)
+- **Renda acumulada** de aluguéis desde o cadastro
+- **Retorno total** = Valorização + Renda de Aluguel
+
+### Painel de Patrimônio Imobiliário:
+Na aba **Carteira**, o painel dedicado exibe:
+- **Patrimônio imobiliário total** (valor atual de todos os imóveis)
+- **Valorização total** em R$ e %
+- **Renda mensal total** de aluguéis
+- **Quantidade de imóveis** cadastrados
+- **Detalhes individuais** de cada imóvel com badges (tipo, alugado/patrimônio)
+- **ROI individual** por imóvel (mensal e anual)
+
+### Exemplo de Uso:
+1. Clique em **"+ Adicionar"** no painel Meus Ativos
+2. Selecione tipo **"Imóvel"**
+3. Escolha o tipo (ex: Apartamento)
+4. Informe finalidade: **Alugado**
+5. Preencha: Aluguel R$ 2.500/mes, Valor R$ 350.000, Valorização 6% ao ano
+6. O sistema calculará: ROI Aluguel 0.71%/mes (8.57%/ano) + Valorização
+
+> O ticker é gerado automaticamente para imóveis. Não é necessário buscá-lo.
+    `,
+  },
+  {
     id: 'cash',
-    title: '15. Saldo em Caixa',
+    title: '16. Saldo em Caixa',
     content: `
 ## Controle de Saldo em Caixa
 
@@ -999,7 +1052,7 @@ O sistema permite controlar o saldo disponível em caixa nas suas corretoras.
   },
   {
     id: 'pwa',
-    title: '16. Instalação como App (PWA)',
+    title: '17. Instalação como App (PWA)',
     content: `
 ## Instalar no Celular ou Desktop
 
@@ -1026,7 +1079,7 @@ O T2-SimplyNvest pode ser instalado como um **aplicativo** no seu celular ou com
   },
   {
     id: 'admin',
-    title: '17. Administração (Admin)',
+    title: '18. Administração (Admin)',
     content: `
 ## Funcionalidades Administrativas
 
@@ -1065,7 +1118,7 @@ Disponível apenas para usuários com papel **Admin**.
   },
   {
     id: 'comparator',
-    title: '18. Comparador de Ativos',
+    title: '19. Comparador de Ativos',
     content: `
 ## Comparador de Ativos
 
@@ -1097,7 +1150,7 @@ Após adicionar os ativos:
   },
   {
     id: 'shortcuts',
-    title: '19. Dicas e Atalhos',
+    title: '20. Dicas e Atalhos',
     content: `
 ## Dicas para Melhor Uso
 
@@ -1149,7 +1202,7 @@ Após adicionar os ativos:
   },
   {
     id: 'support',
-    title: '20. Suporte e Contato',
+    title: '21. Suporte e Contato',
     content: `
 ## Suporte Técnico
 
