@@ -245,9 +245,9 @@ O Dashboard é **totalmente personalizável**:
 3. Preencha os campos:
    - **Ticker**: Código do ativo (ex: PETR4, HGLG11, IVVB11)
    - **Nome**: Nome descritivo
-   - **Tipo**: Ação, FII, ETF, ETF Internacional, BDR, Cripto ou Renda Fixa
-   - **Quantidade**: Número de cotas/ações
-   - **Preço Médio**: Preço médio de aquisição
+   - **Tipo**: Ação, FII, ETF, ETF Internacional, BDR, Cripto, Renda Fixa ou Imóvel
+   - **Quantidade**: Número de cotas/ações (automático para Renda Fixa e Imóvel)
+   - **Preço Médio / Valor Investido**: Preço médio ou valor total investido
    - **Corretora**: (Opcional) Nome da corretora — suporta XTB, Webull, Interactive Brokers, eToro, DEGIRO, Trading 212 e todas as principais corretoras brasileiras
    - **Setor**: (Opcional) Setor do ativo
 4. Clique em **"Salvar"**
