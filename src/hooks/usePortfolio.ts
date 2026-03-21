@@ -5,6 +5,9 @@ import { useAuditLog } from '@/hooks/useAuditLog';
 import { type Asset } from '@/lib/mockData';
 import { classifyAssetType } from '@/lib/assetClassification';
 import { calculateFixedIncomeValue, fetchReferenceRates } from '@/lib/fixedIncomeCalculator';
+import { fetchWithRetry, withCircuitBreaker, deduplicateRequest, checkRateLimit } from '@/lib/apiResilience';
+import { getCached, setCache, CACHE_TTL } from '@/lib/persistentCache';
+import { toast } from 'sonner';
 
 const POLL_INTERVAL = 5 * 60 * 1000; // 5 minutes
 
