@@ -248,7 +248,7 @@ function TabResumo({ assets, lastUpdate, nextUpdate, snapshots, snapshotsLoading
           <Panel title="Mapa de Calor"><TreemapPanel assets={assets} /></Panel>
           <Panel title="Concentração Setorial"><SectorRadarPanel assets={assets} /></Panel>
           <Panel title="Calendário de Eventos"><EventsCalendarPanel assets={assets} /></Panel>
-          <Panel title="Evolução Patrimonial"><PortfolioChart assets={assets} /></Panel>
+          <Panel title="Evolução Patrimonial"><PortfolioChart assets={assets} snapshots={snapshots} loading={snapshotsLoading} /></Panel>
           <Panel title="Histórico Patrimonial"><PortfolioHistoryChart snapshots={snapshots} loading={snapshotsLoading} /></Panel>
           <Panel title="Patrimônio Imobiliário"><RealEstatePanel assets={assets} /></Panel>
           <Panel title="🏆 Conquistas"><AchievementsPanel assets={assets} /></Panel>
