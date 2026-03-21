@@ -31,6 +31,7 @@ import BacktestingPanel from '@/components/dashboard/BacktestingPanel';
 import DividendForecastPanel from '@/components/dashboard/DividendForecastPanel';
 import AssetScoringPanel from '@/components/dashboard/AssetScoringPanel';
 import FixedIncomePanel from '@/components/dashboard/FixedIncomePanel';
+import RealEstatePanel from '@/components/dashboard/RealEstatePanel';
 import AIAdvisorPanel from '@/components/dashboard/AIAdvisorPanel';
 import AIRiskPanel from '@/components/dashboard/AIRiskPanel';
 import OnboardingOverlay from '@/components/OnboardingOverlay';
@@ -290,6 +291,7 @@ function TabCarteira({ assets, holdings, loading, isMobile, onAdd, onEdit, onDel
           <Panel title="Dividendos"><DividendsPanel assets={assets} /></Panel>
           <Panel title="Calculadora PM"><AvgPriceCalculator assets={assets} /></Panel>
           <Panel title="Renda Fixa"><FixedIncomePanel assets={assets} /></Panel>
+          <Panel title="Patrimônio Imobiliário"><RealEstatePanel assets={assets} /></Panel>
           <Panel title="Câmbio"><CurrencyDashboard /></Panel>
         </>
       ) : (
@@ -303,6 +305,7 @@ function TabCarteira({ assets, holdings, loading, isMobile, onAdd, onEdit, onDel
             <Panel title="Calculadora de Preço Médio"><AvgPriceCalculator assets={assets} /></Panel>
             <Panel title="Resumo Renda Fixa"><FixedIncomePanel assets={assets} /></Panel>
           </Grid2>
+          <Panel title="Patrimônio Imobiliário"><RealEstatePanel assets={assets} /></Panel>
         </>
       )}
     </>
