@@ -191,16 +191,17 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
 
     try {
       const isFixedIncome = type === 'Renda Fixa';
+      const isProperty = type === 'Imóvel';
       const data: any = {
-        ticker: ticker.toUpperCase().trim(),
+        ticker: isProperty ? `IMOVEL-${name.trim().substring(0, 10).toUpperCase().replace(/\s/g, '')}` : ticker.toUpperCase().trim(),
         name: name.trim(),
         type,
-        quantity: parseFloat(quantity),
+        quantity: isProperty ? 1 : parseFloat(quantity),
         avg_price: parseFloat(avgPrice),
-        sector: isFixedIncome ? fixedIncomeSubtype : (sector.trim() || null),
+        sector: isFixedIncome ? fixedIncomeSubtype : isProperty ? propertySubtype : (sector.trim() || null),
         broker: broker.trim() || null,
-        yield_rate: isFixedIncome ? yieldRate.trim() || null : null,
-        indexer_type: isFixedIncome ? indexerType : null,
+        yield_rate: isFixedIncome ? yieldRate.trim() || null : isProperty ? appreciationRate.trim() || null : null,
+        indexer_type: isFixedIncome ? indexerType : isProperty ? appreciationPeriod : null,
         maturity_date: isFixedIncome && maturityDate ? format(maturityDate, 'yyyy-MM-dd') : null,
       };
 
