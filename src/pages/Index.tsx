@@ -52,12 +52,13 @@ import LiveTickerBar from '@/components/dashboard/LiveTickerBar';
 import { usePortfolio, type HoldingRow } from '@/hooks/usePortfolio';
 import { usePortfolioSnapshots } from '@/hooks/usePortfolioSnapshots';
 import { usePrivacyModeProvider, PrivacyContext } from '@/hooks/usePrivacyMode';
-import { Loader2, Eye, EyeOff, Maximize } from 'lucide-react';
+import { Loader2, Eye, EyeOff, Maximize, Camera } from 'lucide-react';
+import { toast } from 'sonner';
 
 const Index = () => {
   const isMobile = useIsMobile();
   const { assets, holdings, loading, error, lastUpdate, nextUpdate, refresh, addHolding, updateHolding, deleteHolding } = usePortfolio();
-  const { snapshots, loading: snapshotsLoading, saveSnapshot } = usePortfolioSnapshots();
+  const { snapshots, loading: snapshotsLoading, saveSnapshot, loadSnapshots } = usePortfolioSnapshots();
   const { privacyMode, togglePrivacy, blurValue, PrivacyContext: Ctx } = usePrivacyModeProvider();
 
   useEffect(() => {
@@ -122,6 +123,21 @@ const Index = () => {
                   <Maximize className="h-4 w-4" />
                 </button>
               )}
+              <button
+                onClick={async () => {
+                  if (assets.length === 0) {
+                    toast.error('Nenhum ativo na carteira');
+                    return;
+                  }
+                  await saveSnapshot(assets);
+                  await loadSnapshots();
+                  toast.success('Snapshot patrimonial atualizado!');
+                }}
+                title="Atualizar snapshot patrimonial"
+                className="h-8 w-8 rounded-lg border border-border bg-card flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-primary/30 transition-all"
+              >
+                <Camera className="h-4 w-4" />
+              </button>
               <button
                 onClick={() => refresh()}
                 className="h-8 w-8 rounded-lg border border-border bg-card flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-primary/30 transition-all"
