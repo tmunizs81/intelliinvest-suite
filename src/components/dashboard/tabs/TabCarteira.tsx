@@ -1,5 +1,6 @@
 import { type Asset } from '@/lib/mockData';
 import { type HoldingRow } from '@/hooks/usePortfolio';
+import { PanelErrorBoundary } from '@/components/PanelErrorBoundary';
 
 import HoldingsTable from '@/components/dashboard/HoldingsTable';
 import AllocationChart from '@/components/dashboard/AllocationChart';
@@ -27,7 +28,11 @@ function Panel({ children, title, className = '' }: { children: React.ReactNode;
           <span className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">{title}</span>
         </div>
       )}
-      <div className="flex-1 overflow-auto">{children}</div>
+      <div className="flex-1 overflow-auto">
+        <PanelErrorBoundary fallbackTitle={title ? `Erro em "${title}"` : undefined}>
+          {children}
+        </PanelErrorBoundary>
+      </div>
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { type Asset } from '@/lib/mockData';
+import { PanelErrorBoundary } from '@/components/PanelErrorBoundary';
 
 import SimulatorPanel from '@/components/dashboard/SimulatorPanel';
 import GoalsPanel from '@/components/dashboard/GoalsPanel';
@@ -21,7 +22,11 @@ function Panel({ children, title, className = '' }: { children: React.ReactNode;
           <span className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">{title}</span>
         </div>
       )}
-      <div className="flex-1 overflow-auto">{children}</div>
+      <div className="flex-1 overflow-auto">
+        <PanelErrorBoundary fallbackTitle={title ? `Erro em "${title}"` : undefined}>
+          {children}
+        </PanelErrorBoundary>
+      </div>
     </div>
   );
 }
