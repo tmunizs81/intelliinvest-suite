@@ -1028,7 +1028,7 @@ Na aba **Carteira**, o painel dedicado exibe:
   },
   {
     id: 'cash',
-    title: '15. Saldo em Caixa',
+    title: '16. Saldo em Caixa',
     content: `
 ## Controle de Saldo em Caixa
 
