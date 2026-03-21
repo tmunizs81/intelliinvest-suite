@@ -1079,7 +1079,7 @@ O T2-SimplyNvest pode ser instalado como um **aplicativo** no seu celular ou com
   },
   {
     id: 'admin',
-    title: '17. Administração (Admin)',
+    title: '18. Administração (Admin)',
     content: `
 ## Funcionalidades Administrativas
 
