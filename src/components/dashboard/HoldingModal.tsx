@@ -319,7 +319,7 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
                 value={type} onChange={e => {
                   const newType = e.target.value;
                   setType(newType);
-                  if (newType === 'Renda Fixa' && !quantity) setQuantity('1');
+                  if ((newType === 'Renda Fixa' || newType === 'Imóvel') && !quantity) setQuantity('1');
                 }}
                 className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
               >
