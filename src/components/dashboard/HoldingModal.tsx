@@ -11,9 +11,11 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 
-const TYPES = ['Ação', 'FII', 'ETF', 'ETF Internacional', 'REIT', 'BDR', 'Internacional', 'Cripto', 'Renda Fixa'] as const;
+const TYPES = ['Ação', 'FII', 'ETF', 'ETF Internacional', 'REIT', 'BDR', 'Internacional', 'Cripto', 'Renda Fixa', 'Imóvel'] as const;
 
 const FIXED_INCOME_SUBTYPES = ['CDB', 'LCI', 'LCA', 'Tesouro Selic', 'Tesouro IPCA+', 'Tesouro Pré', 'Debênture', 'CRA', 'CRI', 'LC', 'Outro'] as const;
+
+const PROPERTY_SUBTYPES = ['Casa', 'Apartamento', 'Terreno', 'Lote', 'Galpão', 'Sala Comercial', 'Prédio Comercial', 'Chácara', 'Fazenda', 'Outro'] as const;
 
 interface SearchResult {
   symbol: string;
