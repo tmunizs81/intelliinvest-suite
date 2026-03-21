@@ -207,6 +207,8 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
         yield_rate: isFixedIncome ? yieldRate.trim() || null : isProperty ? appreciationRate.trim() || null : null,
         indexer_type: isFixedIncome ? indexerType : isProperty ? appreciationPeriod : null,
         maturity_date: isFixedIncome && maturityDate ? format(maturityDate, 'yyyy-MM-dd') : null,
+        property_purpose: isProperty ? propertyPurpose : null,
+        rental_value: isProperty && propertyPurpose === 'aluguel' ? parseFloat(rentalValue) || null : null,
       };
 
       if (!data.ticker || !data.name || isNaN(data.quantity) || isNaN(data.avg_price)) {
