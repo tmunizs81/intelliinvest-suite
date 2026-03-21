@@ -1,3 +1,5 @@
+import { withAICache, normalizePortfolioForCache } from "../ai-cache-helper.ts";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
