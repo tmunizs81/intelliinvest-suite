@@ -110,61 +110,94 @@ Data atual: ${new Date().toLocaleDateString('pt-BR')}
 
 Gere insights inteligentes, alertas e recomendações baseados nestes dados reais.`;
 
-    const { response, provider } = await callAI({
-      model: "gemini-2.5-flash",
-      messages: [
-        { role: "system", content: "Você é um analista de investimentos sênior especializado no mercado brasileiro. Analise a carteira e gere insights acionáveis, alertas de risco e recomendações práticas. Responda sempre em português." },
-        { role: "user", content: userPrompt },
-      ],
-      tools: [{
-        type: "function",
-        function: {
-          name: "generate_insights",
-          description: "Return structured investment insights for the portfolio",
-          parameters: {
-            type: "object",
-            properties: {
-              insights: {
-                type: "array",
-                items: {
-                  type: "object",
-                  properties: {
-                    type: { type: "string", enum: ["recommendation", "alert", "analysis"] },
-                    title: { type: "string", description: "Short title (max 60 chars)" },
-                    description: { type: "string", description: "Detailed explanation (max 200 chars)" },
-                    severity: { type: "string", enum: ["info", "warning", "critical"] },
-                    ticker: { type: "string" },
+    // Cache key based on normalized portfolio (rounds prices to avoid cache misses from cents)
+    const cachePrompt = `insights:${normalizePortfolioForCache(portfolio)}`;
+
+    const cacheResult = await withAICache({
+      functionName: "ai-insights",
+      prompt: cachePrompt,
+      ttlMinutes: 30, // Insights valid for 30 min
+      callAI: async () => {
+        const { response, provider } = await callAI({
+          model: "gemini-2.5-flash",
+          messages: [
+            { role: "system", content: "Você é um analista de investimentos sênior especializado no mercado brasileiro. Analise a carteira e gere insights acionáveis, alertas de risco e recomendações práticas. Responda sempre em português." },
+            { role: "user", content: userPrompt },
+          ],
+          tools: [{
+            type: "function",
+            function: {
+              name: "generate_insights",
+              description: "Return structured investment insights for the portfolio",
+              parameters: {
+                type: "object",
+                properties: {
+                  insights: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        type: { type: "string", enum: ["recommendation", "alert", "analysis"] },
+                        title: { type: "string", description: "Short title (max 60 chars)" },
+                        description: { type: "string", description: "Detailed explanation (max 200 chars)" },
+                        severity: { type: "string", enum: ["info", "warning", "critical"] },
+                        ticker: { type: "string" },
+                      },
+                      required: ["type", "title", "description", "severity"],
+                      additionalProperties: false,
+                    },
                   },
-                  required: ["type", "title", "description", "severity"],
-                  additionalProperties: false,
+                  summary: { type: "string", description: "One-line assessment (max 100 chars)" },
                 },
+                required: ["insights", "summary"],
+                additionalProperties: false,
               },
-              summary: { type: "string", description: "One-line assessment (max 100 chars)" },
             },
-            required: ["insights", "summary"],
-            additionalProperties: false,
-          },
-        },
-      }],
-      tool_choice: { type: "function", function: { name: "generate_insights" } },
+          }],
+          tool_choice: { type: "function", function: { name: "generate_insights" } },
+        });
+
+        if (!response.ok) {
+          if (response.status === 429 || response.status === 402) {
+            throw new Error(`AI_RATE_LIMIT:${response.status}`);
+          }
+          const text = await response.text();
+          console.error("AI gateway error:", response.status, text);
+          throw new Error(`AI gateway error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
+        if (!toolCall?.function?.arguments) throw new Error("No structured response from AI");
+
+        return { text: toolCall.function.arguments, provider, tokensUsed: data.usage?.total_tokens || 0 };
+      },
     });
 
-    if (!response.ok) {
-      if (response.status === 429 || response.status === 402) {
-        return buildFallback("análise local");
-      }
-      const text = await response.text();
-      console.error("AI gateway error:", response.status, text);
-      throw new Error(`AI gateway error: ${response.status}`);
+    // Parse cached or fresh result
+    let parsed: any;
+    try {
+      parsed = JSON.parse(cacheResult.text);
+    } catch {
+      throw new Error("Failed to parse AI response");
     }
 
-    const data = await response.json();
-    const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
-    if (!toolCall?.function?.arguments) throw new Error("No structured response from AI");
-
-    const parsed = JSON.parse(toolCall.function.arguments);
-    return new Response(JSON.stringify({ insights: parsed.insights, summary: parsed.summary, _provider: provider, timestamp: new Date().toISOString() }), { headers: { ...corsHeaders, "Content-Type": "application/json", "x-ai-provider": provider } });
+    return new Response(JSON.stringify({
+      insights: parsed.insights,
+      summary: parsed.summary,
+      _provider: cacheResult.provider,
+      _cached: cacheResult.cached,
+      _cacheAge: cacheResult.cacheAge,
+      timestamp: new Date().toISOString(),
+    }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json", "x-ai-provider": cacheResult.provider },
+    });
   } catch (err) {
+    // Handle rate limit errors that bubble up from cache miss
+    if (err instanceof Error && err.message.startsWith("AI_RATE_LIMIT")) {
+      const fallback = buildFallback("análise local");
+      return fallback;
+    }
     console.error("ai-insights error:", err);
     return new Response(JSON.stringify({ error: err instanceof Error ? err.message : "Unknown error" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
