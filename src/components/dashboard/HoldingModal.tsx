@@ -256,7 +256,8 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
             <div className="rounded-md bg-destructive/10 border border-destructive/20 p-3 text-sm text-destructive">{error}</div>
           )}
 
-          {/* Ticker with autocomplete */}
+          {/* Ticker with autocomplete - hidden for Imóvel */}
+          {type !== 'Imóvel' && (
           <div className="relative">
             <div className="space-y-1">
               <label className="text-xs font-medium text-muted-foreground">Ticker *</label>
