@@ -76,9 +76,10 @@ export function usePortfolio() {
     try {
       setError(null);
 
-      // Separate fixed income from market assets
+      // Separate fixed income, real estate, and market assets
       const fixedIncomeHoldings = h.filter(item => item.type === 'Renda Fixa');
-      const marketHoldings = h.filter(item => item.type !== 'Renda Fixa');
+      const propertyHoldings = h.filter(item => item.type === 'Imóvel');
+      const marketHoldings = h.filter(item => item.type !== 'Renda Fixa' && item.type !== 'Imóvel');
 
       let quotes: Record<string, any> = {};
 
@@ -151,7 +152,48 @@ export function usePortfolio() {
         };
       });
 
-      const allEnriched = [...marketEnriched, ...fixedEnriched];
+      // Calculate real estate values locally
+      const propertyEnriched = propertyHoldings.map((item) => {
+        const investedAmount = item.avg_price * item.quantity;
+        const yieldRateStr = (item as any).yield_rate || '0';
+        const period = (item as any).indexer_type || 'anual'; // 'mensal' or 'anual'
+        const rateNum = parseFloat(yieldRateStr.replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
+        
+        // Convert to annual rate
+        const annualRate = period === 'mensal' ? (Math.pow(1 + rateNum / 100, 12) - 1) * 100 : rateNum;
+        
+        // Calculate elapsed months
+        const start = new Date((item as any).created_at || new Date().toISOString());
+        const now = new Date();
+        const elapsedMonths = (now.getFullYear() - start.getFullYear()) * 12 + (now.getMonth() - start.getMonth()) + (now.getDate() - start.getDate()) / 30;
+        
+        // Monthly rate from annual
+        const monthlyRate = Math.pow(1 + annualRate / 100, 1 / 12) - 1;
+        const currentValue = investedAmount * Math.pow(1 + monthlyRate, Math.max(0, elapsedMonths));
+        const grossReturn = currentValue - investedAmount;
+        const grossReturnPct = investedAmount > 0 ? (grossReturn / investedAmount) * 100 : 0;
+        
+        const currentPricePerUnit = item.quantity > 0 ? currentValue / item.quantity : item.avg_price;
+        totalValue += currentValue;
+        return {
+          ticker: item.ticker,
+          name: item.name,
+          type: 'Imóvel' as Asset['type'],
+          quantity: item.quantity,
+          avgPrice: item.avg_price,
+          currentPrice: currentPricePerUnit,
+          change24h: grossReturnPct,
+          allocation: 0,
+          sector: item.sector || undefined,
+          source: 'calculated' as string,
+          currency: 'BRL',
+          currentPriceBRL: currentPricePerUnit,
+          exchangeRate: 1,
+          originalPrice: currentPricePerUnit,
+        };
+      });
+
+      const allEnriched = [...marketEnriched, ...fixedEnriched, ...propertyEnriched];
 
       const assetsWithAllocation: Asset[] = allEnriched.map((a) => ({
         ...a,
