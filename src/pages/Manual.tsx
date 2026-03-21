@@ -1118,7 +1118,7 @@ Disponível apenas para usuários com papel **Admin**.
   },
   {
     id: 'comparator',
-    title: '18. Comparador de Ativos',
+    title: '19. Comparador de Ativos',
     content: `
 ## Comparador de Ativos
 
