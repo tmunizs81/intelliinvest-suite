@@ -1,59 +1,32 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import DashboardTabs, { type DashboardTab } from '@/components/dashboard/DashboardTabs';
 
-import PortfolioSummary from '@/components/dashboard/PortfolioSummary';
-import PortfolioChart from '@/components/dashboard/PortfolioChart';
-import PortfolioHistoryChart from '@/components/dashboard/PortfolioHistoryChart';
-import BenchmarkChart from '@/components/dashboard/BenchmarkChart';
-import AllocationChart from '@/components/dashboard/AllocationChart';
-import PerformanceChart from '@/components/dashboard/PerformanceChart';
-import DividendsPanel from '@/components/dashboard/DividendsPanel';
-import HoldingsTable from '@/components/dashboard/HoldingsTable';
-import AIInsightsPanel from '@/components/dashboard/AIInsightsPanel';
-import CurrencyDashboard from '@/components/dashboard/CurrencyDashboard';
-import AlertsPanel from '@/components/dashboard/AlertsPanel';
 import LicenseAlert from '@/components/dashboard/LicenseAlert';
 import HoldingModal from '@/components/dashboard/HoldingModal';
-import HealthScorePanel from '@/components/dashboard/HealthScorePanel';
-import RebalancePanel from '@/components/dashboard/RebalancePanel';
-import CorrelationHeatmap from '@/components/dashboard/CorrelationHeatmap';
-import NewsPanel from '@/components/dashboard/NewsPanel';
-import SimulatorPanel from '@/components/dashboard/SimulatorPanel';
-import GoalsPanel from '@/components/dashboard/GoalsPanel';
 import DashboardChatbot from '@/components/dashboard/DashboardChatbot';
-import SmartAlertsPanel from '@/components/dashboard/SmartAlertsPanel';
-import MonthlyReportPanel from '@/components/dashboard/MonthlyReportPanel';
-import SmartContributionPanel from '@/components/dashboard/SmartContributionPanel';
-import CeilingPricePanel from '@/components/dashboard/CeilingPricePanel';
-import ProfitabilityPanel from '@/components/dashboard/ProfitabilityPanel';
-import BacktestingPanel from '@/components/dashboard/BacktestingPanel';
-import DividendForecastPanel from '@/components/dashboard/DividendForecastPanel';
-import AssetScoringPanel from '@/components/dashboard/AssetScoringPanel';
-import FixedIncomePanel from '@/components/dashboard/FixedIncomePanel';
-import RealEstatePanel from '@/components/dashboard/RealEstatePanel';
-import AIAdvisorPanel from '@/components/dashboard/AIAdvisorPanel';
-import AIRiskPanel from '@/components/dashboard/AIRiskPanel';
 import OnboardingOverlay from '@/components/OnboardingOverlay';
-import TreemapPanel from '@/components/dashboard/TreemapPanel';
-import DrawdownPanel from '@/components/dashboard/DrawdownPanel';
-import AvgPriceCalculator from '@/components/dashboard/AvgPriceCalculator';
-import PatternDetectorPanel from '@/components/dashboard/PatternDetectorPanel';
-import IRAssistantPanel from '@/components/dashboard/IRAssistantPanel';
-import IntegrationsPanel from '@/components/dashboard/IntegrationsPanel';
 import KioskMode from '@/components/dashboard/KioskMode';
-import SectorRadarPanel from '@/components/dashboard/SectorRadarPanel';
-import EventsCalendarPanel from '@/components/dashboard/EventsCalendarPanel';
-import AchievementsPanel from '@/components/dashboard/AchievementsPanel';
-import SessionLogPanel from '@/components/dashboard/SessionLogPanel';
-import FiscalReportPanel from '@/components/dashboard/FiscalReportPanel';
-import LiveTickerBar from '@/components/dashboard/LiveTickerBar';
 
 import { usePortfolio, type HoldingRow } from '@/hooks/usePortfolio';
 import { usePortfolioSnapshots } from '@/hooks/usePortfolioSnapshots';
 import { usePrivacyModeProvider, PrivacyContext } from '@/hooks/usePrivacyMode';
 import { Loader2, Eye, EyeOff, Maximize, Camera } from 'lucide-react';
 import { toast } from 'sonner';
+
+// Lazy load tab components for code splitting
+const TabResumo = lazy(() => import('@/components/dashboard/tabs/TabResumo'));
+const TabCarteira = lazy(() => import('@/components/dashboard/tabs/TabCarteira'));
+const TabAnalise = lazy(() => import('@/components/dashboard/tabs/TabAnalise'));
+const TabIA = lazy(() => import('@/components/dashboard/tabs/TabIA'));
+const TabAlertas = lazy(() => import('@/components/dashboard/tabs/TabAlertas'));
+const TabMais = lazy(() => import('@/components/dashboard/tabs/TabMais'));
+
+const TabFallback = () => (
+  <div className="flex items-center justify-center py-20">
+    <Loader2 className="h-6 w-6 animate-spin text-primary" />
+  </div>
+);
 
 const Index = () => {
   const isMobile = useIsMobile();
@@ -164,43 +137,45 @@ const Index = () => {
 
               <div className="mt-4 animate-fade-in" key={activeTab}>
                 <div className={isMobile ? 'flex flex-col gap-3' : 'space-y-6'}>
-                  {activeTab === 'resumo' && (
-                    <TabResumo
-                      assets={assets}
-                      lastUpdate={lastUpdate}
-                      nextUpdate={nextUpdate}
-                      snapshots={snapshots}
-                      snapshotsLoading={snapshotsLoading}
-                      isMobile={isMobile}
-                    />
-                  )}
-                  {activeTab === 'carteira' && (
-                    <TabCarteira
-                      assets={assets}
-                      holdings={holdings}
-                      loading={loading}
-                      isMobile={isMobile}
-                      onAdd={() => { setEditingHolding(null); setModalOpen(true); }}
-                      onEdit={handleEdit}
-                      onDelete={deleteHolding}
-                    />
-                  )}
-                  {activeTab === 'analise' && (
-                    <TabAnalise
-                      assets={assets}
-                      snapshots={snapshots}
-                      isMobile={isMobile}
-                    />
-                  )}
-                  {activeTab === 'ia' && (
-                    <TabIA assets={assets} isMobile={isMobile} />
-                  )}
-                  {activeTab === 'alertas' && (
-                    <TabAlertas assets={assets} isMobile={isMobile} />
-                  )}
-                  {activeTab === 'mais' && (
-                    <TabMais assets={assets} isMobile={isMobile} snapshots={snapshots} snapshotsLoading={snapshotsLoading} />
-                  )}
+                  <Suspense fallback={<TabFallback />}>
+                    {activeTab === 'resumo' && (
+                      <TabResumo
+                        assets={assets}
+                        lastUpdate={lastUpdate}
+                        nextUpdate={nextUpdate}
+                        snapshots={snapshots}
+                        snapshotsLoading={snapshotsLoading}
+                        isMobile={isMobile}
+                      />
+                    )}
+                    {activeTab === 'carteira' && (
+                      <TabCarteira
+                        assets={assets}
+                        holdings={holdings}
+                        loading={loading}
+                        isMobile={isMobile}
+                        onAdd={() => { setEditingHolding(null); setModalOpen(true); }}
+                        onEdit={handleEdit}
+                        onDelete={deleteHolding}
+                      />
+                    )}
+                    {activeTab === 'analise' && (
+                      <TabAnalise
+                        assets={assets}
+                        snapshots={snapshots}
+                        isMobile={isMobile}
+                      />
+                    )}
+                    {activeTab === 'ia' && (
+                      <TabIA assets={assets} isMobile={isMobile} />
+                    )}
+                    {activeTab === 'alertas' && (
+                      <TabAlertas assets={assets} isMobile={isMobile} />
+                    )}
+                    {activeTab === 'mais' && (
+                      <TabMais assets={assets} isMobile={isMobile} />
+                    )}
+                  </Suspense>
                 </div>
               </div>
             </div>
@@ -222,242 +197,5 @@ const Index = () => {
     </PrivacyContext.Provider>
   );
 };
-
-// ===== Panel wrapper =====
-function Panel({ children, title, noPadding, className = '' }: {
-  children: React.ReactNode;
-  title?: string;
-  noPadding?: boolean;
-  className?: string;
-}) {
-  return (
-    <div className={`flex flex-col rounded-xl border border-border bg-card overflow-hidden shadow-sm ${className}`}>
-      {title && (
-        <div className="bg-muted/40 border-b border-border px-4 py-2.5 shrink-0">
-          <span className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">{title}</span>
-        </div>
-      )}
-      <div className={`flex-1 overflow-auto ${noPadding ? '' : ''}`}>{children}</div>
-    </div>
-  );
-}
-
-// ===== Grid helpers =====
-function Grid2({ children }: { children: React.ReactNode }) {
-  return <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">{children}</div>;
-}
-function Grid3({ children }: { children: React.ReactNode }) {
-  return <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">{children}</div>;
-}
-
-// ===== Tab: Resumo =====
-function TabResumo({ assets, lastUpdate, nextUpdate, snapshots, snapshotsLoading, isMobile }: any) {
-  return (
-    <>
-      <LiveTickerBar assets={assets} />
-      <Panel noPadding>
-        <PortfolioSummary assets={assets} lastUpdate={lastUpdate} nextUpdate={nextUpdate} />
-      </Panel>
-      {isMobile ? (
-        <>
-          <Panel title="Saúde da Carteira"><HealthScorePanel assets={assets} /></Panel>
-          <Panel title="Mapa de Calor"><TreemapPanel assets={assets} /></Panel>
-          <Panel title="Concentração Setorial"><SectorRadarPanel assets={assets} /></Panel>
-          <Panel title="Calendário de Eventos"><EventsCalendarPanel assets={assets} /></Panel>
-          <Panel title="Evolução Patrimonial"><PortfolioChart assets={assets} snapshots={snapshots} loading={snapshotsLoading} /></Panel>
-          <Panel title="Histórico Patrimonial"><PortfolioHistoryChart snapshots={snapshots} loading={snapshotsLoading} /></Panel>
-          <Panel title="Patrimônio Imobiliário"><RealEstatePanel assets={assets} /></Panel>
-          <Panel title="🏆 Conquistas"><AchievementsPanel assets={assets} /></Panel>
-        </>
-      ) : (
-        <>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <Panel title="Saúde da Carteira"><HealthScorePanel assets={assets} /></Panel>
-            <Panel title="Evolução Patrimonial" className="lg:col-span-2"><PortfolioChart assets={assets} snapshots={snapshots} loading={snapshotsLoading} /></Panel>
-          </div>
-          <Panel title="🗺️ Mapa de Calor (Treemap)"><TreemapPanel assets={assets} /></Panel>
-          <Grid2>
-            <Panel title="📡 Concentração Setorial (Radar)"><SectorRadarPanel assets={assets} /></Panel>
-            <Panel title="📅 Calendário de Eventos"><EventsCalendarPanel assets={assets} /></Panel>
-          </Grid2>
-          <Panel title="Histórico Patrimonial (Real)"><PortfolioHistoryChart snapshots={snapshots} loading={snapshotsLoading} /></Panel>
-          <Panel title="🏠 Patrimônio Imobiliário"><RealEstatePanel assets={assets} /></Panel>
-          <Panel title="🏆 Conquistas e Badges"><AchievementsPanel assets={assets} /></Panel>
-        </>
-      )}
-    </>
-  );
-}
-
-// ===== Tab: Carteira =====
-function TabCarteira({ assets, holdings, loading, isMobile, onAdd, onEdit, onDelete }: any) {
-  return (
-    <>
-      <Panel title="Meus Ativos">
-        <HoldingsTable
-          assets={assets}
-          holdings={holdings}
-          loading={loading}
-          onAdd={onAdd}
-          onEdit={onEdit}
-          onDelete={onDelete}
-        />
-      </Panel>
-      {isMobile ? (
-        <>
-          <Panel title="Alocação"><AllocationChart assets={assets} /></Panel>
-          <Panel title="Dividendos"><DividendsPanel assets={assets} /></Panel>
-          <Panel title="Calculadora PM"><AvgPriceCalculator assets={assets} /></Panel>
-          <Panel title="Renda Fixa"><FixedIncomePanel assets={assets} /></Panel>
-          <Panel title="Patrimônio Imobiliário"><RealEstatePanel assets={assets} /></Panel>
-          <Panel title="Câmbio"><CurrencyDashboard /></Panel>
-        </>
-      ) : (
-        <>
-          <Grid3>
-            <Panel title="Alocação"><AllocationChart assets={assets} /></Panel>
-            <Panel title="Dividendos"><DividendsPanel assets={assets} /></Panel>
-            <Panel title="Câmbio"><CurrencyDashboard /></Panel>
-          </Grid3>
-          <Grid2>
-            <Panel title="Calculadora de Preço Médio"><AvgPriceCalculator assets={assets} /></Panel>
-            <Panel title="Resumo Renda Fixa"><FixedIncomePanel assets={assets} /></Panel>
-          </Grid2>
-          <Panel title="Patrimônio Imobiliário"><RealEstatePanel assets={assets} /></Panel>
-        </>
-      )}
-    </>
-  );
-}
-
-// ===== Tab: Análise =====
-function TabAnalise({ assets, snapshots, isMobile }: any) {
-  return (
-    <>
-      {isMobile ? (
-        <>
-          <Panel title="Performance"><PerformanceChart assets={assets} /></Panel>
-          <Panel title="Drawdown"><DrawdownPanel snapshots={snapshots} /></Panel>
-          <Panel title="Correlação"><CorrelationHeatmap assets={assets} /></Panel>
-          <Panel title="Benchmarks"><BenchmarkChart snapshots={snapshots} /></Panel>
-          <Panel title="Rentabilidade"><ProfitabilityPanel assets={assets} /></Panel>
-          <Panel title="Backtesting"><BacktestingPanel assets={assets} /></Panel>
-          <Panel title="Preço Teto"><CeilingPricePanel assets={assets} /></Panel>
-        </>
-      ) : (
-        <>
-          <Panel title="Performance"><PerformanceChart assets={assets} /></Panel>
-          <Grid2>
-            <Panel title="📉 Análise de Drawdown"><DrawdownPanel snapshots={snapshots} /></Panel>
-            <Panel title="Correlação"><CorrelationHeatmap assets={assets} /></Panel>
-          </Grid2>
-          <Grid2>
-            <Panel title="Rentabilidade vs Benchmarks"><ProfitabilityPanel assets={assets} /></Panel>
-            <Panel title="Carteira vs Benchmarks"><BenchmarkChart snapshots={snapshots} /></Panel>
-          </Grid2>
-          <Grid2>
-            <Panel title="Backtesting Histórico"><BacktestingPanel assets={assets} /></Panel>
-            <Panel title="Preço Teto (Bazin/Graham)"><CeilingPricePanel assets={assets} /></Panel>
-          </Grid2>
-        </>
-      )}
-    </>
-  );
-}
-
-// ===== Tab: IA =====
-function TabIA({ assets, isMobile }: any) {
-  return (
-    <>
-      {isMobile ? (
-        <>
-          <Panel title="Consultor IA"><AIAdvisorPanel assets={assets} cashBalance={0} /></Panel>
-          <Panel title="Análise de Risco IA"><AIRiskPanel assets={assets} /></Panel>
-          <Panel title="Padrões Gráficos IA"><PatternDetectorPanel assets={assets} /></Panel>
-          <Panel title="IA Insights"><AIInsightsPanel assets={assets} /></Panel>
-          <Panel title="Rebalanceamento IA"><RebalancePanel assets={assets} /></Panel>
-          <Panel title="Scoring IA"><AssetScoringPanel assets={assets} /></Panel>
-          <Panel title="Projeção Dividendos IA"><DividendForecastPanel assets={assets} /></Panel>
-          <Panel title="Notícias IA"><NewsPanel assets={assets} /></Panel>
-          <Panel title="Assistente IR"><IRAssistantPanel assets={assets} /></Panel>
-        </>
-      ) : (
-        <>
-          <Grid2>
-            <Panel title="Consultor IA de Investimentos"><AIAdvisorPanel assets={assets} cashBalance={0} /></Panel>
-            <Panel title="Análise de Risco IA"><AIRiskPanel assets={assets} /></Panel>
-          </Grid2>
-          <Grid2>
-            <Panel title="🔍 Detector de Padrões Gráficos"><PatternDetectorPanel assets={assets} /></Panel>
-            <Panel title="IA Insights"><AIInsightsPanel assets={assets} /></Panel>
-          </Grid2>
-          <Grid2>
-            <Panel title="Rebalanceamento IA"><RebalancePanel assets={assets} /></Panel>
-            <Panel title="Scoring IA de Ativos"><AssetScoringPanel assets={assets} /></Panel>
-          </Grid2>
-          <Grid2>
-            <Panel title="Projeção de Dividendos IA"><DividendForecastPanel assets={assets} /></Panel>
-            <Panel title="📋 Assistente de Declaração IR"><IRAssistantPanel assets={assets} /></Panel>
-          </Grid2>
-          <Panel title="Notícias IA"><NewsPanel assets={assets} /></Panel>
-        </>
-      )}
-    </>
-  );
-}
-
-// ===== Tab: Alertas =====
-function TabAlertas({ assets, isMobile }: any) {
-  return (
-    <>
-      {isMobile ? (
-        <>
-          <Panel title="Alertas"><AlertsPanel /></Panel>
-          <Panel title="Alertas Inteligentes"><SmartAlertsPanel assets={assets} /></Panel>
-        </>
-      ) : (
-        <Grid2>
-          <Panel title="Alertas de Preço"><AlertsPanel /></Panel>
-          <Panel title="Alertas Inteligentes"><SmartAlertsPanel assets={assets} /></Panel>
-        </Grid2>
-      )}
-    </>
-  );
-}
-
-// ===== Tab: Mais =====
-function TabMais({ assets, isMobile, snapshots, snapshotsLoading }: any) {
-  return (
-    <>
-      {isMobile ? (
-        <>
-          <Panel title="Simulador E se?"><SimulatorPanel assets={assets} /></Panel>
-          <Panel title="Metas"><GoalsPanel assets={assets} /></Panel>
-          <Panel title="Aporte Inteligente"><SmartContributionPanel assets={assets} /></Panel>
-          <Panel title="Relatório Mensal"><MonthlyReportPanel assets={assets} /></Panel>
-          <Panel title="Relatório Fiscal"><FiscalReportPanel assets={assets} /></Panel>
-          <Panel title="Sessões Ativas"><SessionLogPanel /></Panel>
-          <Panel title="Integrações"><IntegrationsPanel assets={assets} /></Panel>
-        </>
-      ) : (
-        <>
-          <Grid2>
-            <Panel title="Simulador E se?"><SimulatorPanel assets={assets} /></Panel>
-            <Panel title="Metas de Investimento"><GoalsPanel assets={assets} /></Panel>
-          </Grid2>
-          <Grid2>
-            <Panel title="Aporte Inteligente"><SmartContributionPanel assets={assets} /></Panel>
-            <Panel title="Relatório Mensal"><MonthlyReportPanel assets={assets} /></Panel>
-          </Grid2>
-          <Grid2>
-            <Panel title="📄 Relatório Fiscal (PDF/CSV)"><FiscalReportPanel assets={assets} /></Panel>
-            <Panel title="🔐 Sessões Ativas"><SessionLogPanel /></Panel>
-          </Grid2>
-          <Panel title="🔗 Integrações (Sheets, Notion, Webhook)"><IntegrationsPanel assets={assets} /></Panel>
-        </>
-      )}
-    </>
-  );
-}
 
 export default Index;
