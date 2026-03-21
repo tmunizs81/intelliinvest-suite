@@ -326,7 +326,7 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
                 {TYPES.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
             </div>
-            {type !== 'Renda Fixa' && (
+            {type !== 'Renda Fixa' && type !== 'Imóvel' && (
               <div className="space-y-1">
                 <label className="text-xs font-medium text-muted-foreground">Setor</label>
                 <input
@@ -345,6 +345,18 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                 >
                   {FIXED_INCOME_SUBTYPES.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
+            )}
+            {type === 'Imóvel' && (
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground">Tipo de Imóvel *</label>
+                <select
+                  value={propertySubtype}
+                  onChange={e => setPropertySubtype(e.target.value)}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                >
+                  {PROPERTY_SUBTYPES.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
               </div>
             )}
