@@ -31,6 +31,7 @@ import BacktestingPanel from '@/components/dashboard/BacktestingPanel';
 import DividendForecastPanel from '@/components/dashboard/DividendForecastPanel';
 import AssetScoringPanel from '@/components/dashboard/AssetScoringPanel';
 import FixedIncomePanel from '@/components/dashboard/FixedIncomePanel';
+import RealEstatePanel from '@/components/dashboard/RealEstatePanel';
 import AIAdvisorPanel from '@/components/dashboard/AIAdvisorPanel';
 import AIRiskPanel from '@/components/dashboard/AIRiskPanel';
 import OnboardingOverlay from '@/components/OnboardingOverlay';
