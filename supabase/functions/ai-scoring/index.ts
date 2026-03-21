@@ -82,59 +82,71 @@ NOTA FINAL: Média ponderada (Valuation 30%, Momento 25%, Dividendos 25%, Risco 
       allocation: a.allocation, sector: a.sector,
     })), null, 2)}`;
 
-    const { response, provider } = await callAI({
-      model: "gemini-2.5-flash",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt },
-      ],
-      tools: [{
-        type: "function",
-        function: {
-          name: "asset_scoring",
-          description: "Return scoring for each asset",
-          parameters: {
-            type: "object",
-            properties: {
-              scores: {
-                type: "array",
-                items: {
-                  type: "object",
-                  properties: {
-                    ticker: { type: "string" },
-                    valuation: { type: "number" }, momentum: { type: "number" },
-                    dividends: { type: "number" }, risk: { type: "number" },
-                    overall: { type: "number" },
-                    summary: { type: "string", description: "One-line summary (max 80 chars)" },
+    const cachePrompt = `scoring:${normalizePortfolioForCache(portfolio)}`;
+
+    const cacheResult = await withAICache({
+      functionName: "ai-scoring",
+      prompt: cachePrompt,
+      ttlMinutes: 60, // Scoring valid for 1 hour
+      callAI: async () => {
+        const { response, provider } = await callAI({
+          model: "gemini-2.5-flash",
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt },
+          ],
+          tools: [{
+            type: "function",
+            function: {
+              name: "asset_scoring",
+              description: "Return scoring for each asset",
+              parameters: {
+                type: "object",
+                properties: {
+                  scores: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        ticker: { type: "string" },
+                        valuation: { type: "number" }, momentum: { type: "number" },
+                        dividends: { type: "number" }, risk: { type: "number" },
+                        overall: { type: "number" },
+                        summary: { type: "string", description: "One-line summary (max 80 chars)" },
+                      },
+                      required: ["ticker", "valuation", "momentum", "dividends", "risk", "overall", "summary"],
+                      additionalProperties: false,
+                    },
                   },
-                  required: ["ticker", "valuation", "momentum", "dividends", "risk", "overall", "summary"],
-                  additionalProperties: false,
+                  topPick: { type: "string" }, worstPick: { type: "string" },
+                  insight: { type: "string" },
                 },
+                required: ["scores", "topPick", "worstPick", "insight"],
+                additionalProperties: false,
               },
-              topPick: { type: "string" }, worstPick: { type: "string" },
-              insight: { type: "string" },
             },
-            required: ["scores", "topPick", "worstPick", "insight"],
-            additionalProperties: false,
-          },
-        },
-      }],
-      tool_choice: { type: "function", function: { name: "asset_scoring" } },
+          }],
+          tool_choice: { type: "function", function: { name: "asset_scoring" } },
+        });
+
+        if (!response.ok) {
+          if (response.status === 429 || response.status === 402) throw new Error(`AI_RATE_LIMIT:${response.status}`);
+          const text = await response.text();
+          throw new Error(`AI gateway error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
+        if (!toolCall?.function?.arguments) throw new Error("No structured response");
+
+        return { text: toolCall.function.arguments, provider, tokensUsed: data.usage?.total_tokens || 0 };
+      },
     });
 
-    if (!response.ok) {
-      if (response.status === 429) return new Response(JSON.stringify({ error: "Rate limit exceeded." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      if (response.status === 402) return new Response(JSON.stringify({ error: "Créditos insuficientes." }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      const text = await response.text();
-      console.error("AI gateway error:", response.status, text);
-      throw new Error(`AI gateway error: ${response.status}`);
-    }
-
-    const data = await response.json();
-    const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
-    if (!toolCall?.function?.arguments) throw new Error("No structured response from AI");
-
-    return new Response(JSON.stringify(JSON.parse(toolCall.function.arguments)), { headers: { ...corsHeaders, "Content-Type": "application/json", "x-ai-provider": provider } });
+    const parsed = JSON.parse(cacheResult.text);
+    return new Response(JSON.stringify({ ...parsed, _cached: cacheResult.cached, _cacheAge: cacheResult.cacheAge }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json", "x-ai-provider": cacheResult.provider },
+    });
   } catch (err) {
     console.error("ai-scoring error:", err);
     return new Response(JSON.stringify({ error: err instanceof Error ? err.message : "Unknown error" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
