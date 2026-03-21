@@ -45,6 +45,9 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
   const [yieldRate, setYieldRate] = useState('');
   const [indexerType, setIndexerType] = useState<string>('Pós-fixado');
   const [fixedIncomeSubtype, setFixedIncomeSubtype] = useState<string>('CDB');
+  const [propertySubtype, setPropertySubtype] = useState<string>('Casa');
+  const [appreciationRate, setAppreciationRate] = useState('');
+  const [appreciationPeriod, setAppreciationPeriod] = useState<string>('anual');
   const [maturityDate, setMaturityDate] = useState<Date | undefined>(undefined);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
