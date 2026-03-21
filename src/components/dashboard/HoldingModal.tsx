@@ -48,6 +48,8 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
   const [propertySubtype, setPropertySubtype] = useState<string>('Casa');
   const [appreciationRate, setAppreciationRate] = useState('');
   const [appreciationPeriod, setAppreciationPeriod] = useState<string>('anual');
+  const [propertyPurpose, setPropertyPurpose] = useState<string>('holding');
+  const [rentalValue, setRentalValue] = useState('');
   const [maturityDate, setMaturityDate] = useState<Date | undefined>(undefined);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
