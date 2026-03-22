@@ -16,7 +16,12 @@ const StatCard = ({ label, value, subValue, icon: Icon, positive }: {
   icon: React.ElementType;
   positive?: boolean | null;
 }) => (
-  <div className="rounded-lg border border-border bg-card p-3 sm:p-5 animate-fade-in">
+  <motion.div
+    initial={{ opacity: 0, y: 8 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ duration: 0.25, ease: 'easeOut' }}
+    className="rounded-lg border border-border bg-card p-3 sm:p-5"
+  >
     <div className="flex items-center justify-between mb-1 sm:mb-3">
       <span className="text-xs sm:text-sm text-muted-foreground">{label}</span>
       <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground" />
