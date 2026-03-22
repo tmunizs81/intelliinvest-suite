@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { type Asset, type AIInsight } from '@/lib/mockData';
 import { checkAIProviderFallback } from '@/lib/aiProviderToast';
+import { getCached, setCache, CACHE_TTL } from '@/lib/persistentCache';
 
 interface AIInsightsResult {
   insights: AIInsight[];
@@ -34,6 +35,18 @@ export function useAIInsights() {
         sector: a.sector,
       }));
 
+      // Check persistent cache first
+      const tickers = assets.map(a => a.ticker).sort().join(',');
+      const cacheKey = `ai-insights:${tickers}`;
+      const cached = await getCached<AIInsightsResult>(cacheKey);
+      if (cached) {
+        setInsights(cached.insights);
+        setSummary(cached.summary);
+        setLastGenerated(new Date());
+        setLoading(false);
+        return;
+      }
+
       const { data, error: fnError } = await supabase.functions.invoke('ai-insights', {
         body: { portfolio },
       });
@@ -60,6 +73,9 @@ export function useAIInsights() {
       setInsights(enrichedInsights);
       setSummary(data.summary || '');
       setLastGenerated(new Date());
+
+      // Cache the result
+      await setCache(cacheKey, { insights: enrichedInsights, summary: data.summary || '' }, CACHE_TTL.AI_RESPONSE);
     } catch (err) {
       console.error('AI insights error:', err);
       setError(err instanceof Error ? err.message : 'Erro ao gerar insights');

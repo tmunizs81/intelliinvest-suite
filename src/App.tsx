@@ -43,6 +43,9 @@ const queryClient = new QueryClient({
       refetchOnWindowFocus: false,    // don't refetch on tab focus
       retry: 2,
       retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10000),
+      // Deduplication: show stale data while revalidating
+      refetchOnMount: 'always',
+      networkMode: 'offlineFirst',
     },
   },
 });

@@ -78,20 +78,38 @@ export function useTaxes() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const loadTransactions = useCallback(async () => {
+  const loadTransactions = useCallback(async (page = 0, pageSize = 500) => {
     if (!user) { setLoading(false); return; }
     setLoading(true);
-    const { data, error: err } = await supabase
-      .from('transactions')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('date', { ascending: true });
 
-    if (err) {
-      setError(err.message);
-    } else {
-      setTransactions((data || []) as Transaction[]);
+    let allData: Transaction[] = [];
+    let currentPage = 0;
+    let hasMore = true;
+
+    // Paginated fetch to avoid 1000-row limit
+    while (hasMore) {
+      const from = currentPage * pageSize;
+      const to = from + pageSize - 1;
+      const { data, error: err } = await supabase
+        .from('transactions')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('date', { ascending: true })
+        .range(from, to);
+
+      if (err) {
+        setError(err.message);
+        setLoading(false);
+        return;
+      }
+
+      const rows = (data || []) as Transaction[];
+      allData = [...allData, ...rows];
+      hasMore = rows.length === pageSize;
+      currentPage++;
     }
+
+    setTransactions(allData);
     setLoading(false);
   }, [user]);
 

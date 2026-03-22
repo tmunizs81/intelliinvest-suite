@@ -140,7 +140,9 @@ export default function AIAdvisorPanel({ assets, cashBalance = 0 }: Props) {
 
         {response && (
           <div className="prose prose-sm prose-invert max-w-none text-xs leading-relaxed">
-            <ReactMarkdown>{response}</ReactMarkdown>
+            <Suspense fallback={<p className="text-xs text-muted-foreground">{response}</p>}>
+              <ReactMarkdown>{response}</ReactMarkdown>
+            </Suspense>
           </div>
         )}
       </div>
