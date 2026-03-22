@@ -61,16 +61,18 @@ function CountdownTimer({ nextUpdate }: { nextUpdate: Date | null }) {
 }
 
 export default function PortfolioSummary({ assets, lastUpdate, nextUpdate }: Props) {
-  const total = assets.reduce((s, a) => s + a.currentPrice * a.quantity, 0);
-  const cost = assets.reduce((s, a) => s + a.avgPrice * a.quantity, 0);
-  const gain = total - cost;
-  const gainPct = cost > 0 ? (gain / cost) * 100 : 0;
-
-  const daily = assets.reduce((s, a) => {
-    const prev = a.currentPrice / (1 + a.change24h / 100);
-    return s + (a.currentPrice - prev) * a.quantity;
-  }, 0);
-  const dailyPct = (total - daily) > 0 ? (daily / (total - daily)) * 100 : 0;
+  const { total, cost, gain, gainPct, daily, dailyPct } = useMemo(() => {
+    const total = assets.reduce((s, a) => s + a.currentPrice * a.quantity, 0);
+    const cost = assets.reduce((s, a) => s + a.avgPrice * a.quantity, 0);
+    const gain = total - cost;
+    const gainPct = cost > 0 ? (gain / cost) * 100 : 0;
+    const daily = assets.reduce((s, a) => {
+      const prev = a.currentPrice / (1 + a.change24h / 100);
+      return s + (a.currentPrice - prev) * a.quantity;
+    }, 0);
+    const dailyPct = (total - daily) > 0 ? (daily / (total - daily)) * 100 : 0;
+    return { total, cost, gain, gainPct, daily, dailyPct };
+  }, [assets]);
 
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
