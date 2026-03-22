@@ -7,27 +7,45 @@ import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { useLicense } from "@/hooks/useLicense";
 import AppLayout from "@/components/layout/AppLayout";
 import BlockedScreen from "@/components/BlockedScreen";
-import Index from "./pages/Index";
-import Assets from "./pages/Assets";
-import Analysis from "./pages/Analysis";
-import AITrader from "./pages/AITrader";
-import Taxes from "./pages/Taxes";
-import Dividends from "./pages/Dividends";
-import Reports from "./pages/Reports";
-import SettingsPage from "./pages/SettingsPage";
-import Login from "./pages/Login";
-import Signup from "./pages/Signup";
-import ForgotPassword from "./pages/ForgotPassword";
-import ResetPassword from "./pages/ResetPassword";
-import NotFound from "./pages/NotFound";
-import FamilyPortfolio from "./pages/FamilyPortfolio";
-import Manual from "./pages/Manual";
-import Comparator from "./pages/Comparator";
+import { lazy, Suspense } from "react";
 import PWAInstallPrompt from "./components/PWAInstallPrompt";
 import SessionExpiredModal from "./components/SessionExpiredModal";
 import { Loader2 } from "lucide-react";
 
-const queryClient = new QueryClient();
+// Lazy load all pages for code splitting
+const Index = lazy(() => import("./pages/Index"));
+const Assets = lazy(() => import("./pages/Assets"));
+const Analysis = lazy(() => import("./pages/Analysis"));
+const AITrader = lazy(() => import("./pages/AITrader"));
+const Taxes = lazy(() => import("./pages/Taxes"));
+const Dividends = lazy(() => import("./pages/Dividends"));
+const Reports = lazy(() => import("./pages/Reports"));
+const SettingsPage = lazy(() => import("./pages/SettingsPage"));
+const Login = lazy(() => import("./pages/Login"));
+const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+const FamilyPortfolio = lazy(() => import("./pages/FamilyPortfolio"));
+const Manual = lazy(() => import("./pages/Manual"));
+const Comparator = lazy(() => import("./pages/Comparator"));
+
+const PageLoader = () => (
+  <div className="min-h-screen bg-background flex items-center justify-center">
+    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+  </div>
+);
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000,       // 5 min — data stays fresh
+      gcTime: 30 * 60 * 1000,         // 30 min — garbage collection
+      refetchOnWindowFocus: false,    // don't refetch on tab focus
+      retry: 2,
+      retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10000),
+    },
+  },
+});
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
