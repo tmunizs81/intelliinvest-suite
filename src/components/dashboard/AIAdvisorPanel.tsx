@@ -1,9 +1,10 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, lazy, Suspense } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { type Asset } from '@/lib/mockData';
 import { useAIRateLimit } from '@/hooks/useAIRateLimit';
+import { getCached, setCache, CACHE_TTL } from '@/lib/persistentCache';
 import { Bot, Send, Loader2, Sparkles } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
+const ReactMarkdown = lazy(() => import('react-markdown'));
 
 interface Props {
   assets: Asset[];
