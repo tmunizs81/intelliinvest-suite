@@ -253,7 +253,7 @@ export function usePortfolio() {
     }
   }, [holdings]);
 
-  // Initial load
+  // Initial load — batch all init queries in parallel
   useEffect(() => {
     if (!user) {
       setLoading(false);
@@ -261,11 +261,13 @@ export function usePortfolio() {
     }
     
     const init = async () => {
-      // Fetch live BCB rates (Selic, CDI, IPCA) before calculating fixed income
-      await fetchReferenceRates().catch(() => {});
-      const h = await loadHoldings();
-      await loadCashBalance();
-      if (h.length > 0) {
+      // Run BCB rates fetch and data loads in parallel
+      const [, h] = await Promise.all([
+        fetchReferenceRates().catch(() => {}),
+        loadHoldings(),
+        loadCashBalance(),
+      ]);
+      if (h && h.length > 0) {
         await fetchQuotes(h);
       } else {
         setLoading(false);

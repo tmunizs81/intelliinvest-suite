@@ -50,7 +50,7 @@ echo -e "${GREEN}✓ Build concluído${NC}"
 
 # 3. Restart
 echo -e "\n${BLUE}[3/3]${NC} Reiniciando..."
-docker compose --env-file "$ENV_FILE" up -d
+docker compose --env-file "$ENV_FILE" up -d --remove-orphans
 sleep 3
 
 # Health check
