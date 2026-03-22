@@ -32,6 +32,16 @@ export default function AIAdvisorPanel({ assets, cashBalance = 0 }: Props) {
     setResponse('');
     setQuestion(q);
 
+    // Check persistent cache
+    const tickers = assets.map(a => a.ticker).sort().join(',');
+    const cacheKey = `ai-advisor:${tickers}:${q}`;
+    const cached = await getCached<string>(cacheKey);
+    if (cached) {
+      setResponse(cached);
+      setLoading(false);
+      return;
+    }
+
     try {
       abortRef.current = new AbortController();
       const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-advisor`;
@@ -74,6 +84,11 @@ export default function AIAdvisorPanel({ assets, cashBalance = 0 }: Props) {
             }
           } catch {}
         }
+      }
+
+      // Cache the complete response
+      if (fullText) {
+        await setCache(cacheKey, fullText, CACHE_TTL.AI_RESPONSE);
       }
     } catch (err: any) {
       if (err.name !== 'AbortError') {
