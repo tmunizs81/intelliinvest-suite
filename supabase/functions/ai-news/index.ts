@@ -248,19 +248,7 @@ async function classifyWithAI(rawNews: SimpleNews[], tickers: string[]) {
     }
   }
 
-  const lovableResponse = await callLovable(payload);
-  if (lovableResponse) {
-    try {
-      const lovableJson = await lovableResponse.json();
-      const args = lovableJson?.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
-      if (args) {
-        const parsed = JSON.parse(args);
-        if (parsed?.news?.length) return { parsed, provider: "lovable" };
-      }
-    } catch {
-      // graceful fallback handled below
-    }
-  }
+  // Lovable fallback removed
 
   return null;
 }
