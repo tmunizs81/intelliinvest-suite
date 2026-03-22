@@ -8,7 +8,6 @@ const corsHeaders = {
 
 async function callAISimple(messages: any[], maxTokens = 800): Promise<string | null> {
   const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
-  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
   if (DEEPSEEK_API_KEY) {
     try {

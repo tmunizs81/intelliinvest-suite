@@ -293,7 +293,6 @@ async function callDeepSeek(text: string, ticker: string): Promise<Property[] | 
 }
 
 async function callLovableFallback(text: string, ticker: string): Promise<Property[] | null> {
-  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
   if (!LOVABLE_API_KEY) return null;
 
   try {
