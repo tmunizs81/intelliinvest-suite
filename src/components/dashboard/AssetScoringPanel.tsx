@@ -35,16 +35,17 @@ function getScoreBg(score: number) {
 }
 
 function ScoreBar({ value, label }: { value: number; label: string }) {
+  const v = typeof value === 'number' ? value : 0;
   return (
     <div className="flex items-center gap-2">
       <span className="text-[9px] text-muted-foreground w-14 text-right shrink-0">{label}</span>
       <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
         <div
-          className={`h-full rounded-full transition-all ${getScoreBg(value)}`}
-          style={{ width: `${value * 10}%` }}
+          className={`h-full rounded-full transition-all ${getScoreBg(v)}`}
+          style={{ width: `${v * 10}%` }}
         />
       </div>
-      <span className={`text-[10px] font-mono font-bold w-5 ${getScoreColor(value)}`}>{value}</span>
+      <span className={`text-[10px] font-mono font-bold w-5 ${getScoreColor(value ?? 0)}`}>{value ?? 0}</span>
     </div>
   );
 }
@@ -185,8 +186,8 @@ export default function AssetScoringPanel({ assets }: { assets: Asset[] }) {
                     </div>
                     <div className="flex items-center gap-2">
                       <StarRating score={s.overall} />
-                      <span className={`text-sm font-bold font-mono ${getScoreColor(s.overall)}`}>
-                        {s.overall.toFixed(1)}
+                      <span className={`text-sm font-bold font-mono ${getScoreColor(s.overall ?? 0)}`}>
+                        {(s.overall ?? 0).toFixed(1)}
                       </span>
                     </div>
                   </div>
