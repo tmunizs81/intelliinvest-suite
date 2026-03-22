@@ -32,7 +32,7 @@ const StatCard = ({ label, value, subValue, icon: Icon, positive }: {
         {subValue}
       </p>
     )}
-  </div>
+  </motion.div>
 );
 
 function CountdownTimer({ nextUpdate }: { nextUpdate: Date | null }) {
