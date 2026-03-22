@@ -1,12 +1,14 @@
-import { useState, useEffect, lazy, Suspense } from 'react';
+import { useState, useEffect, lazy, Suspense, useMemo, useCallback } from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import DashboardTabs, { type DashboardTab } from '@/components/dashboard/DashboardTabs';
+import { AnimatePresence, motion } from 'framer-motion';
 
 import LicenseAlert from '@/components/dashboard/LicenseAlert';
 import HoldingModal from '@/components/dashboard/HoldingModal';
 import DashboardChatbot from '@/components/dashboard/DashboardChatbot';
 import OnboardingOverlay from '@/components/OnboardingOverlay';
 import KioskMode from '@/components/dashboard/KioskMode';
+import { DashboardSkeleton } from '@/components/ui/skeleton-card';
 
 import { usePortfolio, type HoldingRow } from '@/hooks/usePortfolio';
 import { usePortfolioSnapshots } from '@/hooks/usePortfolioSnapshots';
