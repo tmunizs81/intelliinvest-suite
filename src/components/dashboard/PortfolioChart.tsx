@@ -1,17 +1,9 @@
-import { useState, useMemo, useId, memo, lazy, Suspense } from 'react';
+import { useState, useMemo, useId, memo } from 'react';
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { formatCurrency } from '@/lib/mockData';
 import { type SnapshotRow } from '@/hooks/usePortfolioSnapshots';
 import { type Asset } from '@/lib/mockData';
 import { Loader2, TrendingUp, TrendingDown, Database } from 'lucide-react';
-
-// Lazy load recharts
-const LazyAreaChart = lazy(() => import('recharts').then(m => ({ default: m.AreaChart })));
-const LazyArea = lazy(() => import('recharts').then(m => ({ default: m.Area })));
-const LazyXAxis = lazy(() => import('recharts').then(m => ({ default: m.XAxis })));
-const LazyYAxis = lazy(() => import('recharts').then(m => ({ default: m.YAxis })));
-const LazyTooltip = lazy(() => import('recharts').then(m => ({ default: m.Tooltip })));
-const LazyResponsiveContainer = lazy(() => import('recharts').then(m => ({ default: m.ResponsiveContainer })));
-const LazyCartesianGrid = lazy(() => import('recharts').then(m => ({ default: m.CartesianGrid })));
 
 const periods = [
   { label: '7D', days: 7 },
@@ -29,81 +21,74 @@ interface Props {
   showCostLine?: boolean;
 }
 
-// Use direct imports instead of lazy for recharts (lazy per-component doesn't work well with recharts)
-// Instead, we memo the entire chart component
 const ChartContent = memo(({ data, isPositive, gradientId, showCostLine }: {
   data: any[];
   isPositive: boolean;
   gradientId: string;
   showCostLine: boolean;
-}) => {
-  // Import recharts directly — the code-split happens at page level
-  const { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } = require('recharts');
-
-  return (
-    <ResponsiveContainer width="100%" height={320}>
-      <AreaChart data={data} margin={{ top: 4, right: 4, left: 4, bottom: 0 }}>
-        <defs>
-          <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor={isPositive ? 'hsl(160,84%,39%)' : 'hsl(0,72%,51%)'} stopOpacity={0.3} />
-            <stop offset="95%" stopColor={isPositive ? 'hsl(160,84%,39%)' : 'hsl(0,72%,51%)'} stopOpacity={0} />
-          </linearGradient>
-        </defs>
-        <CartesianGrid strokeDasharray="3 3" stroke="hsl(220,14%,16%)" vertical={false} />
-        <XAxis
-          dataKey="date"
-          tickFormatter={(v: string) => {
-            const d = new Date(v + 'T12:00:00');
-            return `${d.getDate()}/${d.getMonth() + 1}`;
-          }}
-          stroke="hsl(215,12%,50%)"
-          fontSize={11}
-          tickLine={false}
-          axisLine={false}
-        />
-        <YAxis
-          tickFormatter={(v: number) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v.toString()}
-          stroke="hsl(215,12%,50%)"
-          fontSize={11}
-          tickLine={false}
-          axisLine={false}
-          width={50}
-        />
-        <Tooltip
-          contentStyle={{
-            background: 'hsl(220,18%,9%)',
-            border: '1px solid hsl(220,14%,16%)',
-            borderRadius: '8px',
-            fontSize: '12px',
-            fontFamily: 'JetBrains Mono',
-          }}
-          labelFormatter={(v: string) => new Date(v + 'T12:00:00').toLocaleDateString('pt-BR')}
-          formatter={(value: number, name: string) => {
-            if (name === 'cost') return [formatCurrency(value), 'Custo'];
-            return [formatCurrency(value), 'Patrimônio'];
-          }}
-        />
+}) => (
+  <ResponsiveContainer width="100%" height={320}>
+    <AreaChart data={data} margin={{ top: 4, right: 4, left: 4, bottom: 0 }}>
+      <defs>
+        <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="5%" stopColor={isPositive ? 'hsl(160,84%,39%)' : 'hsl(0,72%,51%)'} stopOpacity={0.3} />
+          <stop offset="95%" stopColor={isPositive ? 'hsl(160,84%,39%)' : 'hsl(0,72%,51%)'} stopOpacity={0} />
+        </linearGradient>
+      </defs>
+      <CartesianGrid strokeDasharray="3 3" stroke="hsl(220,14%,16%)" vertical={false} />
+      <XAxis
+        dataKey="date"
+        tickFormatter={(v: string) => {
+          const d = new Date(v + 'T12:00:00');
+          return `${d.getDate()}/${d.getMonth() + 1}`;
+        }}
+        stroke="hsl(215,12%,50%)"
+        fontSize={11}
+        tickLine={false}
+        axisLine={false}
+      />
+      <YAxis
+        tickFormatter={(v: number) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v.toString()}
+        stroke="hsl(215,12%,50%)"
+        fontSize={11}
+        tickLine={false}
+        axisLine={false}
+        width={50}
+      />
+      <Tooltip
+        contentStyle={{
+          background: 'hsl(220,18%,9%)',
+          border: '1px solid hsl(220,14%,16%)',
+          borderRadius: '8px',
+          fontSize: '12px',
+          fontFamily: 'JetBrains Mono',
+        }}
+        labelFormatter={(v: string) => new Date(v + 'T12:00:00').toLocaleDateString('pt-BR')}
+        formatter={(value: number, name: string) => {
+          if (name === 'cost') return [formatCurrency(value), 'Custo'];
+          return [formatCurrency(value), 'Patrimônio'];
+        }}
+      />
+      <Area
+        type="monotone"
+        dataKey="value"
+        stroke={isPositive ? 'hsl(160,84%,39%)' : 'hsl(0,72%,51%)'}
+        strokeWidth={2}
+        fill={`url(#${gradientId})`}
+      />
+      {showCostLine && (
         <Area
           type="monotone"
-          dataKey="value"
-          stroke={isPositive ? 'hsl(160,84%,39%)' : 'hsl(0,72%,51%)'}
-          strokeWidth={2}
-          fill={`url(#${gradientId})`}
+          dataKey="cost"
+          stroke="hsl(215,12%,50%)"
+          strokeWidth={1}
+          strokeDasharray="4 4"
+          fill="transparent"
         />
-        {showCostLine && (
-          <Area
-            type="monotone"
-            dataKey="cost"
-            stroke="hsl(215,12%,50%)"
-            strokeWidth={1}
-            strokeDasharray="4 4"
-            fill="transparent"
-          />
-        )}
-      </AreaChart>
-    </ResponsiveContainer>
-  );
-});
+      )}
+    </AreaChart>
+  </ResponsiveContainer>
+));
 
 ChartContent.displayName = 'ChartContent';
 
