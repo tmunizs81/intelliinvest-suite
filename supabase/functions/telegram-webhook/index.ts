@@ -24,15 +24,7 @@ async function callAISimple(messages: any[], maxTokens = 800): Promise<string | 
     } catch (e) { console.warn("DeepSeek error:", e); }
   }
 
-  if (!LOVABLE_API_KEY) return null;
-  const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ model: "google/gemini-2.5-flash", messages, max_tokens: maxTokens }),
-  });
-  if (!resp.ok) return null;
-  const data = await resp.json();
-  return data.choices?.[0]?.message?.content || null;
+  return null;
 }
 
 Deno.serve(async (req) => {

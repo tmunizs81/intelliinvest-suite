@@ -378,22 +378,7 @@ Deno.serve(async (req) => {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      console.log(`DeepSeek failed, trying Lovable fallback for ${ticker}...`);
-
-      const lovableProps = await callLovableFallback(textForAI, ticker);
-      if (lovableProps && lovableProps.length > 0) {
-        console.log(`Lovable found ${lovableProps.length} properties`);
-        const combined = dedupeProperties([...lovableProps, ...regexMerged]);
-        const result = JSON.stringify({
-          fund_name: ticker.toUpperCase(),
-          total_properties: combined.length,
-          properties: combined,
-        });
-        cache.set(t, { data: result, ts: Date.now() });
-        return new Response(result, {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
+      console.log(`DeepSeek failed for ${ticker}, falling back to regex results`);
     }
 
     // Fallback: return regex results if AI failed
