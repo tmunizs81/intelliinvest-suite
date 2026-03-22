@@ -76,7 +76,12 @@ export default function PortfolioSummary({ assets, lastUpdate, nextUpdate }: Pro
 
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
-      <div className="col-span-2 sm:col-span-1 rounded-lg border border-border bg-card p-3 sm:p-5 glow-primary animate-fade-in">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.96 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.3 }}
+        className="col-span-2 sm:col-span-1 rounded-lg border border-border bg-card p-3 sm:p-5 glow-primary"
+      >
         <div className="flex items-center justify-between mb-1 sm:mb-3">
           <span className="text-xs sm:text-sm text-muted-foreground">Patrimônio Total</span>
           <Wallet className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary" />
@@ -85,7 +90,7 @@ export default function PortfolioSummary({ assets, lastUpdate, nextUpdate }: Pro
         <p className={`text-xs sm:text-sm font-mono mt-0.5 sm:mt-1 ${gain >= 0 ? 'text-gain' : 'text-loss'}`}>
           {formatCurrency(gain)} ({formatPercent(gainPct)})
         </p>
-      </div>
+      </motion.div>
 
       <StatCard
         label="Variação Hoje"
