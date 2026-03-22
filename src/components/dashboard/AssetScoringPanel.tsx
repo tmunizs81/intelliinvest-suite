@@ -186,8 +186,8 @@ export default function AssetScoringPanel({ assets }: { assets: Asset[] }) {
                     </div>
                     <div className="flex items-center gap-2">
                       <StarRating score={s.overall} />
-                      <span className={`text-sm font-bold font-mono ${getScoreColor(s.overall)}`}>
-                        {s.overall.toFixed(1)}
+                      <span className={`text-sm font-bold font-mono ${getScoreColor(s.overall ?? 0)}`}>
+                        {(s.overall ?? 0).toFixed(1)}
                       </span>
                     </div>
                   </div>
