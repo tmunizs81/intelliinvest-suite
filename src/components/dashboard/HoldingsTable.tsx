@@ -38,7 +38,12 @@ export default function HoldingsTable({ assets, holdings, loading, onAdd, onEdit
   };
 
   return (
-    <div className="rounded-lg border border-border bg-card overflow-hidden animate-fade-in">
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.25 }}
+      className="rounded-lg border border-border bg-card overflow-hidden"
+    >
       <div className="p-5 border-b border-border flex items-center justify-between">
         <div>
           <h2 className="text-lg font-semibold">Carteira de Ativos</h2>
