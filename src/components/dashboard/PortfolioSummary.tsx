@@ -108,7 +108,12 @@ export default function PortfolioSummary({ assets, lastUpdate, nextUpdate }: Pro
         positive={gain >= 0}
       />
 
-      <div className="rounded-lg border border-border bg-card p-3 sm:p-5 animate-fade-in">
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.25, delay: 0.1 }}
+        className="rounded-lg border border-border bg-card p-3 sm:p-5"
+      >
         <div className="flex items-center justify-between mb-1 sm:mb-3">
           <span className="text-xs sm:text-sm text-muted-foreground">Última Atualização</span>
           <Clock className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground" />
@@ -120,7 +125,7 @@ export default function PortfolioSummary({ assets, lastUpdate, nextUpdate }: Pro
           <p className="text-xs sm:text-sm font-mono text-muted-foreground">Auto 5 min</p>
           <CountdownTimer nextUpdate={nextUpdate || null} />
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }
