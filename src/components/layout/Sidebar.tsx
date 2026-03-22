@@ -5,8 +5,9 @@ import {
   ChevronLeft, ChevronRight, TrendingUp, Brain, Calculator, DollarSign, Settings,
   Menu, X, FileText, Users, Book,
 } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import ThemeToggle from '@/components/ThemeToggle';
+import { prefetchRoute } from '@/lib/routePrefetch';
 
 const navItems = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -28,18 +29,18 @@ export default function Sidebar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
 
-  // Close mobile menu on route change
-  useEffect(() => {
-    setMobileOpen(false);
-  }, [location.pathname]);
+  useEffect(() => { setMobileOpen(false); }, [location.pathname]);
 
-  // Close mobile menu on resize to desktop
   useEffect(() => {
     const handleResize = () => {
       if (window.innerWidth >= 768) setMobileOpen(false);
     };
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const handlePrefetch = useCallback((path: string) => {
+    prefetchRoute(path);
   }, []);
 
   return (
@@ -73,7 +74,7 @@ export default function Sidebar() {
         />
       )}
 
-      {/* Sidebar - Desktop: fixed side, Mobile: slide-over drawer */}
+      {/* Sidebar */}
       <aside
         className={`
           fixed top-0 h-screen z-50 flex flex-col border-r border-border bg-card transition-all duration-300
@@ -92,7 +93,6 @@ export default function Sidebar() {
               </span>
             )}
           </div>
-          {/* Mobile close button */}
           <button
             onClick={() => setMobileOpen(false)}
             className="md:hidden h-8 w-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground"
@@ -101,13 +101,15 @@ export default function Sidebar() {
           </button>
         </div>
 
-        {/* Nav */}
+        {/* Nav with prefetch on hover */}
         <nav className="flex-1 py-4 space-y-1 px-2 overflow-y-auto">
           {navItems.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
               end={item.to === '/'}
+              onMouseEnter={() => handlePrefetch(item.to)}
+              onTouchStart={() => handlePrefetch(item.to)}
               className={({ isActive }) =>
                 `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
                   isActive
@@ -144,7 +146,6 @@ export default function Sidebar() {
               <LogOut className="h-4 w-4 shrink-0" />
               {(!collapsed || mobileOpen) && <span>Sair</span>}
             </button>
-            {/* Collapse button - desktop only */}
             <button
               onClick={() => setCollapsed(!collapsed)}
               className="hidden md:flex h-8 w-8 rounded-lg items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-all shrink-0"

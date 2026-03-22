@@ -1,6 +1,6 @@
 import { TrendingUp, TrendingDown, Wallet, BarChart3, Clock, Timer } from 'lucide-react';
 import { type Asset, formatCurrency, formatPercent } from '@/lib/mockData';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, memo } from 'react';
 import { motion } from 'framer-motion';
 
 interface Props {
@@ -9,7 +9,7 @@ interface Props {
   nextUpdate?: Date | null;
 }
 
-const StatCard = ({ label, value, subValue, icon: Icon, positive }: {
+const StatCard = memo(({ label, value, subValue, icon: Icon, positive }: {
   label: string;
   value: string;
   subValue?: string;
@@ -33,9 +33,11 @@ const StatCard = ({ label, value, subValue, icon: Icon, positive }: {
       </p>
     )}
   </motion.div>
-);
+));
 
-function CountdownTimer({ nextUpdate }: { nextUpdate: Date | null }) {
+StatCard.displayName = 'StatCard';
+
+const CountdownTimer = memo(({ nextUpdate }: { nextUpdate: Date | null }) => {
   const [remaining, setRemaining] = useState('');
 
   useEffect(() => {
@@ -58,9 +60,11 @@ function CountdownTimer({ nextUpdate }: { nextUpdate: Date | null }) {
       Próx: {remaining}
     </span>
   );
-}
+});
 
-export default function PortfolioSummary({ assets, lastUpdate, nextUpdate }: Props) {
+CountdownTimer.displayName = 'CountdownTimer';
+
+export default memo(function PortfolioSummary({ assets, lastUpdate, nextUpdate }: Props) {
   const { total, cost, gain, gainPct, daily, dailyPct } = useMemo(() => {
     const total = assets.reduce((s, a) => s + a.currentPrice * a.quantity, 0);
     const cost = assets.reduce((s, a) => s + a.avgPrice * a.quantity, 0);
@@ -128,4 +132,4 @@ export default function PortfolioSummary({ assets, lastUpdate, nextUpdate }: Pro
       </motion.div>
     </div>
   );
-}
+});
