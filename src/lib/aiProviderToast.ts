@@ -1,16 +1,7 @@
-import { toast } from "@/hooks/use-toast";
-
 /**
- * Checks if the AI response used the fallback provider (Lovable AI).
- * Shows a subtle toast when DeepSeek is unavailable and Lovable AI was used.
+ * AI provider check - DeepSeek only (Lovable AI removed).
+ * Kept for backward compatibility but no longer shows fallback toasts.
  */
-export function checkAIProviderFallback(data: any) {
-  const provider = data?._provider;
-  if (provider === "lovable") {
-    toast({
-      title: "IA Secundária",
-      description: "DeepSeek indisponível, usando Lovable AI como fallback.",
-      duration: 3000,
-    });
-  }
+export function checkAIProviderFallback(_data: any) {
+  // No-op: all AI calls now go directly to DeepSeek
 }

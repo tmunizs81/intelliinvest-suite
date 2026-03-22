@@ -176,26 +176,7 @@ async function callDeepSeek(body: any): Promise<Response | null> {
   }
 }
 
-async function callLovable(body: any): Promise<Response | null> {
-  const key = Deno.env.get("LOVABLE_API_KEY");
-  if (!key) return null;
-
-  try {
-    const { model, ...rest } = body;
-    const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${key}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ ...rest, model: "google/gemini-2.5-flash" }),
-      signal: AbortSignal.timeout(AI_TIMEOUT_MS),
-    });
-    return resp.ok ? resp : null;
-  } catch {
-    return null;
-  }
-}
+// Lovable AI fallback removed - DeepSeek only
 
 async function classifyWithAI(rawNews: SimpleNews[], tickers: string[]) {
   const newsContext = rawNews
@@ -267,19 +248,7 @@ async function classifyWithAI(rawNews: SimpleNews[], tickers: string[]) {
     }
   }
 
-  const lovableResponse = await callLovable(payload);
-  if (lovableResponse) {
-    try {
-      const lovableJson = await lovableResponse.json();
-      const args = lovableJson?.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
-      if (args) {
-        const parsed = JSON.parse(args);
-        if (parsed?.news?.length) return { parsed, provider: "lovable" };
-      }
-    } catch {
-      // graceful fallback handled below
-    }
-  }
+  // Lovable fallback removed
 
   return null;
 }

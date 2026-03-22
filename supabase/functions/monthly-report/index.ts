@@ -49,7 +49,7 @@ const REPORT_TOOL = {
 
 async function callAI(messages: any[]) {
   const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
-  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+  
 
   // Try DeepSeek first
   if (DEEPSEEK_API_KEY) {
@@ -78,35 +78,7 @@ async function callAI(messages: any[]) {
     } catch (e) { console.warn("DeepSeek error:", e); }
   }
 
-  // Fallback to Lovable AI
-  if (!LOVABLE_API_KEY) throw new Error("No AI provider available");
-
-  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: "google/gemini-2.5-flash",
-      messages,
-      tools: [REPORT_TOOL],
-      tool_choice: { type: "function", function: { name: "generate_report" } },
-    }),
-  });
-
-  if (!response.ok) {
-    const text = await response.text().catch(() => "");
-    console.error(`AI error ${response.status}:`, text);
-    throw new Error(`AI error: ${response.status}`);
-  }
-
-  const data = await response.json();
-  const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
-  if (toolCall?.function?.arguments) return toolCall.function.arguments;
-  const content = data.choices?.[0]?.message?.content;
-  if (content) {
-    const jsonMatch = content.match(/\{[\s\S]*\}/);
-    if (jsonMatch) return jsonMatch[0];
-  }
-  throw new Error("No structured response from AI");
+  throw new Error("DeepSeek API unavailable for monthly report");
 }
 
 Deno.serve(async (req) => {

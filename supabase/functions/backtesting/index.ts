@@ -6,7 +6,6 @@ const corsHeaders = {
 
 async function callAI(body: any): Promise<{ response: Response; provider: string }> {
   const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
-  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
   if (DEEPSEEK_API_KEY) {
     try {
       const { model, ...rest } = body;
@@ -19,14 +18,7 @@ async function callAI(body: any): Promise<{ response: Response; provider: string
       console.warn("DeepSeek failed:", resp.status, "falling back to Lovable AI");
     } catch (e) { console.warn("DeepSeek error, falling back:", e); }
   }
-  if (!LOVABLE_API_KEY) throw new Error("No AI provider available");
-  const { model, ...rest } = body;
-  const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ ...rest, model: model?.startsWith("google/") ? model : `google/${model || "gemini-2.5-flash"}` }),
-  });
-  return { response: resp, provider: "lovable" };
+  throw new Error("DeepSeek API unavailable");
 }
 
 Deno.serve(async (req) => {
