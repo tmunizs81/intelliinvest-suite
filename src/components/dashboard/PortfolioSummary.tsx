@@ -1,6 +1,7 @@
 import { TrendingUp, TrendingDown, Wallet, BarChart3, Clock, Timer } from 'lucide-react';
 import { type Asset, formatCurrency, formatPercent } from '@/lib/mockData';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { motion } from 'framer-motion';
 
 interface Props {
   assets: Asset[];
@@ -15,7 +16,12 @@ const StatCard = ({ label, value, subValue, icon: Icon, positive }: {
   icon: React.ElementType;
   positive?: boolean | null;
 }) => (
-  <div className="rounded-lg border border-border bg-card p-3 sm:p-5 animate-fade-in">
+  <motion.div
+    initial={{ opacity: 0, y: 8 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ duration: 0.25, ease: 'easeOut' }}
+    className="rounded-lg border border-border bg-card p-3 sm:p-5"
+  >
     <div className="flex items-center justify-between mb-1 sm:mb-3">
       <span className="text-xs sm:text-sm text-muted-foreground">{label}</span>
       <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground" />
@@ -26,7 +32,7 @@ const StatCard = ({ label, value, subValue, icon: Icon, positive }: {
         {subValue}
       </p>
     )}
-  </div>
+  </motion.div>
 );
 
 function CountdownTimer({ nextUpdate }: { nextUpdate: Date | null }) {
@@ -55,20 +61,27 @@ function CountdownTimer({ nextUpdate }: { nextUpdate: Date | null }) {
 }
 
 export default function PortfolioSummary({ assets, lastUpdate, nextUpdate }: Props) {
-  const total = assets.reduce((s, a) => s + a.currentPrice * a.quantity, 0);
-  const cost = assets.reduce((s, a) => s + a.avgPrice * a.quantity, 0);
-  const gain = total - cost;
-  const gainPct = cost > 0 ? (gain / cost) * 100 : 0;
-
-  const daily = assets.reduce((s, a) => {
-    const prev = a.currentPrice / (1 + a.change24h / 100);
-    return s + (a.currentPrice - prev) * a.quantity;
-  }, 0);
-  const dailyPct = (total - daily) > 0 ? (daily / (total - daily)) * 100 : 0;
+  const { total, cost, gain, gainPct, daily, dailyPct } = useMemo(() => {
+    const total = assets.reduce((s, a) => s + a.currentPrice * a.quantity, 0);
+    const cost = assets.reduce((s, a) => s + a.avgPrice * a.quantity, 0);
+    const gain = total - cost;
+    const gainPct = cost > 0 ? (gain / cost) * 100 : 0;
+    const daily = assets.reduce((s, a) => {
+      const prev = a.currentPrice / (1 + a.change24h / 100);
+      return s + (a.currentPrice - prev) * a.quantity;
+    }, 0);
+    const dailyPct = (total - daily) > 0 ? (daily / (total - daily)) * 100 : 0;
+    return { total, cost, gain, gainPct, daily, dailyPct };
+  }, [assets]);
 
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
-      <div className="col-span-2 sm:col-span-1 rounded-lg border border-border bg-card p-3 sm:p-5 glow-primary animate-fade-in">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.96 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.3 }}
+        className="col-span-2 sm:col-span-1 rounded-lg border border-border bg-card p-3 sm:p-5 glow-primary"
+      >
         <div className="flex items-center justify-between mb-1 sm:mb-3">
           <span className="text-xs sm:text-sm text-muted-foreground">Patrimônio Total</span>
           <Wallet className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary" />
@@ -77,7 +90,7 @@ export default function PortfolioSummary({ assets, lastUpdate, nextUpdate }: Pro
         <p className={`text-xs sm:text-sm font-mono mt-0.5 sm:mt-1 ${gain >= 0 ? 'text-gain' : 'text-loss'}`}>
           {formatCurrency(gain)} ({formatPercent(gainPct)})
         </p>
-      </div>
+      </motion.div>
 
       <StatCard
         label="Variação Hoje"
@@ -95,7 +108,12 @@ export default function PortfolioSummary({ assets, lastUpdate, nextUpdate }: Pro
         positive={gain >= 0}
       />
 
-      <div className="rounded-lg border border-border bg-card p-3 sm:p-5 animate-fade-in">
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.25, delay: 0.1 }}
+        className="rounded-lg border border-border bg-card p-3 sm:p-5"
+      >
         <div className="flex items-center justify-between mb-1 sm:mb-3">
           <span className="text-xs sm:text-sm text-muted-foreground">Última Atualização</span>
           <Clock className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground" />
@@ -107,7 +125,7 @@ export default function PortfolioSummary({ assets, lastUpdate, nextUpdate }: Pro
           <p className="text-xs sm:text-sm font-mono text-muted-foreground">Auto 5 min</p>
           <CountdownTimer nextUpdate={nextUpdate || null} />
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }

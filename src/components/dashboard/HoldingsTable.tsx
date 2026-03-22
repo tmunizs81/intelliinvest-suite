@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowUpRight, ArrowDownRight, Loader2, Plus, Pencil, Trash2, ChevronRight } from 'lucide-react';
 import { type Asset, formatCurrency, formatPercent } from '@/lib/mockData';
 import type { HoldingRow } from '@/hooks/usePortfolio';
+import { motion } from 'framer-motion';
 
 const typeBadgeClass: Record<string, string> = {
   'Ação': 'bg-primary/10 text-primary',
@@ -37,7 +38,12 @@ export default function HoldingsTable({ assets, holdings, loading, onAdd, onEdit
   };
 
   return (
-    <div className="rounded-lg border border-border bg-card overflow-hidden animate-fade-in">
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.25 }}
+      className="rounded-lg border border-border bg-card overflow-hidden"
+    >
       <div className="p-5 border-b border-border flex items-center justify-between">
         <div>
           <h2 className="text-lg font-semibold">Carteira de Ativos</h2>
@@ -99,7 +105,14 @@ export default function HoldingsTable({ assets, holdings, loading, onAdd, onEdit
                 const holdingRow = holdings.find(h => h.ticker === asset.ticker);
 
                 return (
-                  <tr key={asset.ticker} className="border-b border-border/50 hover:bg-accent/50 transition-colors cursor-pointer" onClick={() => navigate(`/asset/${asset.ticker}`)}>
+                  <motion.tr
+                    key={asset.ticker}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.15, delay: Math.min(assets.indexOf(asset) * 0.03, 0.3) }}
+                    className="border-b border-border/50 hover:bg-accent/50 transition-colors cursor-pointer"
+                    onClick={() => navigate(`/asset/${asset.ticker}`)}
+                  >
                     <td className="p-4">
                       <div className="flex items-center gap-1.5">
                         <span className="font-semibold font-mono">{asset.ticker}</span>
@@ -172,13 +185,13 @@ export default function HoldingsTable({ assets, holdings, loading, onAdd, onEdit
                         )}
                       </div>
                     </td>
-                  </tr>
+                  </motion.tr>
                 );
               })}
             </tbody>
           </table>
         </div>
       )}
-    </div>
+    </motion.div>
   );
 }
