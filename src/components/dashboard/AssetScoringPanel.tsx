@@ -44,7 +44,7 @@ function ScoreBar({ value, label }: { value: number; label: string }) {
           style={{ width: `${value * 10}%` }}
         />
       </div>
-      <span className={`text-[10px] font-mono font-bold w-5 ${getScoreColor(value)}`}>{value}</span>
+      <span className={`text-[10px] font-mono font-bold w-5 ${getScoreColor(value ?? 0)}`}>{value ?? 0}</span>
     </div>
   );
 }
