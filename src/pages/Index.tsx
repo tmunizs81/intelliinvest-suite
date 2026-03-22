@@ -129,57 +129,63 @@ const Index = () => {
           )}
 
           {loading && assets.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-32 gap-4 animate-fade-in">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              <p className="text-muted-foreground">Carregando carteira...</p>
-            </div>
+            <DashboardSkeleton />
           ) : (
             <div className="pb-12">
               <DashboardTabs activeTab={activeTab} onTabChange={setActiveTab} isMobile={isMobile} />
 
-              <div className="mt-4 animate-fade-in" key={activeTab}>
-                <div className={isMobile ? 'flex flex-col gap-3' : 'space-y-6'}>
-                  <Suspense fallback={<TabFallback />}>
-                    {activeTab === 'resumo' && (
-                      <TabResumo
-                        assets={assets}
-                        lastUpdate={lastUpdate}
-                        nextUpdate={nextUpdate}
-                        snapshots={snapshots}
-                        snapshotsLoading={snapshotsLoading}
-                        isMobile={isMobile}
-                      />
-                    )}
-                    {activeTab === 'carteira' && (
-                      <TabCarteira
-                        assets={assets}
-                        holdings={holdings}
-                        loading={loading}
-                        isMobile={isMobile}
-                        onAdd={() => { setEditingHolding(null); setModalOpen(true); }}
-                        onEdit={handleEdit}
-                        onDelete={deleteHolding}
-                      />
-                    )}
-                    {activeTab === 'analise' && (
-                      <TabAnalise
-                        assets={assets}
-                        snapshots={snapshots}
-                        isMobile={isMobile}
-                      />
-                    )}
-                    {activeTab === 'ia' && (
-                      <TabIA assets={assets} isMobile={isMobile} />
-                    )}
-                    {activeTab === 'alertas' && (
-                      <TabAlertas assets={assets} isMobile={isMobile} />
-                    )}
-                    {activeTab === 'mais' && (
-                      <TabMais assets={assets} isMobile={isMobile} />
-                    )}
-                  </Suspense>
-                </div>
-              </div>
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={activeTab}
+                  initial={{ opacity: 0, x: 12 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -12 }}
+                  transition={{ type: 'tween', duration: 0.15, ease: 'easeOut' }}
+                  className="mt-4"
+                >
+                  <div className={isMobile ? 'flex flex-col gap-3' : 'space-y-6'}>
+                    <Suspense fallback={<TabFallback />}>
+                      {activeTab === 'resumo' && (
+                        <TabResumo
+                          assets={assets}
+                          lastUpdate={lastUpdate}
+                          nextUpdate={nextUpdate}
+                          snapshots={snapshots}
+                          snapshotsLoading={snapshotsLoading}
+                          isMobile={isMobile}
+                        />
+                      )}
+                      {activeTab === 'carteira' && (
+                        <TabCarteira
+                          assets={assets}
+                          holdings={holdings}
+                          loading={loading}
+                          isMobile={isMobile}
+                          onAdd={() => { setEditingHolding(null); setModalOpen(true); }}
+                          onEdit={handleEdit}
+                          onDelete={deleteHolding}
+                        />
+                      )}
+                      {activeTab === 'analise' && (
+                        <TabAnalise
+                          assets={assets}
+                          snapshots={snapshots}
+                          isMobile={isMobile}
+                        />
+                      )}
+                      {activeTab === 'ia' && (
+                        <TabIA assets={assets} isMobile={isMobile} />
+                      )}
+                      {activeTab === 'alertas' && (
+                        <TabAlertas assets={assets} isMobile={isMobile} />
+                      )}
+                      {activeTab === 'mais' && (
+                        <TabMais assets={assets} isMobile={isMobile} />
+                      )}
+                    </Suspense>
+                  </div>
+                </motion.div>
+              </AnimatePresence>
             </div>
           )}
         </div>
