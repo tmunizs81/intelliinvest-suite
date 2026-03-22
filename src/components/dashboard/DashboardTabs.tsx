@@ -1,4 +1,5 @@
 import { LayoutDashboard, BarChart3, Brain, Briefcase, Bell, Settings2 } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 export const dashboardTabs = [
   { id: 'resumo', label: 'Resumo', icon: LayoutDashboard },
@@ -29,14 +30,19 @@ export default function DashboardTabs({ activeTab, onTabChange, isMobile }: Prop
               <button
                 key={tab.id}
                 onClick={() => onTabChange(tab.id)}
-                className={`flex flex-col items-center gap-0.5 px-3 py-2 min-w-[60px] text-[10px] font-medium transition-all border-b-2 ${
-                  isActive
-                    ? 'border-primary text-primary'
-                    : 'border-transparent text-muted-foreground'
+                className={`relative flex flex-col items-center gap-0.5 px-3 py-2 min-w-[60px] text-[10px] font-medium transition-colors active:scale-95 ${
+                  isActive ? 'text-primary' : 'text-muted-foreground'
                 }`}
               >
                 <Icon className="h-4 w-4" />
                 {tab.label}
+                {isActive && (
+                  <motion.div
+                    layoutId="mobile-tab-indicator"
+                    className="absolute bottom-0 left-2 right-2 h-0.5 bg-primary rounded-full"
+                    transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+                  />
+                )}
               </button>
             );
           })}
@@ -55,14 +61,21 @@ export default function DashboardTabs({ activeTab, onTabChange, isMobile }: Prop
             <button
               key={tab.id}
               onClick={() => onTabChange(tab.id)}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
+              className={`relative flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all active:scale-[0.97] ${
                 isActive
-                  ? 'bg-primary/10 text-primary border border-primary/20'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/50 border border-transparent'
+                  ? 'text-primary'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
               }`}
             >
-              <Icon className={`h-4 w-4 ${isActive ? 'text-primary' : ''}`} />
-              {tab.label}
+              {isActive && (
+                <motion.div
+                  layoutId="desktop-tab-bg"
+                  className="absolute inset-0 bg-primary/10 border border-primary/20 rounded-lg"
+                  transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+                />
+              )}
+              <Icon className={`h-4 w-4 relative z-10 ${isActive ? 'text-primary' : ''}`} />
+              <span className="relative z-10">{tab.label}</span>
             </button>
           );
         })}
