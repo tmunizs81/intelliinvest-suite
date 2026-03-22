@@ -4,6 +4,7 @@ import { type Asset } from '@/lib/mockData';
 import { useAIRateLimit } from '@/hooks/useAIRateLimit';
 import { checkAIProviderFallback } from '@/lib/aiProviderToast';
 import { Shield, Loader2, AlertTriangle, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
+import { AIScoreSkeleton } from '@/components/ui/ai-skeleton';
 
 interface RiskAnalysis {
   riskScore: number;
