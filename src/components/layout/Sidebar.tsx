@@ -54,7 +54,7 @@ export default function Sidebar() {
           >
             <Menu className="h-5 w-5" />
           </button>
-          <img src="/pwa-icon-192.png" alt="T2" className="h-6 w-6 rounded" />
+          <img src="/pwa-icon-192.png" alt="T2" className="h-6 w-6 rounded" loading="lazy" />
           <span className="text-base font-bold tracking-tight">
             T2-<span className="text-primary">Simplynvest</span>
           </span>
@@ -86,7 +86,7 @@ export default function Sidebar() {
         {/* Logo */}
         <div className="flex items-center justify-between px-4 h-14 md:h-16 border-b border-border shrink-0">
           <div className="flex items-center gap-2">
-            <img src="/pwa-icon-192.png" alt="T2" className="h-7 w-7 rounded shrink-0" />
+            <img src="/pwa-icon-192.png" alt="T2" className="h-7 w-7 rounded shrink-0" loading="lazy" />
             {(!collapsed || mobileOpen) && (
               <span className="text-lg font-bold tracking-tight">
                 T2-<span className="text-primary">Simplynvest</span>

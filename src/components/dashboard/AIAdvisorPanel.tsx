@@ -1,9 +1,10 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, lazy, Suspense } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { type Asset } from '@/lib/mockData';
 import { useAIRateLimit } from '@/hooks/useAIRateLimit';
+import { getCached, setCache, CACHE_TTL } from '@/lib/persistentCache';
 import { Bot, Send, Loader2, Sparkles } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
+const ReactMarkdown = lazy(() => import('react-markdown'));
 
 interface Props {
   assets: Asset[];
@@ -30,6 +31,16 @@ export default function AIAdvisorPanel({ assets, cashBalance = 0 }: Props) {
     setLoading(true);
     setResponse('');
     setQuestion(q);
+
+    // Check persistent cache
+    const tickers = assets.map(a => a.ticker).sort().join(',');
+    const cacheKey = `ai-advisor:${tickers}:${q}`;
+    const cached = await getCached<string>(cacheKey);
+    if (cached) {
+      setResponse(cached);
+      setLoading(false);
+      return;
+    }
 
     try {
       abortRef.current = new AbortController();
@@ -73,6 +84,11 @@ export default function AIAdvisorPanel({ assets, cashBalance = 0 }: Props) {
             }
           } catch {}
         }
+      }
+
+      // Cache the complete response
+      if (fullText) {
+        await setCache(cacheKey, fullText, CACHE_TTL.AI_RESPONSE);
       }
     } catch (err: any) {
       if (err.name !== 'AbortError') {
@@ -124,7 +140,9 @@ export default function AIAdvisorPanel({ assets, cashBalance = 0 }: Props) {
 
         {response && (
           <div className="prose prose-sm prose-invert max-w-none text-xs leading-relaxed">
-            <ReactMarkdown>{response}</ReactMarkdown>
+            <Suspense fallback={<p className="text-xs text-muted-foreground">{response}</p>}>
+              <ReactMarkdown>{response}</ReactMarkdown>
+            </Suspense>
           </div>
         )}
       </div>

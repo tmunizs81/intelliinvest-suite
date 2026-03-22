@@ -22,6 +22,37 @@ export default defineConfig(({ mode }) => ({
       workbox: {
         navigateFallbackDenylist: [/^\/~oauth/],
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
+        runtimeCaching: [
+          {
+            // Cache edge function API responses (quotes, benchmarks, rates)
+            urlPattern: /\/functions\/v1\/(yahoo-finance|benchmarks|bcb-rates|dividends)$/,
+            handler: "StaleWhileRevalidate",
+            options: {
+              cacheName: "api-cache",
+              expiration: { maxEntries: 50, maxAgeSeconds: 5 * 60 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+          {
+            // Cache AI responses longer
+            urlPattern: /\/functions\/v1\/ai-/,
+            handler: "CacheFirst",
+            options: {
+              cacheName: "ai-cache",
+              expiration: { maxEntries: 30, maxAgeSeconds: 10 * 60 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+          {
+            // Cache images
+            urlPattern: /\.(?:png|jpg|jpeg|svg|gif|webp)$/,
+            handler: "CacheFirst",
+            options: {
+              cacheName: "image-cache",
+              expiration: { maxEntries: 60, maxAgeSeconds: 30 * 24 * 60 * 60 },
+            },
+          },
+        ],
       },
       manifest: {
         name: "T2-Simplynvest - Carteira Inteligente",
