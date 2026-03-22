@@ -49,7 +49,7 @@ const REPORT_TOOL = {
 
 async function callAI(messages: any[]) {
   const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
-  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+  
 
   // Try DeepSeek first
   if (DEEPSEEK_API_KEY) {

@@ -7,7 +7,6 @@ const corsHeaders = {
 
 async function callAISimple(messages: any[]): Promise<string | null> {
   const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
-  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
   if (DEEPSEEK_API_KEY) {
     try {
@@ -20,19 +19,11 @@ async function callAISimple(messages: any[]): Promise<string | null> {
         const data = await resp.json();
         return data.choices?.[0]?.message?.content || null;
       }
-      console.warn("DeepSeek failed, falling back");
+      console.warn("DeepSeek failed");
     } catch (e) { console.warn("DeepSeek error:", e); }
   }
 
-  if (!LOVABLE_API_KEY) return null;
-  const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ model: "google/gemini-2.5-flash", messages, max_tokens: 600 }),
-  });
-  if (!resp.ok) return null;
-  const data = await resp.json();
-  return data.choices?.[0]?.message?.content || null;
+  return null;
 }
 
 Deno.serve(async (req) => {
