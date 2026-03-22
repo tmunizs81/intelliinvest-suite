@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowUpRight, ArrowDownRight, Loader2, Plus, Pencil, Trash2, ChevronRight } from 'lucide-react';
 import { type Asset, formatCurrency, formatPercent } from '@/lib/mockData';
 import type { HoldingRow } from '@/hooks/usePortfolio';
-import { List } from 'react-window';
 import { motion } from 'framer-motion';
 
 const typeBadgeClass: Record<string, string> = {
@@ -27,8 +26,7 @@ interface Props {
   onDelete: (id: string) => void;
 }
 
-// Memoized row component for virtualized list
-const VirtualRow = memo(({ asset, holdingRow, onEdit, onDelete, deletingId, navigate }: {
+const TableRow = memo(({ asset, holdingRow, onEdit, onDelete, deletingId, navigate }: {
   asset: Asset;
   holdingRow?: HoldingRow;
   onEdit: (h: HoldingRow) => void;
@@ -124,11 +122,7 @@ const VirtualRow = memo(({ asset, holdingRow, onEdit, onDelete, deletingId, navi
   );
 });
 
-VirtualRow.displayName = 'VirtualRow';
-
-// Use virtualization only when assets > 30, otherwise render normally
-const VIRTUALIZATION_THRESHOLD = 30;
-const ROW_HEIGHT = 64;
+TableRow.displayName = 'TableRow';
 
 export default function HoldingsTable({ assets, holdings, loading, onAdd, onEdit, onDelete }: Props) {
   const navigate = useNavigate();
@@ -146,25 +140,6 @@ export default function HoldingsTable({ assets, holdings, loading, onAdd, onEdit
     holdings.forEach(h => map.set(h.ticker, h));
     return map;
   }, [holdings]);
-
-  const useVirtualization = assets.length > VIRTUALIZATION_THRESHOLD;
-
-  const renderRow = useCallback(({ index, style }: { index: number; style?: React.CSSProperties }) => {
-    const asset = assets[index];
-    const holdingRow = holdingsMap.get(asset.ticker);
-    return (
-      <tbody key={asset.ticker} style={style}>
-        <VirtualRow
-          asset={asset}
-          holdingRow={holdingRow}
-          onEdit={onEdit}
-          onDelete={handleDelete}
-          deletingId={deletingId}
-          navigate={navigate}
-        />
-      </tbody>
-    );
-  }, [assets, holdingsMap, onEdit, handleDelete, deletingId, navigate]);
 
   return (
     <motion.div
@@ -207,9 +182,9 @@ export default function HoldingsTable({ assets, holdings, loading, onAdd, onEdit
           </button>
         </div>
       ) : (
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
           <table className="w-full text-sm">
-            <thead>
+            <thead className="sticky top-0 bg-card z-10">
               <tr className="border-b border-border text-muted-foreground">
                 <th className="text-left p-4 font-medium">Ativo</th>
                 <th className="text-left p-4 font-medium">Tipo</th>
@@ -223,56 +198,20 @@ export default function HoldingsTable({ assets, holdings, loading, onAdd, onEdit
                 <th className="text-right p-4 font-medium w-20"></th>
               </tr>
             </thead>
-            {!useVirtualization && (
-              <tbody>
-                {assets.map((asset) => {
-                  const holdingRow = holdingsMap.get(asset.ticker);
-                  return (
-                    <VirtualRow
-                      key={asset.ticker}
-                      asset={asset}
-                      holdingRow={holdingRow}
-                      onEdit={onEdit}
-                      onDelete={handleDelete}
-                      deletingId={deletingId}
-                      navigate={navigate}
-                    />
-                  );
-                })}
-              </tbody>
-            )}
+            <tbody>
+              {assets.map((asset) => (
+                <TableRow
+                  key={asset.ticker}
+                  asset={asset}
+                  holdingRow={holdingsMap.get(asset.ticker)}
+                  onEdit={onEdit}
+                  onDelete={handleDelete}
+                  deletingId={deletingId}
+                  navigate={navigate}
+                />
+              ))}
+            </tbody>
           </table>
-          {useVirtualization && (
-            <div style={{ height: Math.min(assets.length * ROW_HEIGHT, 600) }}>
-              <List
-                height={Math.min(assets.length * ROW_HEIGHT, 600)}
-                itemCount={assets.length}
-                itemSize={ROW_HEIGHT}
-                width="100%"
-              >
-                {({ index, style }) => {
-                  const asset = assets[index];
-                  const holdingRow = holdingsMap.get(asset.ticker);
-                  return (
-                    <div style={style}>
-                      <table className="w-full text-sm">
-                        <tbody>
-                          <VirtualRow
-                            asset={asset}
-                            holdingRow={holdingRow}
-                            onEdit={onEdit}
-                            onDelete={handleDelete}
-                            deletingId={deletingId}
-                            navigate={navigate}
-                          />
-                        </tbody>
-                      </table>
-                    </div>
-                  );
-                }}
-              </List>
-            </div>
-          )}
         </div>
       )}
     </motion.div>
