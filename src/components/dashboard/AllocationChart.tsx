@@ -1,3 +1,4 @@
+import { memo, useMemo } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { type Asset } from '@/lib/mockData';
 
@@ -18,16 +19,18 @@ interface Props {
   assets: Asset[];
 }
 
-export default function AllocationChart({ assets }: Props) {
-  const sectorData = assets.reduce<Record<string, number>>((acc, a) => {
-    const sector = a.sector || 'Outros';
-    acc[sector] = (acc[sector] || 0) + a.allocation;
-    return acc;
-  }, {});
+export default memo(function AllocationChart({ assets }: Props) {
+  const chartData = useMemo(() => {
+    const sectorData = assets.reduce<Record<string, number>>((acc, a) => {
+      const sector = a.sector || 'Outros';
+      acc[sector] = (acc[sector] || 0) + a.allocation;
+      return acc;
+    }, {});
 
-  const chartData = Object.entries(sectorData)
-    .map(([name, value]) => ({ name, value: Math.round(value * 10) / 10 }))
-    .sort((a, b) => b.value - a.value);
+    return Object.entries(sectorData)
+      .map(([name, value]) => ({ name, value: Math.round(value * 10) / 10 }))
+      .sort((a, b) => b.value - a.value);
+  }, [assets]);
 
   return (
     <div className="rounded-lg border border-border bg-card p-5 animate-fade-in">
@@ -77,4 +80,4 @@ export default function AllocationChart({ assets }: Props) {
       </div>
     </div>
   );
-}
+});

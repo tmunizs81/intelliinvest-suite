@@ -1,8 +1,9 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowUpRight, ArrowDownRight, Loader2, Plus, Pencil, Trash2, ChevronRight } from 'lucide-react';
 import { type Asset, formatCurrency, formatPercent } from '@/lib/mockData';
 import type { HoldingRow } from '@/hooks/usePortfolio';
+import { FixedSizeList as List } from 'react-window';
 import { motion } from 'framer-motion';
 
 const typeBadgeClass: Record<string, string> = {
@@ -26,16 +27,144 @@ interface Props {
   onDelete: (id: string) => void;
 }
 
+// Memoized row component for virtualized list
+const VirtualRow = memo(({ asset, holdingRow, onEdit, onDelete, deletingId, navigate }: {
+  asset: Asset;
+  holdingRow?: HoldingRow;
+  onEdit: (h: HoldingRow) => void;
+  onDelete: (id: string) => void;
+  deletingId: string | null;
+  navigate: (path: string) => void;
+}) => {
+  const total = asset.currentPrice * asset.quantity;
+  const cost = asset.avgPrice * asset.quantity;
+  const profit = total - cost;
+  const profitPct = cost > 0 ? (profit / cost) * 100 : 0;
+  const isPositive = asset.change24h >= 0;
+  const isProfitable = profit >= 0;
+
+  return (
+    <tr
+      className="border-b border-border/50 hover:bg-accent/50 transition-colors cursor-pointer"
+      onClick={() => navigate(`/asset/${asset.ticker}`)}
+    >
+      <td className="p-4">
+        <div className="flex items-center gap-1.5">
+          <span className="font-semibold font-mono">{asset.ticker}</span>
+          <ChevronRight className="h-3 w-3 text-muted-foreground" />
+        </div>
+        <p className="text-xs text-muted-foreground">{asset.name}</p>
+      </td>
+      <td className="p-4">
+        <span className={`text-xs px-2 py-1 rounded-full font-medium ${typeBadgeClass[asset.type] || ''}`}>
+          {asset.type}
+        </span>
+      </td>
+      <td className="text-right p-4 font-mono">{asset.quantity}</td>
+      <td className="text-right p-4 font-mono text-muted-foreground">{formatCurrency(asset.avgPrice)}</td>
+      <td className="text-right p-4 font-mono font-medium">
+        {asset.currentPrice > 0 ? formatCurrency(asset.currentPrice) : '—'}
+      </td>
+      <td className="text-right p-4">
+        {asset.currentPrice > 0 ? (
+          <span className={`inline-flex items-center gap-1 font-mono text-sm ${isPositive ? 'text-gain' : 'text-loss'}`}>
+            {isPositive ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
+            {formatPercent(asset.change24h)}
+          </span>
+        ) : '—'}
+      </td>
+      <td className="text-right p-4 font-mono font-medium">
+        {asset.currentPrice > 0 ? formatCurrency(total) : '—'}
+      </td>
+      <td className="text-right p-4">
+        {asset.currentPrice > 0 ? (
+          <div className={`font-mono ${isProfitable ? 'text-gain' : 'text-loss'}`}>
+            <span className="font-medium">{formatCurrency(profit)}</span>
+            <p className="text-xs">{formatPercent(profitPct)}</p>
+          </div>
+        ) : '—'}
+      </td>
+      <td className="text-center p-4">
+        {asset.source ? (
+          <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
+            asset.source === 'brapi'
+              ? 'bg-emerald-500/10 text-emerald-400'
+              : asset.source === 'yahoo'
+                ? 'bg-violet-500/10 text-violet-400'
+                : 'bg-muted text-muted-foreground'
+          }`}>
+            {asset.source === 'brapi' ? 'Brapi' : asset.source === 'yahoo' ? 'Yahoo' : '—'}
+          </span>
+        ) : (
+          <span className="text-muted-foreground text-xs">—</span>
+        )}
+      </td>
+      <td className="text-right p-4" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-end gap-1">
+          {holdingRow && (
+            <>
+              <button
+                onClick={() => onEdit(holdingRow)}
+                className="h-7 w-7 rounded flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+              >
+                <Pencil className="h-3.5 w-3.5" />
+              </button>
+              <button
+                onClick={() => onDelete(holdingRow.id)}
+                disabled={deletingId === holdingRow.id}
+                className="h-7 w-7 rounded flex items-center justify-center text-muted-foreground hover:text-loss hover:bg-loss/10 transition-colors"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            </>
+          )}
+        </div>
+      </td>
+    </tr>
+  );
+});
+
+VirtualRow.displayName = 'VirtualRow';
+
+// Use virtualization only when assets > 30, otherwise render normally
+const VIRTUALIZATION_THRESHOLD = 30;
+const ROW_HEIGHT = 64;
+
 export default function HoldingsTable({ assets, holdings, loading, onAdd, onEdit, onDelete }: Props) {
   const navigate = useNavigate();
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = useCallback(async (id: string) => {
     if (!confirm('Remover este ativo da carteira?')) return;
     setDeletingId(id);
     onDelete(id);
     setDeletingId(null);
-  };
+  }, [onDelete]);
+
+  const holdingsMap = useMemo(() => {
+    const map = new Map<string, HoldingRow>();
+    holdings.forEach(h => map.set(h.ticker, h));
+    return map;
+  }, [holdings]);
+
+  const useVirtualization = assets.length > VIRTUALIZATION_THRESHOLD;
+
+  const renderRow = useCallback(({ index, style }: { index: number; style?: React.CSSProperties }) => {
+    const asset = assets[index];
+    const holdingRow = holdingsMap.get(asset.ticker);
+    return (
+      <tbody key={asset.ticker} style={style}>
+        <VirtualRow
+          asset={asset}
+          holdingRow={holdingRow}
+          onEdit={onEdit}
+          onDelete={handleDelete}
+          deletingId={deletingId}
+          navigate={navigate}
+        />
+      </tbody>
+    );
+  }, [assets, holdingsMap, onEdit, handleDelete, deletingId, navigate]);
 
   return (
     <motion.div
@@ -94,102 +223,56 @@ export default function HoldingsTable({ assets, holdings, loading, onAdd, onEdit
                 <th className="text-right p-4 font-medium w-20"></th>
               </tr>
             </thead>
-            <tbody>
-              {assets.map((asset) => {
-                const total = asset.currentPrice * asset.quantity;
-                const cost = asset.avgPrice * asset.quantity;
-                const profit = total - cost;
-                const profitPct = cost > 0 ? (profit / cost) * 100 : 0;
-                const isPositive = asset.change24h >= 0;
-                const isProfitable = profit >= 0;
-                const holdingRow = holdings.find(h => h.ticker === asset.ticker);
-
-                return (
-                  <motion.tr
-                    key={asset.ticker}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: 0.15, delay: Math.min(assets.indexOf(asset) * 0.03, 0.3) }}
-                    className="border-b border-border/50 hover:bg-accent/50 transition-colors cursor-pointer"
-                    onClick={() => navigate(`/asset/${asset.ticker}`)}
-                  >
-                    <td className="p-4">
-                      <div className="flex items-center gap-1.5">
-                        <span className="font-semibold font-mono">{asset.ticker}</span>
-                        <ChevronRight className="h-3 w-3 text-muted-foreground" />
-                      </div>
-                      <p className="text-xs text-muted-foreground">{asset.name}</p>
-                    </td>
-                    <td className="p-4">
-                      <span className={`text-xs px-2 py-1 rounded-full font-medium ${typeBadgeClass[asset.type] || ''}`}>
-                        {asset.type}
-                      </span>
-                    </td>
-                    <td className="text-right p-4 font-mono">{asset.quantity}</td>
-                    <td className="text-right p-4 font-mono text-muted-foreground">{formatCurrency(asset.avgPrice)}</td>
-                    <td className="text-right p-4 font-mono font-medium">
-                      {asset.currentPrice > 0 ? formatCurrency(asset.currentPrice) : '—'}
-                    </td>
-                    <td className="text-right p-4">
-                      {asset.currentPrice > 0 ? (
-                        <span className={`inline-flex items-center gap-1 font-mono text-sm ${isPositive ? 'text-gain' : 'text-loss'}`}>
-                          {isPositive ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
-                          {formatPercent(asset.change24h)}
-                        </span>
-                      ) : '—'}
-                    </td>
-                    <td className="text-right p-4 font-mono font-medium">
-                      {asset.currentPrice > 0 ? formatCurrency(total) : '—'}
-                    </td>
-                    <td className="text-right p-4">
-                      {asset.currentPrice > 0 ? (
-                        <div className={`font-mono ${isProfitable ? 'text-gain' : 'text-loss'}`}>
-                          <span className="font-medium">{formatCurrency(profit)}</span>
-                          <p className="text-xs">{formatPercent(profitPct)}</p>
-                        </div>
-                      ) : '—'}
-                    </td>
-                    <td className="text-center p-4">
-                      {asset.source ? (
-                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
-                          asset.source === 'brapi'
-                            ? 'bg-emerald-500/10 text-emerald-400'
-                            : asset.source === 'yahoo'
-                              ? 'bg-violet-500/10 text-violet-400'
-                              : 'bg-muted text-muted-foreground'
-                        }`}>
-                          {asset.source === 'brapi' ? 'Brapi' : asset.source === 'yahoo' ? 'Yahoo' : '—'}
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground text-xs">—</span>
-                      )}
-                    </td>
-                    <td className="text-right p-4" onClick={e => e.stopPropagation()}>
-                      <div className="flex items-center justify-end gap-1">
-                        {holdingRow && (
-                          <>
-                            <button
-                              onClick={() => onEdit(holdingRow)}
-                              className="h-7 w-7 rounded flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                            >
-                              <Pencil className="h-3.5 w-3.5" />
-                            </button>
-                            <button
-                              onClick={() => handleDelete(holdingRow.id)}
-                              disabled={deletingId === holdingRow.id}
-                              className="h-7 w-7 rounded flex items-center justify-center text-muted-foreground hover:text-loss hover:bg-loss/10 transition-colors"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </td>
-                  </motion.tr>
-                );
-              })}
-            </tbody>
+            {!useVirtualization && (
+              <tbody>
+                {assets.map((asset) => {
+                  const holdingRow = holdingsMap.get(asset.ticker);
+                  return (
+                    <VirtualRow
+                      key={asset.ticker}
+                      asset={asset}
+                      holdingRow={holdingRow}
+                      onEdit={onEdit}
+                      onDelete={handleDelete}
+                      deletingId={deletingId}
+                      navigate={navigate}
+                    />
+                  );
+                })}
+              </tbody>
+            )}
           </table>
+          {useVirtualization && (
+            <div style={{ height: Math.min(assets.length * ROW_HEIGHT, 600) }}>
+              <List
+                height={Math.min(assets.length * ROW_HEIGHT, 600)}
+                itemCount={assets.length}
+                itemSize={ROW_HEIGHT}
+                width="100%"
+              >
+                {({ index, style }) => {
+                  const asset = assets[index];
+                  const holdingRow = holdingsMap.get(asset.ticker);
+                  return (
+                    <div style={style}>
+                      <table className="w-full text-sm">
+                        <tbody>
+                          <VirtualRow
+                            asset={asset}
+                            holdingRow={holdingRow}
+                            onEdit={onEdit}
+                            onDelete={handleDelete}
+                            deletingId={deletingId}
+                            navigate={navigate}
+                          />
+                        </tbody>
+                      </table>
+                    </div>
+                  );
+                }}
+              </List>
+            </div>
+          )}
         </div>
       )}
     </motion.div>

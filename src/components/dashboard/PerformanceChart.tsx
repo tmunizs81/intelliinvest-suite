@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from 'recharts';
+import { useState, useEffect, useCallback, useMemo, memo } from 'react';
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { Loader2, BarChart3, Eye, EyeOff } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { type Asset, formatPercent, mockPortfolioHistory } from '@/lib/mockData';
@@ -29,7 +29,29 @@ const LABELS: Record<string, string> = {
   cdi: 'CDI',
 };
 
-export default function PerformanceChart({ assets }: Props) {
+const CustomTooltip = memo(({ active, payload, label }: any) => {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="rounded-lg border border-border bg-card p-3 text-xs shadow-xl">
+      <p className="font-medium mb-2">{new Date(label).toLocaleDateString('pt-BR')}</p>
+      {payload.map((entry: any) => (
+        <div key={entry.dataKey} className="flex items-center justify-between gap-4 py-0.5">
+          <div className="flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full" style={{ backgroundColor: entry.color }} />
+            <span className="text-muted-foreground">{LABELS[entry.dataKey]}</span>
+          </div>
+          <span className="font-mono font-medium" style={{ color: entry.color }}>
+            {formatPercent(entry.value)}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+});
+
+CustomTooltip.displayName = 'CustomTooltip';
+
+export default memo(function PerformanceChart({ assets }: Props) {
   const [benchmarks, setBenchmarks] = useState<Record<string, BenchmarkData>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -54,47 +76,35 @@ export default function PerformanceChart({ assets }: Props) {
     }
   }, [range]);
 
-  useEffect(() => {
-    fetchBenchmarks();
-  }, [fetchBenchmarks]);
+  useEffect(() => { fetchBenchmarks(); }, [fetchBenchmarks]);
 
-  // Build portfolio performance as % return, using mock history scaled to current value
   const portfolioPerf = useMemo(() => {
     const currentTotal = assets.reduce((s, a) => s + a.currentPrice * a.quantity, 0);
     if (currentTotal === 0) return { dates: [] as string[], values: [] as number[] };
-
     const historyLast = mockPortfolioHistory[mockPortfolioHistory.length - 1]?.value || 1;
     const scale = currentTotal / historyLast;
-
     const rangeDays: Record<RangeOption, number> = { '3mo': 90, '6mo': 180, '1y': 365, '2y': 730 };
     const sliced = mockPortfolioHistory.slice(-rangeDays[range]);
     const scaledValues = sliced.map(p => p.value * scale);
     const base = scaledValues[0] || 1;
-
     return {
       dates: sliced.map(p => p.date),
       values: scaledValues.map(v => ((v / base) - 1) * 100),
     };
   }, [assets, range]);
 
-  // Merge all series into chart-ready data
   const chartData = useMemo(() => {
-    // Use ibovespa dates as primary reference
     const refDates = benchmarks.ibovespa?.dates || portfolioPerf.dates;
     if (refDates.length === 0) return [];
-
-    // Build lookup maps
     const makeMap = (dates: string[], values: number[]) => {
       const map = new Map<string, number>();
       dates.forEach((d, i) => map.set(d, values[i]));
       return map;
     };
-
     const portfolioMap = makeMap(portfolioPerf.dates, portfolioPerf.values);
     const ibovMap = makeMap(benchmarks.ibovespa?.dates || [], benchmarks.ibovespa?.values || []);
     const dolarMap = makeMap(benchmarks.dolar?.dates || [], benchmarks.dolar?.values || []);
     const cdiMap = makeMap(benchmarks.cdi?.dates || [], benchmarks.cdi?.values || []);
-
     return refDates.map(date => ({
       date,
       portfolio: portfolioMap.get(date) ?? null,
@@ -111,29 +121,9 @@ export default function PerformanceChart({ assets }: Props) {
     { value: '2y', label: '2A' },
   ];
 
-  const toggleVisibility = (key: string) => {
+  const toggleVisibility = useCallback((key: string) => {
     setVisible(prev => ({ ...prev, [key]: !prev[key as keyof typeof prev] }));
-  };
-
-  const CustomTooltip = ({ active, payload, label }: any) => {
-    if (!active || !payload?.length) return null;
-    return (
-      <div className="rounded-lg border border-border bg-card p-3 text-xs shadow-xl">
-        <p className="font-medium mb-2">{new Date(label).toLocaleDateString('pt-BR')}</p>
-        {payload.map((entry: any) => (
-          <div key={entry.dataKey} className="flex items-center justify-between gap-4 py-0.5">
-            <div className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full" style={{ backgroundColor: entry.color }} />
-              <span className="text-muted-foreground">{LABELS[entry.dataKey]}</span>
-            </div>
-            <span className="font-mono font-medium" style={{ color: entry.color }}>
-              {formatPercent(entry.value)}
-            </span>
-          </div>
-        ))}
-      </div>
-    );
-  };
+  }, []);
 
   return (
     <div className="rounded-lg border border-border bg-card overflow-hidden animate-fade-in">
@@ -160,7 +150,6 @@ export default function PerformanceChart({ assets }: Props) {
           </div>
         </div>
 
-        {/* Toggle buttons */}
         <div className="flex flex-wrap gap-2">
           {Object.entries(LABELS).map(([key, label]) => (
             <button
@@ -223,61 +212,29 @@ export default function PerformanceChart({ assets }: Props) {
                 tickFormatter={(v) => `${v.toFixed(0)}%`}
               />
               <Tooltip content={<CustomTooltip />} />
-
               {visible.portfolio && (
-                <Line
-                  type="monotone"
-                  dataKey="portfolio"
-                  stroke={COLORS.portfolio}
-                  strokeWidth={2.5}
-                  dot={false}
-                  connectNulls
-                />
+                <Line type="monotone" dataKey="portfolio" stroke={COLORS.portfolio} strokeWidth={2.5} dot={false} connectNulls />
               )}
               {visible.ibovespa && (
-                <Line
-                  type="monotone"
-                  dataKey="ibovespa"
-                  stroke={COLORS.ibovespa}
-                  strokeWidth={1.5}
-                  dot={false}
-                  connectNulls
-                />
+                <Line type="monotone" dataKey="ibovespa" stroke={COLORS.ibovespa} strokeWidth={1.5} dot={false} connectNulls />
               )}
               {visible.dolar && (
-                <Line
-                  type="monotone"
-                  dataKey="dolar"
-                  stroke={COLORS.dolar}
-                  strokeWidth={1.5}
-                  dot={false}
-                  connectNulls
-                />
+                <Line type="monotone" dataKey="dolar" stroke={COLORS.dolar} strokeWidth={1.5} dot={false} connectNulls />
               )}
               {visible.cdi && (
-                <Line
-                  type="monotone"
-                  dataKey="cdi"
-                  stroke={COLORS.cdi}
-                  strokeWidth={1.5}
-                  dot={false}
-                  strokeDasharray="5 3"
-                  connectNulls
-                />
+                <Line type="monotone" dataKey="cdi" stroke={COLORS.cdi} strokeWidth={1.5} dot={false} strokeDasharray="5 3" connectNulls />
               )}
             </LineChart>
           </ResponsiveContainer>
         )}
       </div>
 
-      {/* Summary cards */}
       {chartData.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-4 border-t border-border">
           {Object.entries(LABELS).map(([key, label]) => {
             const values = chartData.map(d => d[key as keyof typeof d] as number | null).filter(v => v !== null) as number[];
             const lastVal = values[values.length - 1] ?? 0;
             const isPositive = lastVal >= 0;
-
             return (
               <div key={key} className="p-4 border-r border-border last:border-r-0">
                 <div className="flex items-center gap-1.5 mb-1">
@@ -294,4 +251,4 @@ export default function PerformanceChart({ assets }: Props) {
       )}
     </div>
   );
-}
+});
