@@ -185,13 +185,13 @@ export default function HoldingsTable({ assets, holdings, loading, onAdd, onEdit
                         )}
                       </div>
                     </td>
-                  </tr>
+                  </motion.tr>
                 );
               })}
             </tbody>
           </table>
         </div>
       )}
-    </div>
+    </motion.div>
   );
 }
