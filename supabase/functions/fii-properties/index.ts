@@ -292,56 +292,7 @@ async function callDeepSeek(text: string, ticker: string): Promise<Property[] | 
   }
 }
 
-async function callLovableFallback(text: string, ticker: string): Promise<Property[] | null> {
-  if (!LOVABLE_API_KEY) return null;
-
-  try {
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
-        temperature: 0,
-        messages: [
-          {
-            role: "system",
-            content:
-              "Extraia somente imóveis/propriedades de FIIs no Brasil e devolva JSON puro no formato: {\"properties\":[{\"name\":\"...\",\"state\":\"SP\"}]}.",
-          },
-          {
-            role: "user",
-            content: `FII: ${ticker.toUpperCase()}\nTexto:\n${text.slice(0, 9000)}`,
-          },
-        ],
-      }),
-      signal: AbortSignal.timeout(12000),
-    });
-
-    if (!response.ok) return null;
-
-    const data = await response.json();
-    const content = data?.choices?.[0]?.message?.content;
-    if (!content) return null;
-
-    const jsonMatch = String(content).match(/\{[\s\S]*\}/);
-    if (!jsonMatch) return null;
-
-    const parsed = JSON.parse(jsonMatch[0]);
-    const list = Array.isArray(parsed?.properties) ? parsed.properties : [];
-
-    const normalized = list
-      .map((p: any) => normalizeProperty(String(p?.name ?? ""), String(p?.state ?? "")))
-      .filter(Boolean) as Property[];
-
-    return filterQuality(dedupeProperties(normalized));
-  } catch (e) {
-    console.warn("Lovable fallback extraction failed:", e instanceof Error ? e.message : e);
-    return null;
-  }
-}
+// Lovable AI fallback removed - DeepSeek only
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
