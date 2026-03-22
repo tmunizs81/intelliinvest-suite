@@ -93,10 +93,7 @@ export default function AIRiskPanel({ assets }: Props) {
         )}
 
         {loading && (
-          <div className="flex items-center gap-2 py-8 justify-center">
-            <Loader2 className="h-5 w-5 animate-spin text-primary" />
-            <span className="text-sm text-muted-foreground">Analisando riscos...</span>
-          </div>
+          <AIScoreSkeleton />
         )}
 
         {analysis && !loading && (

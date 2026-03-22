@@ -127,13 +127,7 @@ export default function AIInsightsPanel({ assets }: Props) {
 
       <div className="p-4 space-y-3">
         {loading && aiInsights.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-8 gap-3">
-            <div className="relative">
-              <Brain className="h-8 w-8 text-ai animate-pulse" />
-              <Sparkles className="h-4 w-4 text-ai absolute -top-1 -right-1 animate-bounce" />
-            </div>
-            <p className="text-sm text-muted-foreground">Gemini analisando sua carteira...</p>
-          </div>
+          <AISkeletonPanel lines={3} />
         )}
 
         {error && (

@@ -58,13 +58,13 @@ export default function TabResumo({ assets, lastUpdate, nextUpdate, snapshots, s
       {isMobile ? (
         <>
           <Panel title="Saúde da Carteira"><HealthScorePanel assets={assets} /></Panel>
-          <Panel title="Mapa de Calor"><TreemapPanel assets={assets} /></Panel>
-          <Panel title="Concentração Setorial"><SectorRadarPanel assets={assets} /></Panel>
-          <Panel title="Calendário de Eventos"><EventsCalendarPanel assets={assets} /></Panel>
-          <Panel title="Evolução Patrimonial"><PortfolioChart assets={assets} snapshots={snapshots} loading={snapshotsLoading} /></Panel>
-          <Panel title="Histórico Patrimonial"><PortfolioChart assets={assets} snapshots={snapshots} loading={snapshotsLoading} showCostLine /></Panel>
-          <Panel title="Patrimônio Imobiliário"><RealEstatePanel assets={assets} /></Panel>
-          <Panel title="🏆 Conquistas"><AchievementsPanel assets={assets} /></Panel>
+          <LazyPanel minHeight={300}><Panel title="Mapa de Calor"><TreemapPanel assets={assets} /></Panel></LazyPanel>
+          <LazyPanel minHeight={300}><Panel title="Concentração Setorial"><SectorRadarPanel assets={assets} /></Panel></LazyPanel>
+          <LazyPanel minHeight={250}><Panel title="Calendário de Eventos"><EventsCalendarPanel assets={assets} /></Panel></LazyPanel>
+          <LazyPanel minHeight={300}><Panel title="Evolução Patrimonial"><PortfolioChart assets={assets} snapshots={snapshots} loading={snapshotsLoading} /></Panel></LazyPanel>
+          <LazyPanel minHeight={300}><Panel title="Histórico Patrimonial"><PortfolioChart assets={assets} snapshots={snapshots} loading={snapshotsLoading} showCostLine /></Panel></LazyPanel>
+          <LazyPanel minHeight={200}><Panel title="Patrimônio Imobiliário"><RealEstatePanel assets={assets} /></Panel></LazyPanel>
+          <LazyPanel minHeight={200}><Panel title="🏆 Conquistas"><AchievementsPanel assets={assets} /></Panel></LazyPanel>
         </>
       ) : (
         <>
@@ -72,14 +72,16 @@ export default function TabResumo({ assets, lastUpdate, nextUpdate, snapshots, s
             <Panel title="Saúde da Carteira"><HealthScorePanel assets={assets} /></Panel>
             <Panel title="Evolução Patrimonial" className="lg:col-span-2"><PortfolioChart assets={assets} snapshots={snapshots} loading={snapshotsLoading} /></Panel>
           </div>
-          <Panel title="🗺️ Mapa de Calor (Treemap)"><TreemapPanel assets={assets} /></Panel>
-          <Grid2>
-            <Panel title="📡 Concentração Setorial (Radar)"><SectorRadarPanel assets={assets} /></Panel>
-            <Panel title="📅 Calendário de Eventos"><EventsCalendarPanel assets={assets} /></Panel>
-          </Grid2>
-          <Panel title="Histórico Patrimonial (Real)"><PortfolioChart assets={assets} snapshots={snapshots} loading={snapshotsLoading} showCostLine /></Panel>
-          <Panel title="🏠 Patrimônio Imobiliário"><RealEstatePanel assets={assets} /></Panel>
-          <Panel title="🏆 Conquistas e Badges"><AchievementsPanel assets={assets} /></Panel>
+          <LazyPanel minHeight={350}><Panel title="🗺️ Mapa de Calor (Treemap)"><TreemapPanel assets={assets} /></Panel></LazyPanel>
+          <LazyPanel minHeight={300}>
+            <Grid2>
+              <Panel title="📡 Concentração Setorial (Radar)"><SectorRadarPanel assets={assets} /></Panel>
+              <Panel title="📅 Calendário de Eventos"><EventsCalendarPanel assets={assets} /></Panel>
+            </Grid2>
+          </LazyPanel>
+          <LazyPanel minHeight={300}><Panel title="Histórico Patrimonial (Real)"><PortfolioChart assets={assets} snapshots={snapshots} loading={snapshotsLoading} showCostLine /></Panel></LazyPanel>
+          <LazyPanel minHeight={200}><Panel title="🏠 Patrimônio Imobiliário"><RealEstatePanel assets={assets} /></Panel></LazyPanel>
+          <LazyPanel minHeight={200}><Panel title="🏆 Conquistas e Badges"><AchievementsPanel assets={assets} /></Panel></LazyPanel>
         </>
       )}
     </>
