@@ -3,8 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowUpRight, ArrowDownRight, Loader2, Plus, Pencil, Trash2, ChevronRight } from 'lucide-react';
 import { type Asset, formatCurrency, formatPercent } from '@/lib/mockData';
 import type { HoldingRow } from '@/hooks/usePortfolio';
-import ReactWindow from 'react-window';
-const { FixedSizeList: List } = ReactWindow;
+import { List } from 'react-window';
 import { motion } from 'framer-motion';
 
 const typeBadgeClass: Record<string, string> = {
