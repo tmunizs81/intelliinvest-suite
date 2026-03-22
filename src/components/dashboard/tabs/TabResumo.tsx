@@ -1,6 +1,7 @@
 import { type Asset } from '@/lib/mockData';
 import { type SnapshotRow } from '@/hooks/usePortfolioSnapshots';
 import { PanelErrorBoundary } from '@/components/PanelErrorBoundary';
+import LazyPanel from '@/components/LazyPanel';
 
 import PortfolioChart from '@/components/dashboard/PortfolioChart';
 import HealthScorePanel from '@/components/dashboard/HealthScorePanel';
