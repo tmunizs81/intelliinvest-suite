@@ -1,4 +1,5 @@
 import { Brain, AlertTriangle, Lightbulb, BarChart3, Sparkles, Loader2, RefreshCw } from 'lucide-react';
+import { AISkeletonPanel } from '@/components/ui/ai-skeleton';
 import { type Asset, type AIInsight, formatCurrency, formatPercent } from '@/lib/mockData';
 import { useAIInsights } from '@/hooks/useAIInsights';
 import { useEffect, useMemo } from 'react';
