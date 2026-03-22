@@ -98,26 +98,25 @@ const App = () => (
           <Routes>
             {/* Protected routes with sidebar layout */}
             <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
-              <Route path="/" element={<Index />} />
-              <Route path="/assets" element={<Assets />} />
-              <Route path="/reports" element={<Reports />} />
-              <Route path="/analysis" element={<Analysis />} />
-              <Route path="/ai-trader" element={<AITrader />} />
-              <Route path="/taxes" element={<Taxes />} />
-              <Route path="/dividends" element={<Dividends />} />
-              <Route path="/settings" element={<SettingsPage />} />
-              <Route path="/family" element={<FamilyPortfolio />} />
-              <Route path="/comparator" element={<Comparator />} />
-              <Route path="/manual" element={<Manual />} />
-              <Route path="/asset/:ticker" element={<Analysis />} />
+              <Route path="/" element={<Suspense fallback={<PageLoader />}><Index /></Suspense>} />
+              <Route path="/assets" element={<Suspense fallback={<PageLoader />}><Assets /></Suspense>} />
+              <Route path="/reports" element={<Suspense fallback={<PageLoader />}><Reports /></Suspense>} />
+              <Route path="/analysis" element={<Suspense fallback={<PageLoader />}><Analysis /></Suspense>} />
+              <Route path="/ai-trader" element={<Suspense fallback={<PageLoader />}><AITrader /></Suspense>} />
+              <Route path="/taxes" element={<Suspense fallback={<PageLoader />}><Taxes /></Suspense>} />
+              <Route path="/dividends" element={<Suspense fallback={<PageLoader />}><Dividends /></Suspense>} />
+              <Route path="/settings" element={<Suspense fallback={<PageLoader />}><SettingsPage /></Suspense>} />
+              <Route path="/family" element={<Suspense fallback={<PageLoader />}><FamilyPortfolio /></Suspense>} />
+              <Route path="/comparator" element={<Suspense fallback={<PageLoader />}><Comparator /></Suspense>} />
+              <Route path="/manual" element={<Suspense fallback={<PageLoader />}><Manual /></Suspense>} />
+              <Route path="/asset/:ticker" element={<Suspense fallback={<PageLoader />}><Analysis /></Suspense>} />
             </Route>
 
             {/* Public routes */}
-            <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
-            {/* Signup removed - admin creates users */}
-            <Route path="/forgot-password" element={<PublicRoute><ForgotPassword /></PublicRoute>} />
-            <Route path="/reset-password" element={<ResetPassword />} />
-            <Route path="*" element={<NotFound />} />
+            <Route path="/login" element={<PublicRoute><Suspense fallback={<PageLoader />}><Login /></Suspense></PublicRoute>} />
+            <Route path="/forgot-password" element={<PublicRoute><Suspense fallback={<PageLoader />}><ForgotPassword /></Suspense></PublicRoute>} />
+            <Route path="/reset-password" element={<Suspense fallback={<PageLoader />}><ResetPassword /></Suspense>} />
+            <Route path="*" element={<Suspense fallback={<PageLoader />}><NotFound /></Suspense>} />
           </Routes>
         </AuthProvider>
       </BrowserRouter>
