@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { type Asset, formatCurrency } from '@/lib/mockData';
 import { Radio, TrendingUp, TrendingDown, Minus, Pause, Play } from 'lucide-react';
+import { useYahooStream } from '@/hooks/useYahooStream';
 
 interface Props {
   assets: Asset[];
@@ -12,26 +13,25 @@ export default function LiveTickerBar({ assets, onPricesUpdate }: Props) {
   const [prices, setPrices] = useState<Record<string, { price: number; change: number; name: string }>>({});
   const [loading, setLoading] = useState(false);
   const [paused, setPaused] = useState(false);
-  const [lastFetch, setLastFetch] = useState<Date | null>(null);
-  const [countdown, setCountdown] = useState(30);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const REFRESH_INTERVAL = 5 * 60_000; // 5 minutes
+  const FALLBACK_INTERVAL = 5 * 60_000; // 5 min — usado só se WS cair
 
+  const tickerList = useMemo(() => assets.map(a => a.ticker).slice(0, 20), [assets]);
+  const { quotes: streamQuotes, connected } = useYahooStream(paused ? [] : tickerList);
+
+  // Bootstrap com REST (para preencher name/preço BRL antes do 1º tick do WS)
   const fetchPrices = useCallback(async () => {
-    if (assets.length === 0) return;
+    if (tickerList.length === 0) return;
     setLoading(true);
     try {
-      const tickers = assets.map(a => a.ticker).slice(0, 20);
       const { data, error } = await supabase.functions.invoke('yahoo-finance', {
-        body: { tickers },
+        body: { tickers: tickerList },
       });
       if (error) throw error;
-
       const quotes = data?.quotes || {};
       const newPrices: Record<string, { price: number; change: number; name: string }> = {};
       const updateMap: Record<string, { price: number; change: number }> = {};
-
       for (const [ticker, quote] of Object.entries(quotes) as [string, any][]) {
         newPrices[ticker] = {
           price: quote.currentPriceBRL || quote.currentPrice || 0,
@@ -40,38 +40,49 @@ export default function LiveTickerBar({ assets, onPricesUpdate }: Props) {
         };
         updateMap[ticker] = { price: newPrices[ticker].price, change: newPrices[ticker].change };
       }
-
-      setPrices(newPrices);
-      setLastFetch(new Date());
-      setCountdown(REFRESH_INTERVAL / 1000);
+      setPrices(prev => ({ ...prev, ...newPrices }));
       onPricesUpdate?.(updateMap);
     } catch (err) {
       console.error('LiveTicker error:', err);
     } finally {
       setLoading(false);
     }
-  }, [assets, onPricesUpdate]);
+  }, [tickerList, onPricesUpdate]);
 
-  // Initial fetch
-  useEffect(() => {
-    fetchPrices();
-  }, [fetchPrices]);
+  // Bootstrap inicial
+  useEffect(() => { fetchPrices(); }, [fetchPrices]);
 
-  // Auto-refresh
+  // Fallback: só faz polling se o WS não conectar
   useEffect(() => {
-    if (paused || assets.length === 0) return;
-    intervalRef.current = setInterval(fetchPrices, REFRESH_INTERVAL);
+    if (paused || connected || tickerList.length === 0) {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      return;
+    }
+    intervalRef.current = setInterval(fetchPrices, FALLBACK_INTERVAL);
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-  }, [paused, fetchPrices, assets.length]);
+  }, [paused, connected, fetchPrices, tickerList.length]);
 
-  // Countdown
+  // Aplica ticks do WebSocket sobre o estado local
   useEffect(() => {
-    if (paused) return;
-    const timer = setInterval(() => {
-      setCountdown(prev => Math.max(0, prev - 1));
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [paused, lastFetch]);
+    const ids = Object.keys(streamQuotes);
+    if (ids.length === 0) return;
+    setPrices(prev => {
+      const next = { ...prev };
+      const updateMap: Record<string, { price: number; change: number }> = {};
+      for (const id of ids) {
+        const q = streamQuotes[id];
+        const existing = prev[id];
+        next[id] = {
+          price: q.price,
+          change: q.changePercent ?? existing?.change ?? 0,
+          name: existing?.name ?? id,
+        };
+        updateMap[id] = { price: next[id].price, change: next[id].change };
+      }
+      onPricesUpdate?.(updateMap);
+      return next;
+    });
+  }, [streamQuotes, onPricesUpdate]);
 
   const tickers = Object.entries(prices);
   if (tickers.length === 0) return null;
@@ -79,12 +90,12 @@ export default function LiveTickerBar({ assets, onPricesUpdate }: Props) {
   return (
     <div className="rounded-lg border border-border bg-card overflow-hidden">
       <div className="flex items-center gap-2 px-3 py-2 border-b border-border bg-muted/30">
-        <Radio className={`h-3 w-3 ${loading ? 'text-primary animate-pulse' : 'text-gain'}`} />
+        <Radio className={`h-3 w-3 ${loading ? 'text-primary animate-pulse' : connected ? 'text-gain animate-pulse' : 'text-muted-foreground'}`} />
         <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
           Cotações ao Vivo
         </span>
         <span className="text-[9px] text-muted-foreground ml-auto">
-          {paused ? 'Pausado' : countdown >= 60 ? `Atualiza em ${Math.ceil(countdown / 60)}min` : `Atualiza em ${countdown}s`}
+          {paused ? 'Pausado' : connected ? 'Streaming em tempo real' : 'Polling (fallback)'}
         </span>
         <button
           onClick={() => setPaused(!paused)}
