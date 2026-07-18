@@ -206,11 +206,8 @@ export function useAITrader() {
         throw new Error(errorData.error || `Erro ${resp.status}`);
       }
 
-      // Check if using fallback provider
-      const aiProvider = resp.headers.get("x-ai-provider");
-      if (aiProvider === "groq") {
-        toast({ title: "⚡ IA alternativa ativa", description: "Usando modelo alternativo (Groq).", duration: 5000 });
-      }
+      // AI provider is centralized on DeepSeek — no fallback toast needed.
+
 
       if (!resp.body) throw new Error("No response body");
 
