@@ -61,13 +61,17 @@ Deno.serve(async (req) => {
         console.warn("yahoo-finance failed:", r.status);
       }
     }
+    const yahooOk = tickers.length === 0 || Object.keys(quotes).length > 0;
 
     // Aggregate per user
-    const byUser = new Map<string, { total: number; cost: number; count: number }>();
+    const byUser = new Map<string, { total: number; cost: number; count: number; missing: string[] }>();
     for (const h of holdings as Holding[]) {
-      const agg = byUser.get(h.user_id) ?? { total: 0, cost: 0, count: 0 };
+      const agg = byUser.get(h.user_id) ?? { total: 0, cost: 0, count: 0, missing: [] };
       const q = quotes[h.ticker];
       const price = q?.currentPriceBRL || h.avg_price; // fallback: cost basis
+      if (!q?.currentPriceBRL && h.type !== "Renda Fixa" && h.type !== "Imóvel") {
+        agg.missing.push(h.ticker);
+      }
       agg.total += price * Number(h.quantity);
       agg.cost += Number(h.avg_price) * Number(h.quantity);
       agg.count += 1;
@@ -76,37 +80,54 @@ Deno.serve(async (req) => {
 
     const today = new Date().toISOString().split("T")[0];
     let upserts = 0;
+    let failures = 0;
 
     for (const [user_id, agg] of byUser) {
-      // Keep the HIGHEST intraday value (matches upsert_daily_snapshot logic)
-      const { data: existing } = await supabase
-        .from("portfolio_snapshots")
-        .select("id, total_value")
-        .eq("user_id", user_id)
-        .eq("snapshot_date", today)
-        .maybeSingle();
-
-      if (existing) {
-        const newVal = Math.max(Number((existing as any).total_value), agg.total);
-        await supabase
+      try {
+        const { data: existing } = await supabase
           .from("portfolio_snapshots")
-          .update({
-            total_value: newVal,
-            total_cost: agg.cost,
-            assets_count: agg.count,
-          })
-          .eq("id", (existing as any).id);
-      } else {
-        await supabase.from("portfolio_snapshots").insert({
-          user_id,
-          snapshot_date: today,
-          total_value: agg.total,
-          total_cost: agg.cost,
-          assets_count: agg.count,
+          .select("id, total_value")
+          .eq("user_id", user_id)
+          .eq("snapshot_date", today)
+          .maybeSingle();
+
+        if (existing) {
+          const newVal = Math.max(Number((existing as any).total_value), agg.total);
+          const { error } = await supabase
+            .from("portfolio_snapshots")
+            .update({ total_value: newVal, total_cost: agg.cost, assets_count: agg.count })
+            .eq("id", (existing as any).id);
+          if (error) throw error;
+        } else {
+          const { error } = await supabase.from("portfolio_snapshots").insert({
+            user_id, snapshot_date: today,
+            total_value: agg.total, total_cost: agg.cost, assets_count: agg.count,
+          });
+          if (error) throw error;
+        }
+
+        // Partial success: some tickers were missing from Yahoo → enqueue for retry
+        if (!yahooOk || agg.missing.length > 0) {
+          const reason = !yahooOk ? "yahoo_unreachable" : `missing_quotes:${agg.missing.slice(0, 5).join(",")}`;
+          await supabase.rpc("enqueue_snapshot_failure", {
+            _user_id: user_id, _reason: reason, _source: "scheduled-price-refresh",
+            _error: agg.missing.length > 0 ? `${agg.missing.length} tickers sem cotação` : "yahoo indisponível",
+          });
+          failures++;
+        } else {
+          await supabase.rpc("mark_snapshot_failure_resolved", { _user_id: user_id });
+        }
+        upserts++;
+      } catch (e) {
+        failures++;
+        await supabase.rpc("enqueue_snapshot_failure", {
+          _user_id: user_id, _reason: "upsert_failed",
+          _source: "scheduled-price-refresh",
+          _error: e instanceof Error ? e.message : String(e),
         });
       }
-      upserts++;
     }
+
 
     const durationMs = Math.round(performance.now() - started);
     console.log(
