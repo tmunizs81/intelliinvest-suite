@@ -28,6 +28,7 @@ const NotFound = lazy(() => import("./pages/NotFound"));
 
 const Manual = lazy(() => import("./pages/Manual"));
 const Comparator = lazy(() => import("./pages/Comparator"));
+const Screener = lazy(() => import("./pages/Screener"));
 
 const PageLoader = () => (
   <div className="min-h-screen bg-background flex items-center justify-center">
@@ -112,7 +113,9 @@ const App = () => (
               
               <Route path="/comparator" element={<Suspense fallback={<PageLoader />}><Comparator /></Suspense>} />
               <Route path="/manual" element={<Suspense fallback={<PageLoader />}><Manual /></Suspense>} />
+              <Route path="/screener" element={<Suspense fallback={<PageLoader />}><Screener /></Suspense>} />
               <Route path="/asset/:ticker" element={<Suspense fallback={<PageLoader />}><Analysis /></Suspense>} />
+
             </Route>
 
             {/* Public routes */}
