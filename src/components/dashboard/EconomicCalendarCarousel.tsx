@@ -88,7 +88,7 @@ function fmtDateTime(iso: string, tz: string) {
   } catch { return new Date(iso).toLocaleString('pt-BR'); }
 }
 
-export default function EconomicCalendarPanel() {
+export default function EconomicCalendarPanel({ assets = [] }: { assets?: Asset[] } = {}) {
   const [events, setEvents] = useState<EcoEvent[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
