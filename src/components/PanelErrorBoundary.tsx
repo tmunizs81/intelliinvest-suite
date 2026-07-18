@@ -23,9 +23,6 @@ export class PanelErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error('[PanelErrorBoundary]', error, errorInfo);
-    import('@/lib/observability').then(({ captureError }) =>
-      captureError(error, { componentStack: errorInfo.componentStack })
-    );
   }
 
   handleRetry = () => {
