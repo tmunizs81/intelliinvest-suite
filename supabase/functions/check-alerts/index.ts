@@ -169,7 +169,7 @@ Deno.serve(async (req) => {
     for (const a of alerts) {
       if (a.valid_until && new Date(a.valid_until).getTime() < now) {
         await supabase.from("alerts")
-          .update({ status: "expired", expired_at: new Date().toISOString() })
+          .update({ status: "expired" })
           .eq("id", a.id);
         expiredCount++;
       } else {
