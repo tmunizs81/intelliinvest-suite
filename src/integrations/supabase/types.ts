@@ -668,6 +668,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      import_transactions_atomic: { Args: { _rows: Json }; Returns: Json }
       refresh_portfolio_metrics: {
         Args: { _user_id: string }
         Returns: undefined
