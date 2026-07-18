@@ -14,6 +14,8 @@ import { usePortfolio, type HoldingRow } from '@/hooks/usePortfolio';
 import { usePortfolioSnapshots } from '@/hooks/usePortfolioSnapshots';
 import { useDashboardBootstrap } from '@/hooks/useDashboardBootstrap';
 import { usePriceRefreshWorker } from '@/hooks/usePriceRefreshWorker';
+import { useSnapshotRealtime } from '@/hooks/useSnapshotRealtime';
+import FreshnessBadge from '@/components/dashboard/FreshnessBadge';
 import { usePrivacyModeProvider, PrivacyContext } from '@/hooks/usePrivacyMode';
 import { Loader2, Eye, EyeOff, Maximize, Camera } from 'lucide-react';
 import { toast } from 'sonner';
@@ -41,6 +43,8 @@ const Index = () => {
 
   // Worker: refresh de preços + snapshot intraday a cada 10min (+ focus/online)
   usePriceRefreshWorker({ assets, loading, refresh, saveSnapshot });
+  // Realtime: propaga mudanças vindas do cron server-side para a UI
+  useSnapshotRealtime(() => { loadSnapshots(); });
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingHolding, setEditingHolding] = useState<HoldingRow | null>(null);
@@ -74,14 +78,10 @@ const Index = () => {
             <div>
               <p className="text-sm text-muted-foreground">
                 Controle inteligente de investimentos
-                {lastUpdate && (
-                  <span className="ml-2 text-xs">
-                    • Atualizado {lastUpdate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                  </span>
-                )}
               </p>
             </div>
             <div className="flex items-center gap-1.5">
+              <FreshnessBadge lastUpdate={lastUpdate} loading={loading} onRefresh={refresh} />
               <button
                 onClick={togglePrivacy}
                 title={privacyMode ? 'Mostrar valores' : 'Ocultar valores'}
@@ -112,12 +112,6 @@ const Index = () => {
                 className="h-8 w-8 rounded-lg border border-border bg-card flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-primary/30 transition-all"
               >
                 <Camera className="h-4 w-4" />
-              </button>
-              <button
-                onClick={() => refresh()}
-                className="h-8 w-8 rounded-lg border border-border bg-card flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-primary/30 transition-all"
-              >
-                <Loader2 className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
               </button>
             </div>
           </div>
