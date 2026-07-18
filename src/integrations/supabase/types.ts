@@ -661,6 +661,7 @@ export type Database = {
     }
     Functions: {
       cleanup_old_snapshots: { Args: never; Returns: number }
+      get_dashboard_bootstrap: { Args: never; Returns: Json }
       get_user_email: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {
