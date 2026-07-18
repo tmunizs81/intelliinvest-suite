@@ -47,8 +47,8 @@ export function useAIInsights() {
         return;
       }
 
-      const { data, error: fnError } = await supabase.functions.invoke('ai-insights', {
-        body: { portfolio },
+      const { data, error: fnError } = await supabase.functions.invoke('ai-router', {
+        body: { task: 'insights', payload: { portfolio } },
       });
 
       if (fnError) {

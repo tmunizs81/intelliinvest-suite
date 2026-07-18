@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { aiRouter } from '@/lib/aiRouter';
 import { type Asset } from '@/lib/mockData';
 import { Star, Loader2, RefreshCw, TrendingUp, TrendingDown, Crown, AlertTriangle } from 'lucide-react';
 
@@ -86,11 +86,7 @@ export default function AssetScoringPanel({ assets }: { assets: Asset[] }) {
         avgPrice: a.avgPrice, currentPrice: a.currentPrice,
         change24h: a.change24h, allocation: a.allocation, sector: a.sector,
       }));
-      const { data: result, error: fnError } = await supabase.functions.invoke('ai-scoring', {
-        body: { portfolio },
-      });
-      if (fnError) throw new Error(fnError.message);
-      if (result.error) throw new Error(result.error);
+      const result = await aiRouter<ScoringData>('scoring', { portfolio });
       setData(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao gerar scoring');
