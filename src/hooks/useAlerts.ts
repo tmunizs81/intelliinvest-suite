@@ -103,6 +103,11 @@ export function useAlerts() {
 
   useEffect(() => {
     if (!user) { setLoading(false); return; }
+    // Seed instantly from dashboard bootstrap cache (SWR)
+    (async () => {
+      const boot = await getCached<any>(`dashboard_bootstrap:${user.id}`);
+      if (boot?.alerts?.length) setAlerts(boot.alerts as AlertRow[]);
+    })();
     Promise.all([loadAlerts(), loadTelegramSettings()]).then(() => setLoading(false));
   }, [user, loadAlerts, loadTelegramSettings]);
 
