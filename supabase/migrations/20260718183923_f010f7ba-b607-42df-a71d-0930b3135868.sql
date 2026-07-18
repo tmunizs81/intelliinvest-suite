@@ -1,0 +1,1 @@
+ALTER VIEW public.function_metrics_24h SET (security_invoker = true);
