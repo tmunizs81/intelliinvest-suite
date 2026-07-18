@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { type Asset } from '@/lib/mockData';
+import { getCached } from '@/lib/persistentCache';
 
 export interface SnapshotRow {
   snapshot_date: string;
@@ -17,6 +18,23 @@ export function usePortfolioSnapshots() {
   const [snapshots, setSnapshots] = useState<SnapshotRow[]>([]);
   const [loading, setLoading] = useState(false);
   const lastFetchRef = useRef<number>(0);
+
+  // Seed instantly from dashboard bootstrap cache (SWR)
+  useEffect(() => {
+    if (!user) return;
+    (async () => {
+      const boot = await getCached<any>(`dashboard_bootstrap:${user.id}`);
+      if (boot?.snapshots?.length && snapshots.length === 0) {
+        setSnapshots(boot.snapshots.map((r: any) => ({
+          snapshot_date: r.snapshot_date,
+          total_value: Number(r.total_value),
+          total_cost: Number(r.total_cost),
+          assets_count: Number(r.assets_count),
+        })));
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
   const loadSnapshots = useCallback(async (force = false) => {
     if (!user) return;

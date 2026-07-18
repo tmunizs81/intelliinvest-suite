@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { getCached } from '@/lib/persistentCache';
 
 export type AlertType = 'price_above' | 'price_below' | 'variation_up' | 'variation_down' | 'stop_loss' | 'take_profit';
 export type AlertStatus = 'active' | 'triggered' | 'paused';
@@ -102,6 +103,11 @@ export function useAlerts() {
 
   useEffect(() => {
     if (!user) { setLoading(false); return; }
+    // Seed instantly from dashboard bootstrap cache (SWR)
+    (async () => {
+      const boot = await getCached<any>(`dashboard_bootstrap:${user.id}`);
+      if (boot?.alerts?.length) setAlerts(boot.alerts as AlertRow[]);
+    })();
     Promise.all([loadAlerts(), loadTelegramSettings()]).then(() => setLoading(false));
   }, [user, loadAlerts, loadTelegramSettings]);
 

@@ -12,6 +12,7 @@ import { DashboardSkeleton } from '@/components/ui/skeleton-card';
 
 import { usePortfolio, type HoldingRow } from '@/hooks/usePortfolio';
 import { usePortfolioSnapshots } from '@/hooks/usePortfolioSnapshots';
+import { useDashboardBootstrap } from '@/hooks/useDashboardBootstrap';
 import { usePrivacyModeProvider, PrivacyContext } from '@/hooks/usePrivacyMode';
 import { Loader2, Eye, EyeOff, Maximize, Camera } from 'lucide-react';
 import { toast } from 'sonner';
@@ -32,6 +33,7 @@ const TabFallback = () => (
 
 const Index = () => {
   const isMobile = useIsMobile();
+  useDashboardBootstrap(); // primes IndexedDB cache for instant SWR paint across hooks
   const { assets, holdings, loading, error, lastUpdate, nextUpdate, refresh, addHolding, updateHolding, deleteHolding } = usePortfolio();
   const { snapshots, loading: snapshotsLoading, saveSnapshot, loadSnapshots } = usePortfolioSnapshots();
   const { privacyMode, togglePrivacy, blurValue, PrivacyContext: Ctx } = usePrivacyModeProvider();
