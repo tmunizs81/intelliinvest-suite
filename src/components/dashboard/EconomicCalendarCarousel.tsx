@@ -192,6 +192,21 @@ export default function EconomicCalendarPanel({ assets = [] }: { assets?: Asset[
 
   const current = filtered[index];
   const countryOf = (c: string) => COUNTRIES.find(x => x.code === c);
+  const currentAffected = useMemo<AffectedHolding[]>(
+    () => (current ? computeAffectedHoldings(current, assets, 6) : []),
+    [current, assets]
+  );
+
+  const createTickerAlert = (ticker: string) => {
+    // Broadcast to any listener (SmartAlertsPanelV2 can pick this up);
+    // fall back to a toast guiding the user to the Alertas tab.
+    window.dispatchEvent(new CustomEvent('open-alert-modal', { detail: { ticker } }));
+    toast({
+      title: `Novo alerta para ${ticker}`,
+      description: 'Abra a aba "Alertas" para configurar preço, stop-loss ou take-profit.',
+    });
+  };
+
 
   return (
     <div className="rounded-lg border border-border bg-card overflow-hidden animate-fade-in h-full flex flex-col">
