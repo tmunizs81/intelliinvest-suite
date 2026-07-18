@@ -103,12 +103,21 @@ export function useAlerts() {
 
   useEffect(() => {
     if (!user) { setLoading(false); return; }
-    // Seed instantly from dashboard bootstrap cache (SWR)
+    // Seed instantly from dashboard bootstrap cache (SWR) — avoids duplicate fetch
+    let bootstrapFresh = false;
     (async () => {
       const boot = await getCached<any>(`dashboard_bootstrap:${user.id}`);
-      if (boot?.alerts?.length) setAlerts(boot.alerts as AlertRow[]);
+      if (boot?.alerts) {
+        setAlerts(boot.alerts as AlertRow[]);
+        const gen = boot.generated_at ? new Date(boot.generated_at).getTime() : 0;
+        bootstrapFresh = Date.now() - gen < 5 * 60 * 1000;
+      }
+      setLoading(false);
+      // telegram_settings isn't in bootstrap yet — always fetch (small row)
+      loadTelegramSettings();
+      // Only re-fetch alerts if bootstrap cache is stale
+      if (!bootstrapFresh) loadAlerts();
     })();
-    Promise.all([loadAlerts(), loadTelegramSettings()]).then(() => setLoading(false));
   }, [user, loadAlerts, loadTelegramSettings]);
 
   const addAlert = useCallback(async (alert: NewAlertInput) => {
