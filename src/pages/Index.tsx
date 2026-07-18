@@ -12,6 +12,7 @@ import { DashboardSkeleton } from '@/components/ui/skeleton-card';
 
 import { usePortfolio, type HoldingRow } from '@/hooks/usePortfolio';
 import { usePortfolioSnapshots } from '@/hooks/usePortfolioSnapshots';
+import { useDashboardBootstrap } from '@/hooks/useDashboardBootstrap';
 import { usePrivacyModeProvider, PrivacyContext } from '@/hooks/usePrivacyMode';
 import { Loader2, Eye, EyeOff, Maximize, Camera } from 'lucide-react';
 import { toast } from 'sonner';
