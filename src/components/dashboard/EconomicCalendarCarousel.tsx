@@ -500,6 +500,61 @@ function EventModal({ event, tz, alertOn, affected, onToggleAlert, onCreateTicke
             </p>
           </div>
 
+          <div className="rounded-lg border border-border p-3">
+            <p className="text-xs font-semibold mb-2 flex items-center gap-1.5">
+              <Target className="h-3.5 w-3.5 text-primary" />
+              Impacto na sua carteira
+              <span className="text-[10px] font-normal text-muted-foreground">
+                ({affected.length ? `${affected.length} ativo(s)` : 'nenhum ativo relacionado'})
+              </span>
+            </p>
+            {affected.length === 0 ? (
+              <p className="text-[11px] text-muted-foreground">
+                Nenhum ativo da sua carteira mostra sensibilidade direta a este evento.
+              </p>
+            ) : (
+              <ul className="space-y-1.5">
+                {affected.map(h => (
+                  <li key={h.asset.ticker}
+                      className="flex items-center justify-between gap-2 p-2 rounded-md bg-muted/30 hover:bg-muted/50 transition-colors">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-mono font-semibold">{h.asset.ticker}</span>
+                        <span className="text-[10px] text-muted-foreground truncate">{h.asset.name}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                        {h.reasons.slice(0, 3).map(r => (
+                          <span key={r} className="text-[9px] px-1.5 py-0.5 rounded bg-background border border-border text-muted-foreground">
+                            {r}
+                          </span>
+                        ))}
+                        <span className="text-[9px] text-muted-foreground">
+                          · {(h.asset.allocation || 0).toFixed(1)}% da carteira
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <div className="w-14 h-1.5 rounded-full bg-border overflow-hidden" title={`Impacto relativo ${h.score}`}>
+                        <div
+                          className={h.score >= 70 ? 'h-full bg-loss' : h.score >= 40 ? 'h-full bg-yellow-500' : 'h-full bg-gain'}
+                          style={{ width: `${h.score}%` }}
+                        />
+                      </div>
+                      <button
+                        onClick={() => onCreateTickerAlert(h.asset.ticker)}
+                        className="text-[10px] px-2 py-1 rounded border border-border hover:border-primary/40 hover:bg-primary/5 transition-all flex items-center gap-1"
+                        title={`Criar alerta para ${h.asset.ticker}`}
+                      >
+                        <Bell className="h-2.5 w-2.5" /> Alerta
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+
           <div>
             <p className="text-xs font-semibold mb-2">Links úteis</p>
             <div className="flex flex-wrap gap-2">
