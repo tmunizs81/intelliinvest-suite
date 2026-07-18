@@ -24,18 +24,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
-      import('@/lib/observability').then(({ identifyUser }) =>
-        identifyUser(session?.user ? { id: session.user.id, email: session.user.email } : null)
-      );
     });
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
-      import('@/lib/observability').then(({ identifyUser }) =>
-        identifyUser(session?.user ? { id: session.user.id, email: session.user.email } : null)
-      );
     });
 
     return () => subscription.unsubscribe();

@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { captureError } from '@/lib/observability';
+
 
 export interface ScreenerFilter {
   type: 'stock' | 'fii';
