@@ -647,8 +647,8 @@ A tela de **Análise Avançada** oferece ferramentas profissionais para análise
 - Dados obtidos via Yahoo Finance, StatusInvest e FundsExplorer
 
 ### 🤖 Provedor de IA (DeepSeek único):
-- Todas as análises de IA usam **DeepSeek** (modelo `deepseek-chat`) como provedor **exclusivo**
-- Sem gateways intermediários ou fallbacks — chamadas diretas para `api.deepseek.com`
+- Todas as análises de IA usam **DeepSeek** (modelo deepseek-chat) como provedor **exclusivo**
+- Sem gateways intermediários ou fallbacks — chamadas diretas para api.deepseek.com
 - Todas as 32 Edge Functions seguem este mesmo padrão centralizado
 
 
