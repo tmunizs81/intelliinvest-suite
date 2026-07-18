@@ -113,12 +113,6 @@ const Index = () => {
               >
                 <Camera className="h-4 w-4" />
               </button>
-              <button
-                onClick={() => refresh()}
-                className="h-8 w-8 rounded-lg border border-border bg-card flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-primary/30 transition-all"
-              >
-                <Loader2 className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-              </button>
             </div>
           </div>
 
