@@ -292,6 +292,48 @@ export type Database = {
         }
         Relationships: []
       }
+      function_metrics: {
+        Row: {
+          cache_hit: boolean
+          created_at: string
+          duration_ms: number
+          error_message: string | null
+          function_name: string
+          id: number
+          meta: Json | null
+          status_code: number
+          tokens_in: number | null
+          tokens_out: number | null
+          user_id: string | null
+        }
+        Insert: {
+          cache_hit?: boolean
+          created_at?: string
+          duration_ms: number
+          error_message?: string | null
+          function_name: string
+          id?: number
+          meta?: Json | null
+          status_code: number
+          tokens_in?: number | null
+          tokens_out?: number | null
+          user_id?: string | null
+        }
+        Update: {
+          cache_hit?: boolean
+          created_at?: string
+          duration_ms?: number
+          error_message?: string | null
+          function_name?: string
+          id?: number
+          meta?: Json | null
+          status_code?: number
+          tokens_in?: number | null
+          tokens_out?: number | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       holdings: {
         Row: {
           avg_price: number
@@ -603,7 +645,19 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      function_metrics_24h: {
+        Row: {
+          avg_ms: number | null
+          cache_hits: number | null
+          calls: number | null
+          errors: number | null
+          function_name: string | null
+          p95_ms: number | null
+          tokens_in: number | null
+          tokens_out: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       get_user_email: { Args: { _user_id: string }; Returns: string }
