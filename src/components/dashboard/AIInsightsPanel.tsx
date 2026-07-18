@@ -144,7 +144,7 @@ export default function AIInsightsPanel({ assets }: Props) {
 
         {lastGenerated && (
           <p className="text-[10px] text-muted-foreground text-center pt-2">
-            Gerado em {lastGenerated.toLocaleTimeString('pt-BR')} via Google Gemini
+            Gerado em {lastGenerated.toLocaleTimeString('pt-BR')} via DeepSeek
           </p>
         )}
       </div>
