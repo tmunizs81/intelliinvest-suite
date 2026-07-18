@@ -43,6 +43,8 @@ const Index = () => {
 
   // Worker: refresh de preços + snapshot intraday a cada 10min (+ focus/online)
   usePriceRefreshWorker({ assets, loading, refresh, saveSnapshot });
+  // Realtime: propaga mudanças vindas do cron server-side para a UI
+  useSnapshotRealtime(() => { loadSnapshots(); });
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingHolding, setEditingHolding] = useState<HoldingRow | null>(null);
