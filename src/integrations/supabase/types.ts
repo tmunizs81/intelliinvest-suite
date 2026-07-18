@@ -526,6 +526,51 @@ export type Database = {
         }
         Relationships: []
       }
+      snapshot_refresh_failures: {
+        Row: {
+          attempts: number
+          created_at: string
+          id: string
+          last_error: string | null
+          next_retry_at: string
+          reason: string
+          resolved_at: string | null
+          snapshot_date: string
+          source: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          next_retry_at?: string
+          reason: string
+          resolved_at?: string | null
+          snapshot_date?: string
+          source?: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          next_retry_at?: string
+          reason?: string
+          resolved_at?: string | null
+          snapshot_date?: string
+          source?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       telegram_settings: {
         Row: {
           bot_token: string | null
@@ -661,6 +706,15 @@ export type Database = {
     }
     Functions: {
       cleanup_old_snapshots: { Args: never; Returns: number }
+      enqueue_snapshot_failure: {
+        Args: {
+          _error?: string
+          _reason: string
+          _source?: string
+          _user_id: string
+        }
+        Returns: undefined
+      }
       get_dashboard_bootstrap: { Args: never; Returns: Json }
       get_user_email: { Args: { _user_id: string }; Returns: string }
       has_role: {
@@ -671,6 +725,33 @@ export type Database = {
         Returns: boolean
       }
       import_transactions_atomic: { Args: { _rows: Json }; Returns: Json }
+      list_pending_snapshot_failures: {
+        Args: { _limit?: number }
+        Returns: {
+          attempts: number
+          created_at: string
+          id: string
+          last_error: string | null
+          next_retry_at: string
+          reason: string
+          resolved_at: string | null
+          snapshot_date: string
+          source: string
+          status: string
+          updated_at: string
+          user_id: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "snapshot_refresh_failures"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      mark_snapshot_failure_resolved: {
+        Args: { _user_id: string }
+        Returns: undefined
+      }
       refresh_all_daily_snapshots: { Args: never; Returns: number }
       refresh_portfolio_metrics: {
         Args: { _user_id: string }

@@ -16,6 +16,7 @@ import { useDashboardBootstrap } from '@/hooks/useDashboardBootstrap';
 import { usePriceRefreshWorker } from '@/hooks/usePriceRefreshWorker';
 import { useSnapshotRealtime } from '@/hooks/useSnapshotRealtime';
 import FreshnessBadge from '@/components/dashboard/FreshnessBadge';
+import ReconcileBadge from '@/components/dashboard/ReconcileBadge';
 import { usePrivacyModeProvider, PrivacyContext } from '@/hooks/usePrivacyMode';
 import { Loader2, Eye, EyeOff, Maximize, Camera } from 'lucide-react';
 import { toast } from 'sonner';
@@ -82,6 +83,7 @@ const Index = () => {
             </div>
             <div className="flex items-center gap-1.5">
               <FreshnessBadge lastUpdate={lastUpdate} loading={loading} onRefresh={refresh} />
+              <ReconcileBadge />
               <button
                 onClick={togglePrivacy}
                 title={privacyMode ? 'Mostrar valores' : 'Ocultar valores'}
