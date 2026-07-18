@@ -109,7 +109,7 @@ const App = () => (
               <Route path="/taxes" element={<Suspense fallback={<PageLoader />}><Taxes /></Suspense>} />
               <Route path="/dividends" element={<Suspense fallback={<PageLoader />}><Dividends /></Suspense>} />
               <Route path="/settings" element={<Suspense fallback={<PageLoader />}><SettingsPage /></Suspense>} />
-              <Route path="/family" element={<Suspense fallback={<PageLoader />}><FamilyPortfolio /></Suspense>} />
+              
               <Route path="/comparator" element={<Suspense fallback={<PageLoader />}><Comparator /></Suspense>} />
               <Route path="/manual" element={<Suspense fallback={<PageLoader />}><Manual /></Suspense>} />
               <Route path="/asset/:ticker" element={<Suspense fallback={<PageLoader />}><Analysis /></Suspense>} />
