@@ -139,6 +139,7 @@ Deno.serve(async (req) => {
         success: true,
         users_updated: upserts,
         tickers_fetched: tickers.length,
+        failures_enqueued: failures,
         duration_ms: durationMs,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
