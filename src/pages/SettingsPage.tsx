@@ -1264,12 +1264,11 @@ function BackupTab() {
     if (!user) return;
     setExporting(true);
     try {
-      const [holdingsRes, transactionsRes, alertsRes, telegramRes, familyRes] = await Promise.all([
+      const [holdingsRes, transactionsRes, alertsRes, telegramRes] = await Promise.all([
         supabase.from('holdings').select('*').eq('user_id', user.id),
         supabase.from('transactions').select('*').eq('user_id', user.id),
         supabase.from('alerts').select('*').eq('user_id', user.id),
         supabase.from('telegram_settings').select('*').eq('user_id', user.id),
-        supabase.from('family_members').select('*').eq('owner_id', user.id),
       ]);
       const backup = {
         exportDate: new Date().toISOString(),
@@ -1278,7 +1277,6 @@ function BackupTab() {
         transactions: transactionsRes.data || [],
         alerts: alertsRes.data || [],
         telegramSettings: telegramRes.data || [],
-        familyMembers: familyRes.data || [],
       };
       if (format === 'json') {
         const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
