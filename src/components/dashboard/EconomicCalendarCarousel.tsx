@@ -413,8 +413,12 @@ export default function EconomicCalendarPanel({ assets = [] }: { assets?: Asset[
   );
 }
 
-function EventModal({ event, tz, alertOn, onToggleAlert, onClose }: {
-  event: EcoEvent; tz: string; alertOn: boolean; onToggleAlert: () => void; onClose: () => void;
+function EventModal({ event, tz, alertOn, affected, onToggleAlert, onCreateTickerAlert, onClose }: {
+  event: EcoEvent; tz: string; alertOn: boolean;
+  affected: AffectedHolding[];
+  onToggleAlert: () => void;
+  onCreateTickerAlert: (ticker: string) => void;
+  onClose: () => void;
 }) {
   const meta = impactMeta[bucket(event.importance)];
   const c = COUNTRIES.find(x => x.code === event.country);
