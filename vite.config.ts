@@ -100,7 +100,7 @@ export default defineConfig(({ mode }) => ({
         manualChunks: {
           "vendor-react": ["react", "react-dom", "react-router-dom"],
           "vendor-recharts": ["recharts"],
-          "vendor-markdown": ["react-markdown", "remark-gfm"],
+          "vendor-markdown": ["react-markdown"],
           "vendor-supabase": ["@supabase/supabase-js"],
           "vendor-radix": [
             "@radix-ui/react-dialog",
