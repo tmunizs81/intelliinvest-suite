@@ -2,9 +2,11 @@ import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import {
   CalendarClock, ChevronLeft, ChevronRight, Loader2, Pause, Play, RefreshCw,
-  Filter, Globe, Bell, BellOff, X, ExternalLink, Clock,
+  Filter, Globe, Bell, BellOff, X, ExternalLink, Clock, Target,
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { type Asset } from '@/lib/mockData';
+import { computeAffectedHoldings, type AffectedHolding } from '@/lib/eventImpactMap';
 
 interface EcoEvent {
   id: string;
@@ -86,7 +88,7 @@ function fmtDateTime(iso: string, tz: string) {
   } catch { return new Date(iso).toLocaleString('pt-BR'); }
 }
 
-export default function EconomicCalendarPanel() {
+export default function EconomicCalendarPanel({ assets = [] }: { assets?: Asset[] } = {}) {
   const [events, setEvents] = useState<EcoEvent[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -190,6 +192,21 @@ export default function EconomicCalendarPanel() {
 
   const current = filtered[index];
   const countryOf = (c: string) => COUNTRIES.find(x => x.code === c);
+  const currentAffected = useMemo<AffectedHolding[]>(
+    () => (current ? computeAffectedHoldings(current, assets, 6) : []),
+    [current, assets]
+  );
+
+  const createTickerAlert = (ticker: string) => {
+    // Broadcast to any listener (SmartAlertsPanelV2 can pick this up);
+    // fall back to a toast guiding the user to the Alertas tab.
+    window.dispatchEvent(new CustomEvent('open-alert-modal', { detail: { ticker } }));
+    toast({
+      title: `Novo alerta para ${ticker}`,
+      description: 'Abra a aba "Alertas" para configurar preço, stop-loss ou take-profit.',
+    });
+  };
+
 
   return (
     <div className="rounded-lg border border-border bg-card overflow-hidden animate-fade-in h-full flex flex-col">
@@ -339,7 +356,26 @@ export default function EconomicCalendarPanel() {
                     <p className="font-mono font-semibold truncate">{current.actual ?? '—'}{current.actual != null ? current.unit : ''}</p>
                   </div>
                 </div>
+
+                {currentAffected.length > 0 && (
+                  <div className="mt-2 pt-2 border-t border-border/50">
+                    <p className="text-[9px] uppercase text-muted-foreground mb-1 flex items-center gap-1">
+                      <Target className="h-2.5 w-2.5" /> Sua carteira · {currentAffected.length} ativo(s) afetado(s)
+                    </p>
+                    <div className="flex flex-wrap gap-1">
+                      {currentAffected.slice(0, 5).map(h => (
+                        <span key={h.asset.ticker}
+                          title={h.reasons.join(' · ')}
+                          className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20 font-mono">
+                          {h.asset.ticker}
+                          <span className="ml-1 opacity-60">{h.score}</span>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </button>
+
 
               <button onClick={() => go(1)} disabled={filtered.length <= 1}
                 className="shrink-0 rounded-md border border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-primary/30 transition-all w-8 disabled:opacity-30">
@@ -367,7 +403,9 @@ export default function EconomicCalendarPanel() {
           event={modalEvent}
           tz={tz}
           alertOn={!!alerts[modalEvent.id]}
+          affected={computeAffectedHoldings(modalEvent, assets, 10)}
           onToggleAlert={() => toggleAlert(modalEvent)}
+          onCreateTickerAlert={createTickerAlert}
           onClose={() => setModalEvent(null)}
         />
       )}
@@ -375,8 +413,12 @@ export default function EconomicCalendarPanel() {
   );
 }
 
-function EventModal({ event, tz, alertOn, onToggleAlert, onClose }: {
-  event: EcoEvent; tz: string; alertOn: boolean; onToggleAlert: () => void; onClose: () => void;
+function EventModal({ event, tz, alertOn, affected, onToggleAlert, onCreateTickerAlert, onClose }: {
+  event: EcoEvent; tz: string; alertOn: boolean;
+  affected: AffectedHolding[];
+  onToggleAlert: () => void;
+  onCreateTickerAlert: (ticker: string) => void;
+  onClose: () => void;
 }) {
   const meta = impactMeta[bucket(event.importance)];
   const c = COUNTRIES.find(x => x.code === event.country);
@@ -457,6 +499,61 @@ function EventModal({ event, tz, alertOn, onToggleAlert, onClose }: {
               {' '}Compare <em>Atual</em> vs <em>Previsão</em>: surpresas positivas costumam favorecer ativos de risco quando o dado é pró-crescimento; o oposto em dados inflacionários.
             </p>
           </div>
+
+          <div className="rounded-lg border border-border p-3">
+            <p className="text-xs font-semibold mb-2 flex items-center gap-1.5">
+              <Target className="h-3.5 w-3.5 text-primary" />
+              Impacto na sua carteira
+              <span className="text-[10px] font-normal text-muted-foreground">
+                ({affected.length ? `${affected.length} ativo(s)` : 'nenhum ativo relacionado'})
+              </span>
+            </p>
+            {affected.length === 0 ? (
+              <p className="text-[11px] text-muted-foreground">
+                Nenhum ativo da sua carteira mostra sensibilidade direta a este evento.
+              </p>
+            ) : (
+              <ul className="space-y-1.5">
+                {affected.map(h => (
+                  <li key={h.asset.ticker}
+                      className="flex items-center justify-between gap-2 p-2 rounded-md bg-muted/30 hover:bg-muted/50 transition-colors">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-mono font-semibold">{h.asset.ticker}</span>
+                        <span className="text-[10px] text-muted-foreground truncate">{h.asset.name}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                        {h.reasons.slice(0, 3).map(r => (
+                          <span key={r} className="text-[9px] px-1.5 py-0.5 rounded bg-background border border-border text-muted-foreground">
+                            {r}
+                          </span>
+                        ))}
+                        <span className="text-[9px] text-muted-foreground">
+                          · {(h.asset.allocation || 0).toFixed(1)}% da carteira
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <div className="w-14 h-1.5 rounded-full bg-border overflow-hidden" title={`Impacto relativo ${h.score}`}>
+                        <div
+                          className={h.score >= 70 ? 'h-full bg-loss' : h.score >= 40 ? 'h-full bg-yellow-500' : 'h-full bg-gain'}
+                          style={{ width: `${h.score}%` }}
+                        />
+                      </div>
+                      <button
+                        onClick={() => onCreateTickerAlert(h.asset.ticker)}
+                        className="text-[10px] px-2 py-1 rounded border border-border hover:border-primary/40 hover:bg-primary/5 transition-all flex items-center gap-1"
+                        title={`Criar alerta para ${h.asset.ticker}`}
+                      >
+                        <Bell className="h-2.5 w-2.5" /> Alerta
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
 
           <div>
             <p className="text-xs font-semibold mb-2">Links úteis</p>
