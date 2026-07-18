@@ -274,36 +274,6 @@ export type Database = {
         }
         Relationships: []
       }
-      family_members: {
-        Row: {
-          created_at: string
-          id: string
-          invited_email: string
-          member_id: string | null
-          owner_id: string
-          status: string
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          invited_email: string
-          member_id?: string | null
-          owner_id: string
-          status?: string
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          invited_email?: string
-          member_id?: string | null
-          owner_id?: string
-          status?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
       holdings: {
         Row: {
           avg_price: number
@@ -358,42 +328,6 @@ export type Database = {
           updated_at?: string
           user_id?: string
           yield_rate?: string | null
-        }
-        Relationships: []
-      }
-      ondo_gm_tokens: {
-        Row: {
-          chain_id: number | null
-          created_at: string
-          id: string
-          logo_uri: string | null
-          name: string
-          symbol: string
-          synced_at: string
-          token_address: string | null
-          underlying_ticker: string
-        }
-        Insert: {
-          chain_id?: number | null
-          created_at?: string
-          id?: string
-          logo_uri?: string | null
-          name: string
-          symbol: string
-          synced_at?: string
-          token_address?: string | null
-          underlying_ticker: string
-        }
-        Update: {
-          chain_id?: number | null
-          created_at?: string
-          id?: string
-          logo_uri?: string | null
-          name?: string
-          symbol?: string
-          synced_at?: string
-          token_address?: string | null
-          underlying_ticker?: string
         }
         Relationships: []
       }
