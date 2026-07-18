@@ -544,7 +544,7 @@ export default function AITrader() {
               </div>
             </div>
             <p className="text-[10px] text-muted-foreground text-center mt-2">
-              Powered by Google Gemini • Dados reais via Yahoo Finance
+              Powered by DeepSeek • Dados reais via Yahoo Finance
             </p>
           </div>
         </div>
