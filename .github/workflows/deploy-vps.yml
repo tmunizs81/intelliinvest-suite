@@ -9,7 +9,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Deploy via SSH
+      - name: Deploy via SSH (docker compose)
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.VPS_HOST }}
@@ -21,7 +21,9 @@ jobs:
             cd ${{ secrets.VPS_APP_PATH }}
             git fetch --all
             git reset --hard origin/main
-            bun install --frozen-lockfile || npm ci
-            bun run build || npm run build
-            sudo systemctl reload nginx
+            cd docker
+            docker compose down
+            docker compose build
+            docker compose up -d
+            docker image prune -f
             echo "✅ Deploy OK: $(git rev-parse --short HEAD)"
