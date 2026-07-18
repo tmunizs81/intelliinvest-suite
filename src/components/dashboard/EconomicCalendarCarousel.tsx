@@ -356,7 +356,26 @@ export default function EconomicCalendarPanel({ assets = [] }: { assets?: Asset[
                     <p className="font-mono font-semibold truncate">{current.actual ?? '—'}{current.actual != null ? current.unit : ''}</p>
                   </div>
                 </div>
+
+                {currentAffected.length > 0 && (
+                  <div className="mt-2 pt-2 border-t border-border/50">
+                    <p className="text-[9px] uppercase text-muted-foreground mb-1 flex items-center gap-1">
+                      <Target className="h-2.5 w-2.5" /> Sua carteira · {currentAffected.length} ativo(s) afetado(s)
+                    </p>
+                    <div className="flex flex-wrap gap-1">
+                      {currentAffected.slice(0, 5).map(h => (
+                        <span key={h.asset.ticker}
+                          title={h.reasons.join(' · ')}
+                          className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20 font-mono">
+                          {h.asset.ticker}
+                          <span className="ml-1 opacity-60">{h.score}</span>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </button>
+
 
               <button onClick={() => go(1)} disabled={filtered.length <= 1}
                 className="shrink-0 rounded-md border border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-primary/30 transition-all w-8 disabled:opacity-30">
