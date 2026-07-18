@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { usePortfolio, type HoldingRow } from '@/hooks/usePortfolio';
 import HoldingModal from '@/components/dashboard/HoldingModal';
+import BulkImportYahoo from '@/components/dashboard/BulkImportYahoo';
 import SellModal from '@/components/dashboard/SellModal';
 import CashBalanceModal from '@/components/dashboard/CashBalanceModal';
 import BrokerageImportPanel from '@/components/dashboard/BrokerageImportPanel';
@@ -42,6 +43,7 @@ export default function Assets() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [cashModalOpen, setCashModalOpen] = useState(false);
   const [custodyOpen, setCustodyOpen] = useState(false);
+  const [bulkYahooOpen, setBulkYahooOpen] = useState(false);
 
   const handleSell = (holdingRow: HoldingRow, asset: Asset) => {
     setSellingHolding(holdingRow);
@@ -191,6 +193,13 @@ export default function Assets() {
           >
             <FileUp className="h-4 w-4" />
             Nota Corretagem
+          </button>
+          <button
+            onClick={() => setBulkYahooOpen(true)}
+            className="h-9 px-3 rounded-lg border border-primary/40 bg-gradient-to-r from-primary/10 to-primary/5 text-sm text-primary hover:from-primary/20 hover:to-primary/10 flex items-center gap-2 transition-all font-medium"
+          >
+            <Upload className="h-4 w-4" />
+            Importar via Yahoo
           </button>
           <button
             onClick={() => setImportOpen(true)}
