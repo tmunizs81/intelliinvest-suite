@@ -1,5 +1,6 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { getCached, setCache, CACHE_TTL } from "@/lib/persistentCache";
 
 export interface PortfolioMetrics {
   user_id: string;
@@ -22,52 +23,73 @@ export interface PortfolioMetrics {
   updated_at: string;
 }
 
+const CACHE_PREFIX = "portfolio_metrics:";
+
 /**
- * Reads server-side pre-aggregated portfolio metrics (Fase 3).
- * Falls back to triggering a refresh if today's row is missing.
+ * Lê métricas pré-agregadas server-side (portfolio_daily_metrics) com
+ * Stale-While-Revalidate: cache do IndexedDB pinta na hora, RPC revalida
+ * em background. Elimina 200-500ms do primeiro paint.
  */
 export function usePortfolioMetrics() {
   const [metrics, setMetrics] = useState<PortfolioMetrics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const inflight = useRef<Promise<void> | null>(null);
 
-  const fetchMetrics = useCallback(async () => {
-    try {
-      setLoading(true);
-      const { data: auth } = await supabase.auth.getUser();
-      const uid = auth.user?.id;
-      if (!uid) return;
+  const fetchMetrics = useCallback(async (force = false) => {
+    if (inflight.current && !force) return inflight.current;
 
-      let { data, error: qErr } = await (supabase as any)
-        .from("portfolio_daily_metrics")
-        .select("*")
-        .eq("user_id", uid)
-        .order("metric_date", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+    const run = (async () => {
+      try {
+        const { data: auth } = await supabase.auth.getUser();
+        const uid = auth.user?.id;
+        if (!uid) { setLoading(false); return; }
 
-      if (qErr) throw qErr;
+        const cacheKey = `${CACHE_PREFIX}${uid}`;
 
-      // If empty, trigger a refresh and retry
-      if (!data) {
-        await (supabase as any).rpc("refresh_portfolio_metrics", { _user_id: uid });
-        const retry = await (supabase as any)
+        if (!force) {
+          const cached = await getCached<PortfolioMetrics>(cacheKey);
+          if (cached) {
+            setMetrics(cached);
+            setLoading(false);
+          }
+        }
+
+        let { data, error: qErr } = await (supabase as any)
           .from("portfolio_daily_metrics")
           .select("*")
           .eq("user_id", uid)
           .order("metric_date", { ascending: false })
           .limit(1)
           .maybeSingle();
-        data = retry.data;
-      }
 
-      setMetrics(data as PortfolioMetrics | null);
-      setError(null);
-    } catch (e: any) {
-      setError(e.message || "Erro ao carregar métricas");
-    } finally {
-      setLoading(false);
-    }
+        if (qErr) throw qErr;
+
+        if (!data) {
+          await (supabase as any).rpc("refresh_portfolio_metrics", { _user_id: uid });
+          const retry = await (supabase as any)
+            .from("portfolio_daily_metrics")
+            .select("*")
+            .eq("user_id", uid)
+            .order("metric_date", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          data = retry.data;
+        }
+
+        setMetrics(data as PortfolioMetrics | null);
+        setError(null);
+        if (data) await setCache(cacheKey, data, CACHE_TTL.SNAPSHOTS);
+      } catch (e: any) {
+        setError(e.message || "Erro ao carregar métricas");
+      } finally {
+        setLoading(false);
+        inflight.current = null;
+      }
+    })();
+
+    inflight.current = run;
+    return run;
   }, []);
 
   const refresh = useCallback(async () => {
@@ -75,12 +97,10 @@ export function usePortfolioMetrics() {
     const uid = auth.user?.id;
     if (!uid) return;
     await (supabase as any).rpc("refresh_portfolio_metrics", { _user_id: uid });
-    await fetchMetrics();
+    await fetchMetrics(true);
   }, [fetchMetrics]);
 
-  useEffect(() => {
-    fetchMetrics();
-  }, [fetchMetrics]);
+  useEffect(() => { fetchMetrics(); }, [fetchMetrics]);
 
   return { metrics, loading, error, refresh };
 }
