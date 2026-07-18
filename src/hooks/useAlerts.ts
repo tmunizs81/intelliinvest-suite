@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { getCached } from '@/lib/persistentCache';
 
 export type AlertType = 'price_above' | 'price_below' | 'variation_up' | 'variation_down' | 'stop_loss' | 'take_profit';
 export type AlertStatus = 'active' | 'triggered' | 'paused';
