@@ -11,7 +11,7 @@ const prefetchMap: Record<string, () => Promise<any>> = {
   '/reports': () => import('../pages/Reports'),
   '/analysis': () => import('../pages/Analysis'),
   '/comparator': () => import('../pages/Comparator'),
-  '/family': () => import('../pages/FamilyPortfolio'),
+  
   '/settings': () => import('../pages/SettingsPage'),
   '/manual': () => import('../pages/Manual'),
 };
