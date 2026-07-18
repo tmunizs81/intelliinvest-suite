@@ -765,8 +765,6 @@ async function fetchYahooQuote(ticker: string): Promise<QuoteResult | null> {
   }
 }
 
-// ─── Dynamic Ondo GM lookup from database (for new tokens not in hardcoded set) ───
-let dynamicOndoCache: Map<string, string> | null = null;
 // Ondo GM tokens feature removed — always return null
 async function getDynamicOndoUnderlying(_ticker: string): Promise<string | null> {
   return null;
