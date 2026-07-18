@@ -88,6 +88,7 @@ export default defineConfig(({ mode }) => ({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      "framer-motion": path.resolve(__dirname, "./src/lib/motion-shim.tsx"),
     },
   },
 }));
