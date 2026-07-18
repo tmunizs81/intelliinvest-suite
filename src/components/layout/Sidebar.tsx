@@ -3,7 +3,7 @@ import { useAuth } from '@/hooks/useAuth';
 import {
   LayoutDashboard, Briefcase, BarChart3, LogOut, User,
   ChevronLeft, ChevronRight, TrendingUp, Brain, Calculator, DollarSign, Settings,
-  Menu, X, FileText, Users, Book, Search,
+  Menu, X, FileText, Users, Book,
 } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
 import ThemeToggle from '@/components/ThemeToggle';
@@ -15,11 +15,10 @@ const navItems = [
   { to: '/dividends', label: 'Dividendos', icon: DollarSign },
   { to: '/taxes', label: 'Impostos', icon: Calculator },
   { to: '/assets', label: 'Meus Ativos', icon: Briefcase },
-  { to: '/screener', label: 'Screener', icon: Search },
   { to: '/reports', label: 'Relatórios', icon: FileText },
   { to: '/analysis', label: 'Análise Avançada', icon: BarChart3 },
   { to: '/comparator', label: 'Comparador', icon: TrendingUp },
-
+  { to: '/family', label: 'Carteira Familiar', icon: Users },
   { to: '/settings', label: 'Configurações', icon: Settings },
   { to: '/manual', label: 'Manual', icon: Book },
 ];

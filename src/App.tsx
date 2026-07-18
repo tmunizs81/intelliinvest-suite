@@ -25,10 +25,9 @@ const Login = lazy(() => import("./pages/Login"));
 const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const NotFound = lazy(() => import("./pages/NotFound"));
-
+const FamilyPortfolio = lazy(() => import("./pages/FamilyPortfolio"));
 const Manual = lazy(() => import("./pages/Manual"));
 const Comparator = lazy(() => import("./pages/Comparator"));
-const Screener = lazy(() => import("./pages/Screener"));
 
 const PageLoader = () => (
   <div className="min-h-screen bg-background flex items-center justify-center">
@@ -110,12 +109,10 @@ const App = () => (
               <Route path="/taxes" element={<Suspense fallback={<PageLoader />}><Taxes /></Suspense>} />
               <Route path="/dividends" element={<Suspense fallback={<PageLoader />}><Dividends /></Suspense>} />
               <Route path="/settings" element={<Suspense fallback={<PageLoader />}><SettingsPage /></Suspense>} />
-              
+              <Route path="/family" element={<Suspense fallback={<PageLoader />}><FamilyPortfolio /></Suspense>} />
               <Route path="/comparator" element={<Suspense fallback={<PageLoader />}><Comparator /></Suspense>} />
               <Route path="/manual" element={<Suspense fallback={<PageLoader />}><Manual /></Suspense>} />
-              <Route path="/screener" element={<Suspense fallback={<PageLoader />}><Screener /></Suspense>} />
               <Route path="/asset/:ticker" element={<Suspense fallback={<PageLoader />}><Analysis /></Suspense>} />
-
             </Route>
 
             {/* Public routes */}
