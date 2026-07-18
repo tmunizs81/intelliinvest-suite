@@ -88,6 +88,30 @@ export default defineConfig(({ mode }) => ({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      "framer-motion": path.resolve(__dirname, "./src/lib/motion-shim.tsx"),
+    },
+  },
+  build: {
+    target: "es2020",
+    cssCodeSplit: true,
+    reportCompressedSize: false,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          "vendor-react": ["react", "react-dom", "react-router-dom"],
+          "vendor-recharts": ["recharts"],
+          "vendor-markdown": ["react-markdown", "remark-gfm"],
+          "vendor-supabase": ["@supabase/supabase-js"],
+          "vendor-radix": [
+            "@radix-ui/react-dialog",
+            "@radix-ui/react-dropdown-menu",
+            "@radix-ui/react-tabs",
+            "@radix-ui/react-tooltip",
+            "@radix-ui/react-select",
+          ],
+          "vendor-query": ["@tanstack/react-query"],
+        },
+      },
     },
   },
 }));

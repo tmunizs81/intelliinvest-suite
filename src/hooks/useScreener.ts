@@ -41,7 +41,7 @@ export function useScreener() {
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       setError(msg);
-      captureError(err, { context: 'screener', filter });
+      console.error('[screener]', err, filter);
     } finally {
       setLoading(false);
     }
