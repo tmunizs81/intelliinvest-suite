@@ -115,45 +115,63 @@ export type Database = {
       alerts: {
         Row: {
           alert_type: Database["public"]["Enums"]["alert_type"]
+          condition_logic: string
           created_at: string
           current_value: number | null
           id: string
           name: string
+          notes: string | null
+          notify_email: boolean
           notify_telegram: boolean
+          secondary_type: string | null
+          secondary_value: number | null
           status: Database["public"]["Enums"]["alert_status"]
           target_value: number
           ticker: string
           triggered_at: string | null
           updated_at: string
           user_id: string
+          valid_until: string | null
         }
         Insert: {
           alert_type: Database["public"]["Enums"]["alert_type"]
+          condition_logic?: string
           created_at?: string
           current_value?: number | null
           id?: string
           name: string
+          notes?: string | null
+          notify_email?: boolean
           notify_telegram?: boolean
+          secondary_type?: string | null
+          secondary_value?: number | null
           status?: Database["public"]["Enums"]["alert_status"]
           target_value: number
           ticker: string
           triggered_at?: string | null
           updated_at?: string
           user_id: string
+          valid_until?: string | null
         }
         Update: {
           alert_type?: Database["public"]["Enums"]["alert_type"]
+          condition_logic?: string
           created_at?: string
           current_value?: number | null
           id?: string
           name?: string
+          notes?: string | null
+          notify_email?: boolean
           notify_telegram?: boolean
+          secondary_type?: string | null
+          secondary_value?: number | null
           status?: Database["public"]["Enums"]["alert_status"]
           target_value?: number
           ticker?: string
           triggered_at?: string | null
           updated_at?: string
           user_id?: string
+          valid_until?: string | null
         }
         Relationships: []
       }
@@ -432,9 +450,12 @@ export type Database = {
           bot_token: string | null
           chat_id: string | null
           created_at: string
+          email_address: string | null
           enabled: boolean
+          event_prefs: Json
           id: string
           link_code: string | null
+          notify_email: boolean
           updated_at: string
           user_id: string
         }
@@ -442,9 +463,12 @@ export type Database = {
           bot_token?: string | null
           chat_id?: string | null
           created_at?: string
+          email_address?: string | null
           enabled?: boolean
+          event_prefs?: Json
           id?: string
           link_code?: string | null
+          notify_email?: boolean
           updated_at?: string
           user_id: string
         }
@@ -452,9 +476,12 @@ export type Database = {
           bot_token?: string | null
           chat_id?: string | null
           created_at?: string
+          email_address?: string | null
           enabled?: boolean
+          event_prefs?: Json
           id?: string
           link_code?: string | null
+          notify_email?: boolean
           updated_at?: string
           user_id?: string
         }

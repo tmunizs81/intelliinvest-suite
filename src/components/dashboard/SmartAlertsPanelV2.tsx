@@ -2,11 +2,12 @@ import { useState, useEffect, useRef } from 'react';
 import {
   Bell, Plus, Trash2, Pause, Play, RotateCcw, MessageCircle, BellDot,
   Target, TrendingDown, TrendingUp, ArrowUp, ArrowDown, Zap, Shield, Filter,
+  Settings, Mail, Calendar,
 } from 'lucide-react';
 import { useAlerts, type AlertRow, type AlertStatus, type AlertType } from '@/hooks/useAlerts';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
-import AlertModal from './AlertModal';
-import TelegramSettingsModal from './TelegramSettingsModal';
+import AdvancedAlertModal from './AdvancedAlertModal';
+import NotificationPreferencesModal from './NotificationPreferencesModal';
 import { formatCurrency } from '@/lib/mockData';
 
 const typeConfig: Record<AlertType, { icon: React.ElementType; label: string; tone: 'gain' | 'loss' | 'warn' | 'info' }> = {
@@ -31,9 +32,12 @@ export default function SmartAlertsPanelV2() {
   const { alerts, telegramSettings, addAlert, deleteAlert, toggleAlert, reactivateAlert, saveTelegramSettings } = useAlerts();
   const { supported: pushSupported, permission: pushPermission, requestPermission, sendNotification } = usePushNotifications();
   const [alertModalOpen, setAlertModalOpen] = useState(false);
-  const [telegramModalOpen, setTelegramModalOpen] = useState(false);
+  const [prefsModalOpen, setPrefsModalOpen] = useState(false);
   const [filter, setFilter] = useState<FilterKey>('all');
   const seenTriggered = useRef<Set<string>>(new Set());
+
+  const telegramReady = telegramSettings.enabled && !!telegramSettings.bot_token && !!telegramSettings.chat_id;
+  const emailReady = telegramSettings.notify_email && !!telegramSettings.email_address;
 
   // Fire browser notification when an alert transitions to 'triggered'
   useEffect(() => {
@@ -88,15 +92,15 @@ export default function SmartAlertsPanelV2() {
               </button>
             )}
             <button
-              onClick={() => setTelegramModalOpen(true)}
+              onClick={() => setPrefsModalOpen(true)}
               className={`h-8 w-8 rounded-md border flex items-center justify-center transition-all ${
-                telegramSettings.enabled
+                telegramReady || emailReady
                   ? 'border-primary/40 bg-primary/10 text-primary'
                   : 'border-border text-muted-foreground hover:text-foreground hover:border-primary/30'
               }`}
-              title="Configurar Telegram"
+              title="Preferências de notificação"
             >
-              <MessageCircle className="h-3.5 w-3.5" />
+              <Settings className="h-3.5 w-3.5" />
             </button>
             <button
               onClick={() => setAlertModalOpen(true)}
@@ -161,10 +165,16 @@ export default function SmartAlertsPanelV2() {
         )}
       </div>
 
-      <AlertModal open={alertModalOpen} onClose={() => setAlertModalOpen(false)} onSave={addAlert} />
-      <TelegramSettingsModal
-        open={telegramModalOpen}
-        onClose={() => setTelegramModalOpen(false)}
+      <AdvancedAlertModal
+        open={alertModalOpen}
+        onClose={() => setAlertModalOpen(false)}
+        onSave={addAlert}
+        telegramReady={telegramReady}
+        emailReady={emailReady}
+      />
+      <NotificationPreferencesModal
+        open={prefsModalOpen}
+        onClose={() => setPrefsModalOpen(false)}
         settings={telegramSettings}
         onSave={saveTelegramSettings}
       />
@@ -227,12 +237,28 @@ function AlertCard({
               </span>
             )}
           </div>
-          {alert.notify_telegram && (
-            <div className="flex items-center gap-1 mt-1">
-              <MessageCircle className="h-2.5 w-2.5 text-primary" />
-              <span className="text-[10px] text-primary/80">Telegram</span>
-            </div>
-          )}
+          <div className="flex items-center gap-2 mt-1 flex-wrap">
+            {alert.notify_telegram && (
+              <span className="inline-flex items-center gap-1 text-[10px] text-primary/80">
+                <MessageCircle className="h-2.5 w-2.5" /> Telegram
+              </span>
+            )}
+            {alert.notify_email && (
+              <span className="inline-flex items-center gap-1 text-[10px] text-primary/80">
+                <Mail className="h-2.5 w-2.5" /> E-mail
+              </span>
+            )}
+            {alert.secondary_type && alert.secondary_value != null && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted/60 text-muted-foreground">
+                {alert.condition_logic} · {alert.secondary_value}
+              </span>
+            )}
+            {alert.valid_until && (
+              <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
+                <Calendar className="h-2.5 w-2.5" /> até {new Date(alert.valid_until).toLocaleDateString('pt-BR')}
+              </span>
+            )}
+          </div>
         </div>
 
         <div className="flex items-center gap-0.5 opacity-70 group-hover:opacity-100 transition-opacity">
