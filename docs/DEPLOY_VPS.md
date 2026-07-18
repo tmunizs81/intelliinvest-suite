@@ -1,87 +1,69 @@
-# Auto-Deploy VPS (Ubuntu 24.04)
+# Auto-Deploy VPS (Docker Compose)
 
-Sync automática do GitHub `tmunizs81/intelliinvest-suite` (branch `main`) para a VPS self-hosted.
+Sync automática do GitHub `tmunizs81/intelliinvest-suite` (branch `main`) para a VPS.
+Repositório em `/opt/simplynvest`, compose em `/opt/simplynvest/docker`.
 
 ---
 
-## Opção 1 — GitHub Actions com SSH (recomendado)
+## 1. Chave SSH de deploy
 
-### 1. Gere uma chave SSH exclusiva para deploy (na sua máquina local ou na VPS):
+Na sua máquina (ou VPS):
 ```bash
 ssh-keygen -t ed25519 -f ~/.ssh/lovable_deploy -N "" -C "lovable-deploy"
 ```
 
-### 2. Autorize a chave pública na VPS:
+Na VPS, autorize a chave pública:
 ```bash
-# na VPS, como o usuário que vai fazer o deploy (ex.: deploy)
-mkdir -p ~/.ssh && chmod 700 ~/.ssh
 cat lovable_deploy.pub >> ~/.ssh/authorized_keys
 chmod 600 ~/.ssh/authorized_keys
 ```
 
-### 3. Permita `systemctl reload nginx` sem senha:
+## 2. Docker sem sudo para o usuário de deploy
+
 ```bash
-sudo visudo -f /etc/sudoers.d/deploy-nginx
-# adicione:
-deploy ALL=(root) NOPASSWD: /bin/systemctl reload nginx
+sudo usermod -aG docker $USER
+# faça logout/login para aplicar
 ```
 
-### 4. No GitHub → repo `intelliinvest-suite` → Settings → Secrets and variables → Actions, adicione:
+Se preferir manter root, use `VPS_USER=root` no passo 3.
 
-| Secret            | Valor                                         |
-|-------------------|-----------------------------------------------|
-| `VPS_HOST`        | IP ou domínio da VPS                          |
-| `VPS_USER`        | usuário SSH (ex.: `deploy`)                   |
-| `VPS_PORT`        | porta SSH (opcional, default 22)              |
-| `VPS_SSH_KEY`     | conteúdo da chave privada `lovable_deploy`    |
-| `VPS_APP_PATH`    | caminho do app (ex.: `/var/www/simplynvest`)  |
+## 3. Secrets no GitHub
 
-### 5. Prepare a VPS (uma vez):
-```bash
-sudo mkdir -p /var/www/simplynvest
-sudo chown -R $USER:$USER /var/www/simplynvest
-cd /var/www/simplynvest
-git clone https://github.com/tmunizs81/intelliinvest-suite.git .
-curl -fsSL https://bun.sh/install | bash   # opcional, ou use npm
-bun install && bun run build
+Repo `intelliinvest-suite` → **Settings → Secrets and variables → Actions**:
+
+| Secret         | Valor                          |
+|----------------|--------------------------------|
+| `VPS_HOST`     | IP ou domínio da VPS           |
+| `VPS_USER`     | `root` (ou usuário do docker)  |
+| `VPS_PORT`     | 22 (opcional)                  |
+| `VPS_SSH_KEY`  | conteúdo de `lovable_deploy`   |
+| `VPS_APP_PATH` | `/opt/simplynvest`             |
+
+## 4. Pronto
+
+Todo push em `main` roda o workflow `.github/workflows/deploy-vps.yml`:
+```
+cd /opt/simplynvest
+git pull
+cd docker
+docker compose down && docker compose build && docker compose up -d
 ```
 
-Configure o Nginx para servir `/var/www/simplynvest/dist` com fallback SPA:
-```nginx
-server {
-  listen 80;
-  server_name seu-dominio.com;
-  root /var/www/simplynvest/dist;
-  index index.html;
-  location / { try_files $uri $uri/ /index.html; }
-  gzip_static on;
-  location ~* \.(js|css|woff2|png|jpg|svg)$ {
-    expires 1y; add_header Cache-Control "public, immutable";
-  }
-}
-```
+Acompanhe em: https://github.com/tmunizs81/intelliinvest-suite/actions
 
-### 6. Pronto
-Todo `push` do Lovable para `main` dispara `.github/workflows/deploy-vps.yml`, que executa `git pull + build + reload nginx` na VPS.
+## Deploy manual
 
----
-
-## Opção 2 — Deploy manual
-
-Na VPS:
 ```bash
-cd /var/www/simplynvest
+cd /opt/simplynvest
 bash scripts/deploy-vps.sh
 ```
 
 ## Diagnóstico
 
 ```bash
-# ver se o commit chegou
-cd /var/www/simplynvest && git log -1 --oneline
-
-# ver logs do Actions
-# https://github.com/tmunizs81/intelliinvest-suite/actions
+cd /opt/simplynvest && git log -1 --oneline    # commit em produção
+cd /opt/simplynvest/docker && docker compose ps # containers
+docker compose logs -f --tail=100               # logs em tempo real
 ```
 
-Se o Actions passar mas o site continuar antigo: navegador está com cache. Force reload (Ctrl+Shift+R) ou verifique cabeçalhos do Nginx.
+Se o Actions passar mas o navegador mostrar versão antiga: cache do browser (Ctrl+Shift+R) ou cache do próprio nginx/CDN dentro do container.
