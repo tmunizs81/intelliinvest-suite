@@ -13,6 +13,7 @@ import { DashboardSkeleton } from '@/components/ui/skeleton-card';
 import { usePortfolio, type HoldingRow } from '@/hooks/usePortfolio';
 import { usePortfolioSnapshots } from '@/hooks/usePortfolioSnapshots';
 import { useDashboardBootstrap } from '@/hooks/useDashboardBootstrap';
+import { usePriceRefreshWorker } from '@/hooks/usePriceRefreshWorker';
 import { usePrivacyModeProvider, PrivacyContext } from '@/hooks/usePrivacyMode';
 import { Loader2, Eye, EyeOff, Maximize, Camera } from 'lucide-react';
 import { toast } from 'sonner';
@@ -38,11 +39,8 @@ const Index = () => {
   const { snapshots, loading: snapshotsLoading, saveSnapshot, loadSnapshots } = usePortfolioSnapshots();
   const { privacyMode, togglePrivacy, blurValue, PrivacyContext: Ctx } = usePrivacyModeProvider();
 
-  useEffect(() => {
-    if (assets.length > 0 && !loading) {
-      saveSnapshot(assets);
-    }
-  }, [assets, loading, saveSnapshot]);
+  // Worker: refresh de preços + snapshot intraday a cada 10min (+ focus/online)
+  usePriceRefreshWorker({ assets, loading, refresh, saveSnapshot });
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingHolding, setEditingHolding] = useState<HoldingRow | null>(null);
