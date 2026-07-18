@@ -660,6 +660,7 @@ export type Database = {
       }
     }
     Functions: {
+      cleanup_old_snapshots: { Args: never; Returns: number }
       get_user_email: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {
@@ -669,10 +670,12 @@ export type Database = {
         Returns: boolean
       }
       import_transactions_atomic: { Args: { _rows: Json }; Returns: Json }
+      refresh_all_daily_snapshots: { Args: never; Returns: number }
       refresh_portfolio_metrics: {
         Args: { _user_id: string }
         Returns: undefined
       }
+      upsert_daily_snapshot: { Args: { _user_id: string }; Returns: undefined }
     }
     Enums: {
       alert_status: "active" | "triggered" | "paused"
