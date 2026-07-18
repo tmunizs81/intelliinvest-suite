@@ -3,6 +3,9 @@ project_id = "qysofdyyumoggkptxxuf"
 [functions.yahoo-finance]
 verify_jwt = false
 
+[functions.yahoo-stream]
+verify_jwt = false
+
 [functions.yahoo-finance-history]
 verify_jwt = false
 
