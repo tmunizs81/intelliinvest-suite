@@ -237,12 +237,28 @@ function AlertCard({
               </span>
             )}
           </div>
-          {alert.notify_telegram && (
-            <div className="flex items-center gap-1 mt-1">
-              <MessageCircle className="h-2.5 w-2.5 text-primary" />
-              <span className="text-[10px] text-primary/80">Telegram</span>
-            </div>
-          )}
+          <div className="flex items-center gap-2 mt-1 flex-wrap">
+            {alert.notify_telegram && (
+              <span className="inline-flex items-center gap-1 text-[10px] text-primary/80">
+                <MessageCircle className="h-2.5 w-2.5" /> Telegram
+              </span>
+            )}
+            {alert.notify_email && (
+              <span className="inline-flex items-center gap-1 text-[10px] text-primary/80">
+                <Mail className="h-2.5 w-2.5" /> E-mail
+              </span>
+            )}
+            {alert.secondary_type && alert.secondary_value != null && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted/60 text-muted-foreground">
+                {alert.condition_logic} · {alert.secondary_value}
+              </span>
+            )}
+            {alert.valid_until && (
+              <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
+                <Calendar className="h-2.5 w-2.5" /> até {new Date(alert.valid_until).toLocaleDateString('pt-BR')}
+              </span>
+            )}
+          </div>
         </div>
 
         <div className="flex items-center gap-0.5 opacity-70 group-hover:opacity-100 transition-opacity">
