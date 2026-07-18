@@ -23,7 +23,7 @@ export function useFamilySharing() {
     setLoading(true);
 
     // Auto-link: find pending invites for this email and set member_id
-    const { data: pendingForMe } = await supabase
+    const { data: pendingForMe } = await (supabase as any)
       .from('family_members')
       .select('*')
       .eq('invited_email', user.email?.toLowerCase() || '')
@@ -32,7 +32,7 @@ export function useFamilySharing() {
 
     if (pendingForMe && pendingForMe.length > 0) {
       for (const invite of pendingForMe) {
-        await supabase
+        await (supabase as any)
           .from('family_members')
           .update({ member_id: user.id })
           .eq('id', invite.id);
@@ -40,14 +40,14 @@ export function useFamilySharing() {
     }
 
     // Load sent invites (I'm owner)
-    const { data: sent } = await supabase
+    const { data: sent } = await (supabase as any)
       .from('family_members')
       .select('*')
       .eq('owner_id', user.id);
     setSentInvites(sent || []);
 
     // Load received invites (I'm member or invited email)
-    const { data: received } = await supabase
+    const { data: received } = await (supabase as any)
       .from('family_members')
       .select('*')
       .eq('member_id', user.id)
@@ -55,7 +55,7 @@ export function useFamilySharing() {
     setReceivedInvites(received || []);
 
     // Active family connections where I'm a member
-    const { data: activeFamily } = await supabase
+    const { data: activeFamily } = await (supabase as any)
       .from('family_members')
       .select('*')
       .eq('member_id', user.id)
@@ -69,7 +69,7 @@ export function useFamilySharing() {
 
   const acceptInvite = useCallback(async (inviteId: string) => {
     if (!user) return;
-    const { error } = await supabase
+    const { error } = await (supabase as any)
       .from('family_members')
       .update({ status: 'active', member_id: user.id })
       .eq('id', inviteId);
@@ -79,7 +79,7 @@ export function useFamilySharing() {
 
   const rejectInvite = useCallback(async (inviteId: string) => {
     if (!user) return;
-    await supabase.from('family_members').delete().eq('id', inviteId);
+    await (supabase as any).from('family_members').delete().eq('id', inviteId);
     await loadAll();
   }, [user, loadAll]);
 

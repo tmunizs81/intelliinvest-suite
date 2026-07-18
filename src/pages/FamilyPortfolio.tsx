@@ -40,7 +40,7 @@ export default function FamilyPortfolio() {
   useEffect(() => {
     if (!user) return;
     const load = async () => {
-      const { data } = await supabase
+      const { data } = await (supabase as any)
         .from('family_members')
         .select('*')
         .eq('member_id', user.id)
