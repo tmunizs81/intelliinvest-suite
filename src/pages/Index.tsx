@@ -83,6 +83,7 @@ const Index = () => {
             </div>
             <div className="flex items-center gap-1.5">
               <FreshnessBadge lastUpdate={lastUpdate} loading={loading} onRefresh={refresh} />
+              <ReconcileBadge />
               <button
                 onClick={togglePrivacy}
                 title={privacyMode ? 'Mostrar valores' : 'Ocultar valores'}
