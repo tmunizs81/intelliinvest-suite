@@ -16,6 +16,7 @@ import { useDashboardBootstrap } from '@/hooks/useDashboardBootstrap';
 import { usePriceRefreshWorker } from '@/hooks/usePriceRefreshWorker';
 import { useSnapshotRealtime } from '@/hooks/useSnapshotRealtime';
 import FreshnessBadge from '@/components/dashboard/FreshnessBadge';
+import ReconcileBadge from '@/components/dashboard/ReconcileBadge';
 import { usePrivacyModeProvider, PrivacyContext } from '@/hooks/usePrivacyMode';
 import { Loader2, Eye, EyeOff, Maximize, Camera } from 'lucide-react';
 import { toast } from 'sonner';
