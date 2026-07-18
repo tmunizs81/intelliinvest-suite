@@ -129,22 +129,26 @@ export default function BulkImportYahoo({ open, onClose }: Props) {
   const confirm = async () => {
     if (validRows.length === 0) return;
     setStep('importing'); setProgress(0);
-    for (let i = 0; i < validRows.length; i++) {
-      const r = validRows[i];
-      try {
-        await addHolding({
-          ticker: r.ticker,
-          name: r.name,
-          type: r.type,
-          quantity: r.quantity,
-          avg_price: r.price ?? r.currentPrice,
-          sector: null,
-          broker: r.broker || null,
-        });
-      } catch (e) { console.error('add failed', r.ticker, e); }
-      setProgress(i + 1);
+    const rows = validRows.map((r) => ({
+      ticker: r.ticker,
+      name: r.name,
+      type: r.type,
+      operation: 'COMPRA',
+      quantity: r.quantity,
+      price: r.price ?? r.currentPrice,
+      fees: 0,
+      broker: r.broker || null,
+      sector: null,
+    }));
+    try {
+      const { error } = await (supabase as any).rpc('import_transactions_atomic', { _rows: rows });
+      if (error) throw error;
+      setProgress(validRows.length);
+      setStep('done');
+    } catch (e: any) {
+      setErr(`Import atômica revertida: ${e?.message || 'erro desconhecido'}. Nenhum ativo foi alterado.`);
+      setStep('preview');
     }
-    setStep('done');
   };
 
   return (
