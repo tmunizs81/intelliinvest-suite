@@ -78,14 +78,10 @@ const Index = () => {
             <div>
               <p className="text-sm text-muted-foreground">
                 Controle inteligente de investimentos
-                {lastUpdate && (
-                  <span className="ml-2 text-xs">
-                    • Atualizado {lastUpdate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                  </span>
-                )}
               </p>
             </div>
             <div className="flex items-center gap-1.5">
+              <FreshnessBadge lastUpdate={lastUpdate} loading={loading} onRefresh={refresh} />
               <button
                 onClick={togglePrivacy}
                 title={privacyMode ? 'Mostrar valores' : 'Ocultar valores'}
