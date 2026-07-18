@@ -646,11 +646,11 @@ A tela de **Análise Avançada** oferece ferramentas profissionais para análise
 - Score percentual exibido no badge e no modal detalhado
 - Dados obtidos via Yahoo Finance, StatusInvest e FundsExplorer
 
-### 🔄 Redundância IA (DeepSeek + Lovable Gateway):
-- O sistema utiliza **DeepSeek** como provedor de IA **primário** (modelo deepseek-chat)
-- Se o DeepSeek falhar (erro, timeout ou rate limit), a requisição é reenviada automaticamente ao **Lovable AI Gateway** (Gemini)
-- Garante **alta disponibilidade** das análises mesmo em momentos de sobrecarga
-- Todas as 30+ Edge Functions seguem este padrão de redundância
+### 🤖 Provedor de IA (DeepSeek único):
+- Todas as análises de IA usam **DeepSeek** (modelo `deepseek-chat`) como provedor **exclusivo**
+- Sem gateways intermediários ou fallbacks — chamadas diretas para `api.deepseek.com`
+- Todas as 32 Edge Functions seguem este mesmo padrão centralizado
+
 
 ### Como Usar:
 1. Acesse **Análise Avançada** no menu
