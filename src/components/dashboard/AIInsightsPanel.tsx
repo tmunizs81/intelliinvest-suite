@@ -100,7 +100,7 @@ export default function AIInsightsPanel({ assets }: Props) {
                 <Sparkles className="h-4 w-4 text-ai" />
               </h2>
               <p className="text-xs text-muted-foreground">
-                {aiInsights.length > 0 ? 'Google Gemini • Análise personalizada' : 'Análise em tempo real'}
+                {aiInsights.length > 0 ? 'DeepSeek • Análise personalizada' : 'Análise em tempo real'}
               </p>
             </div>
           </div>
