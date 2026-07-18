@@ -38,12 +38,11 @@ Deno.serve(async (req) => {
     for (const userId of userIds) {
       try {
         // Fetch all user data
-        const [holdingsRes, transactionsRes, alertsRes, telegramRes, familyRes, conversationsRes, messagesRes] = await Promise.all([
+        const [holdingsRes, transactionsRes, alertsRes, telegramRes, conversationsRes, messagesRes] = await Promise.all([
           supabase.from("holdings").select("*").eq("user_id", userId),
           supabase.from("transactions").select("*").eq("user_id", userId),
           supabase.from("alerts").select("*").eq("user_id", userId),
           supabase.from("telegram_settings").select("*").eq("user_id", userId),
-          supabase.from("family_members").select("*").eq("owner_id", userId),
           supabase.from("ai_conversations").select("*").eq("user_id", userId),
           supabase.from("ai_messages").select("*").eq("user_id", userId),
         ]);
@@ -55,7 +54,6 @@ Deno.serve(async (req) => {
           transactions: transactionsRes.data || [],
           alerts: alertsRes.data || [],
           telegramSettings: telegramRes.data || [],
-          familyMembers: familyRes.data || [],
           aiConversations: conversationsRes.data || [],
           aiMessages: messagesRes.data || [],
         };
