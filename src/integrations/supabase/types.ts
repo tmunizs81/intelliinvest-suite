@@ -349,6 +349,45 @@ export type Database = {
         }
         Relationships: []
       }
+      portfolio_daily_metrics: {
+        Row: {
+          by_broker: Json
+          by_sector: Json
+          by_type: Json
+          distinct_tickers: number
+          metric_date: string
+          top_holdings: Json
+          total_invested: number
+          total_positions: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          by_broker?: Json
+          by_sector?: Json
+          by_type?: Json
+          distinct_tickers?: number
+          metric_date?: string
+          top_holdings?: Json
+          total_invested?: number
+          total_positions?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          by_broker?: Json
+          by_sector?: Json
+          by_type?: Json
+          distinct_tickers?: number
+          metric_date?: string
+          top_holdings?: Json
+          total_invested?: number
+          total_positions?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       portfolio_snapshots: {
         Row: {
           assets_count: number
@@ -574,6 +613,10 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      refresh_portfolio_metrics: {
+        Args: { _user_id: string }
+        Returns: undefined
       }
     }
     Enums: {
