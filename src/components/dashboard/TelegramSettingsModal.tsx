@@ -34,7 +34,7 @@ export default function TelegramSettingsModal({ open, onClose, settings, onSave 
 
   const handleSave = async () => {
     setLoading(true);
-    await onSave({ bot_token: null, chat_id: chatId || null, enabled });
+    await onSave({ ...settings, bot_token: null, chat_id: chatId || null, enabled });
     setLoading(false);
     onClose();
   };
