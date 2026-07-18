@@ -33,6 +33,9 @@ const TabFallback = () => (
 
 const Index = () => {
   const isMobile = useIsMobile();
+  const Index = () => {
+  const isMobile = useIsMobile();
+  useDashboardBootstrap(); // primes IndexedDB cache for instant SWR paint across hooks
   const { assets, holdings, loading, error, lastUpdate, nextUpdate, refresh, addHolding, updateHolding, deleteHolding } = usePortfolio();
   const { snapshots, loading: snapshotsLoading, saveSnapshot, loadSnapshots } = usePortfolioSnapshots();
   const { privacyMode, togglePrivacy, blurValue, PrivacyContext: Ctx } = usePrivacyModeProvider();
