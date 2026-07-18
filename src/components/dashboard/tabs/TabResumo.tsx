@@ -53,6 +53,7 @@ export default function TabResumo({ assets, lastUpdate, nextUpdate, snapshots, s
   return (
     <>
       <LiveTickerBar assets={assets} />
+      <EconomicCalendarCarousel />
       <Panel noPadding>
         <PortfolioSummary assets={assets} lastUpdate={lastUpdate} nextUpdate={nextUpdate} />
       </Panel>
