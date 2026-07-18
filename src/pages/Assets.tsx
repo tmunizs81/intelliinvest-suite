@@ -626,6 +626,8 @@ export default function Assets() {
         holdings={holdings}
         assets={assets}
       />
+
+      <BulkImportYahoo open={bulkYahooOpen} onClose={() => setBulkYahooOpen(false)} />
     </div>
   );
 }
