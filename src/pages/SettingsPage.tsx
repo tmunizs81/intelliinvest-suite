@@ -869,7 +869,7 @@ function FamilyTab() {
     setLoading(true);
 
     // Auto-link pending invites for this user's email
-    const { data: pendingForMe } = await supabase
+    const { data: pendingForMe } = await (supabase as any)
       .from('family_members')
       .select('*')
       .eq('invited_email', user.email?.toLowerCase() || '')
@@ -878,7 +878,7 @@ function FamilyTab() {
 
     if (pendingForMe && pendingForMe.length > 0) {
       for (const invite of pendingForMe) {
-        await supabase
+        await (supabase as any)
           .from('family_members')
           .update({ member_id: user.id })
           .eq('id', invite.id);
@@ -886,14 +886,14 @@ function FamilyTab() {
     }
 
     // Load sent invites (I'm owner)
-    const { data: sent } = await supabase
+    const { data: sent } = await (supabase as any)
       .from('family_members')
       .select('*')
       .eq('owner_id', user.id);
     setMembers(sent || []);
 
     // Load received invites (I'm member)
-    const { data: received } = await supabase
+    const { data: received } = await (supabase as any)
       .from('family_members')
       .select('*')
       .eq('member_id', user.id)
@@ -913,7 +913,7 @@ function FamilyTab() {
     }
     setInviting(true);
     try {
-      const { error } = await supabase.from('family_members').insert({
+      const { error } = await (supabase as any).from('family_members').insert({
         owner_id: user.id,
         invited_email: email.trim().toLowerCase(),
         status: 'pending',
@@ -931,7 +931,7 @@ function FamilyTab() {
 
   const removeMember = async (id: string) => {
     if (!confirm('Remover este membro?')) return;
-    await supabase.from('family_members').delete().eq('id', id);
+    await (supabase as any).from('family_members').delete().eq('id', id);
     await loadAll();
     toast.success('Membro removido');
   };
@@ -940,7 +940,7 @@ function FamilyTab() {
     if (!user) return;
     setAccepting(id);
     try {
-      await supabase.from('family_members').update({ status: 'active', member_id: user.id }).eq('id', id);
+      await (supabase as any).from('family_members').update({ status: 'active', member_id: user.id }).eq('id', id);
       toast.success('Convite aceito! Agora você pode visualizar a carteira compartilhada.');
       await loadAll();
     } catch {
@@ -952,7 +952,7 @@ function FamilyTab() {
 
   const rejectInvite = async (id: string) => {
     if (!confirm('Recusar este convite?')) return;
-    await supabase.from('family_members').delete().eq('id', id);
+    await (supabase as any).from('family_members').delete().eq('id', id);
     await loadAll();
     toast.success('Convite recusado');
   };
@@ -1508,7 +1508,7 @@ function BackupTab() {
         supabase.from('transactions').select('*').eq('user_id', user.id),
         supabase.from('alerts').select('*').eq('user_id', user.id),
         supabase.from('telegram_settings').select('*').eq('user_id', user.id),
-        supabase.from('family_members').select('*').eq('owner_id', user.id),
+        (supabase as any).from('family_members').select('*').eq('owner_id', user.id),
       ]);
       const backup = {
         exportDate: new Date().toISOString(),

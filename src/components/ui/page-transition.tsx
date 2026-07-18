@@ -8,8 +8,8 @@ const pageVariants = {
 };
 
 const pageTransition = {
-  type: 'tween',
-  ease: 'easeOut',
+  type: 'tween' as const,
+  ease: 'easeOut' as const,
   duration: 0.2,
 };
 
@@ -36,7 +36,7 @@ export function TabTransition({ children, tabKey }: { children: ReactNode; tabKe
         initial={{ opacity: 0, x: 10 }}
         animate={{ opacity: 1, x: 0 }}
         exit={{ opacity: 0, x: -10 }}
-        transition={{ type: 'tween', duration: 0.15, ease: 'easeOut' }}
+        transition={{ type: 'tween' as const, duration: 0.15, ease: 'easeOut' as const }}
       >
         {children}
       </motion.div>
@@ -49,7 +49,7 @@ export function FadeIn({ children, delay = 0, className = '' }: { children: Reac
     <motion.div
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.25, delay, ease: 'easeOut' }}
+      transition={{ duration: 0.25, delay, ease: 'easeOut' as const }}
       className={className}
     >
       {children}

@@ -12,13 +12,13 @@ export function useOndoGMTokens() {
   return useQuery({
     queryKey: ["ondo-gm-tokens"],
     queryFn: async (): Promise<OndoGMToken[]> => {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from("ondo_gm_tokens")
         .select("symbol, name, underlying_ticker, logo_uri")
         .order("symbol");
 
       if (error) throw error;
-      return (data as OndoGMToken[]) || [];
+      return ((data as unknown) as OndoGMToken[]) || [];
     },
     staleTime: 1000 * 60 * 60, // 1 hour cache
     gcTime: 1000 * 60 * 60 * 24, // 24h garbage collection
