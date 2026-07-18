@@ -9,7 +9,7 @@ import { fetchWithRetry, withCircuitBreaker, deduplicateRequest, checkRateLimit 
 import { getCached, setCache, CACHE_TTL } from '@/lib/persistentCache';
 import { toast } from 'sonner';
 
-const POLL_INTERVAL = 5 * 60 * 1000; // 5 minutes
+const POLL_INTERVAL = 10 * 60 * 1000; // 10 minutes (server cron also refreshes alerts every 10min)
 
 export interface HoldingRow {
   id: string;

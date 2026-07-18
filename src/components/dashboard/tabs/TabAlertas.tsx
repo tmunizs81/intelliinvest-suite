@@ -1,7 +1,7 @@
 import { type Asset } from '@/lib/mockData';
 import { PanelErrorBoundary } from '@/components/PanelErrorBoundary';
 
-import AlertsPanel from '@/components/dashboard/AlertsPanel';
+import SmartAlertsPanelV2 from '@/components/dashboard/SmartAlertsPanelV2';
 import SmartAlertsPanel from '@/components/dashboard/SmartAlertsPanel';
 
 interface Props {
@@ -35,13 +35,13 @@ export default function TabAlertas({ assets, isMobile }: Props) {
     <>
       {isMobile ? (
         <>
-          <Panel title="Alertas"><AlertsPanel /></Panel>
-          <Panel title="Alertas Inteligentes"><SmartAlertsPanel assets={assets} /></Panel>
+          <SmartAlertsPanelV2 />
+          <Panel title="Sugestões (IA)"><SmartAlertsPanel assets={assets} /></Panel>
         </>
       ) : (
         <Grid2>
-          <Panel title="Alertas de Preço"><AlertsPanel /></Panel>
-          <Panel title="Alertas Inteligentes"><SmartAlertsPanel assets={assets} /></Panel>
+          <SmartAlertsPanelV2 />
+          <Panel title="Sugestões (IA)"><SmartAlertsPanel assets={assets} /></Panel>
         </Grid2>
       )}
     </>
