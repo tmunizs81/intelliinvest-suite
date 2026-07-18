@@ -12,25 +12,35 @@ export interface SnapshotRow {
 }
 
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+const BOOTSTRAP_FRESH_MS = 5 * 60 * 1000;
+
+const mapRows = (rows: any[]): SnapshotRow[] =>
+  (rows || []).map((r: any) => ({
+    snapshot_date: r.snapshot_date,
+    total_value: Number(r.total_value),
+    total_cost: Number(r.total_cost),
+    assets_count: Number(r.assets_count),
+  }));
 
 export function usePortfolioSnapshots() {
   const { user } = useAuth();
   const [snapshots, setSnapshots] = useState<SnapshotRow[]>([]);
   const [loading, setLoading] = useState(false);
   const lastFetchRef = useRef<number>(0);
+  const seededFromBootstrapRef = useRef(false);
 
-  // Seed instantly from dashboard bootstrap cache (SWR)
+  // Seed instantly from dashboard bootstrap cache (SWR) — single source of truth
   useEffect(() => {
     if (!user) return;
     (async () => {
       const boot = await getCached<any>(`dashboard_bootstrap:${user.id}`);
-      if (boot?.snapshots?.length && snapshots.length === 0) {
-        setSnapshots(boot.snapshots.map((r: any) => ({
-          snapshot_date: r.snapshot_date,
-          total_value: Number(r.total_value),
-          total_cost: Number(r.total_cost),
-          assets_count: Number(r.assets_count),
-        })));
+      if (boot?.snapshots?.length) {
+        setSnapshots(mapRows(boot.snapshots));
+        const gen = boot.generated_at ? new Date(boot.generated_at).getTime() : 0;
+        if (Date.now() - gen < BOOTSTRAP_FRESH_MS) {
+          seededFromBootstrapRef.current = true;
+          lastFetchRef.current = Date.now();
+        }
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -47,14 +57,7 @@ export function usePortfolioSnapshots() {
       .eq('user_id', user.id)
       .order('snapshot_date', { ascending: true })
       .limit(365);
-    setSnapshots(
-      ((data as any[]) || []).map((r: any) => ({
-        snapshot_date: r.snapshot_date,
-        total_value: Number(r.total_value),
-        total_cost: Number(r.total_cost),
-        assets_count: Number(r.assets_count),
-      }))
-    );
+    setSnapshots(mapRows((data as any[]) || []));
     lastFetchRef.current = Date.now();
     setLoading(false);
   }, [user, snapshots.length]);
@@ -85,7 +88,14 @@ export function usePortfolioSnapshots() {
     }
   }, [user]);
 
-  useEffect(() => { loadSnapshots(); }, [loadSnapshots]);
+  // Only hit DB directly if bootstrap didn't provide fresh data
+  useEffect(() => {
+    if (!user) return;
+    const t = setTimeout(() => {
+      if (!seededFromBootstrapRef.current) loadSnapshots();
+    }, 50);
+    return () => clearTimeout(t);
+  }, [user, loadSnapshots]);
 
   return {
     snapshots, loading,
