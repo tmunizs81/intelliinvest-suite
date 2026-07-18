@@ -25,7 +25,7 @@ const Login = lazy(() => import("./pages/Login"));
 const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const NotFound = lazy(() => import("./pages/NotFound"));
-const FamilyPortfolio = lazy(() => import("./pages/FamilyPortfolio"));
+
 const Manual = lazy(() => import("./pages/Manual"));
 const Comparator = lazy(() => import("./pages/Comparator"));
 
