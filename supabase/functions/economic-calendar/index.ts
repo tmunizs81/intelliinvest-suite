@@ -9,13 +9,15 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
+    const u = new URL(req.url);
+    const countries = (u.searchParams.get("countries") || "BR,US,EU,CN,GB,JP").toUpperCase();
     const now = new Date();
     const from = new Date(now);
     from.setUTCHours(0, 0, 0, 0);
     const to = new Date(from);
     to.setUTCDate(to.getUTCDate() + 1);
 
-    const url = `https://economic-calendar.tradingview.com/events?from=${from.toISOString()}&to=${to.toISOString()}&countries=BR,US,EU,CN,GB,JP`;
+    const url = `https://economic-calendar.tradingview.com/events?from=${from.toISOString()}&to=${to.toISOString()}&countries=${encodeURIComponent(countries)}`;
 
     const resp = await fetch(url, {
       headers: {
