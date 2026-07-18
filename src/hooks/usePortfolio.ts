@@ -253,6 +253,23 @@ export function usePortfolio() {
     }
   }, [holdings]);
 
+  // Seed instantly from dashboard bootstrap cache (SWR)
+  useEffect(() => {
+    if (!user) return;
+    (async () => {
+      const boot = await getCached<any>(`dashboard_bootstrap:${user.id}`);
+      if (boot?.holdings?.length && holdings.length === 0) {
+        setHoldings(boot.holdings as HoldingRow[]);
+      }
+      if (boot?.cash?.length && cashBalances.length === 0) {
+        const rows = boot.cash.map((r: any) => ({ id: r.id, broker: r.broker, balance: Number(r.balance) }));
+        setCashBalances(rows);
+        setCashBalance(rows.reduce((s: number, r: CashBalanceRow) => s + r.balance, 0));
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+
   // Initial load — batch all init queries in parallel
   useEffect(() => {
     if (!user) {
