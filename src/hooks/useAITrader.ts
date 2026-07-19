@@ -121,6 +121,23 @@ export function useAITrader() {
     await loadConversations();
   }, [user, loadConversations]);
 
+  // Delete ALL conversations
+  const deleteAllConversations = useCallback(async () => {
+    if (!user) return;
+    const { error } = await supabase
+      .from('ai_conversations')
+      .delete()
+      .eq('user_id', user.id);
+    if (error) {
+      toast({ title: 'Erro ao limpar histórico', description: error.message, variant: 'destructive' });
+      return;
+    }
+    setActiveConversationId(null);
+    setMessages([]);
+    await loadConversations();
+    toast({ title: 'Histórico limpo', description: 'Todas as conversas foram excluídas.' });
+  }, [user, loadConversations]);
+
   // Delete conversation
   const deleteConversation = useCallback(async (id: string) => {
     if (!user) return;
