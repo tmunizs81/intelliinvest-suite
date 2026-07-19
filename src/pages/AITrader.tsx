@@ -4,12 +4,13 @@ import { useAITrader, type AnalysisType, type Conversation } from '@/hooks/useAI
 import { type Asset, formatCurrency, formatPercent } from '@/lib/mockData';
 import {
   Brain, Send, Trash2, Square, Loader2, Sparkles,
-  TrendingUp, ShoppingCart, PieChart, Globe, Shield,
+  TrendingUp, ShoppingCart, PieChart, Globe, Shield, Scale,
   PanelRightOpen, PanelRightClose, PanelLeftOpen, PanelLeftClose,
   Wallet, ArrowUpRight, ArrowDownRight,
   Plus, MessageSquare, Clock, MoreVertical, X,
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+import { ActionTagRenderer } from '@/components/ai-trader/ActionTagRenderer';
 import { PieChart as RechartsPie, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 
 const analysisOptions: { type: AnalysisType; label: string; icon: React.ElementType; description: string; prompt: string }[] = [
