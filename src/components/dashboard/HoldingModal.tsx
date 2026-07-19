@@ -386,6 +386,71 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
             <div className="rounded-md bg-destructive/10 border border-destructive/20 p-3 text-sm text-destructive">{error}</div>
           )}
 
+          {/* Toggle: cadastro individual vs cola-lista */}
+          {!editData && (
+            <div className="flex items-center justify-between rounded-md border border-border bg-muted/30 px-2 py-1.5">
+              <div className="flex items-center gap-1">
+                <button type="button" onClick={() => setPasteMode(false)}
+                  className={`px-2.5 py-1 text-xs rounded ${!pasteMode ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
+                  Individual
+                </button>
+                <button type="button" onClick={() => setPasteMode(true)}
+                  className={`px-2.5 py-1 text-xs rounded inline-flex items-center gap-1 ${pasteMode ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
+                  <ClipboardPaste className="h-3 w-3" /> Colar lista
+                </button>
+              </div>
+              {!pasteMode && (
+                <div className="flex items-center gap-1 flex-wrap justify-end">
+                  <span className="text-[10px] text-muted-foreground mr-1">Só corretora:</span>
+                  <button type="button" onClick={() => setBrokerFilter(null)}
+                    className={`text-[10px] px-1.5 py-0.5 rounded ${!brokerFilter ? 'bg-accent text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
+                    Todas
+                  </button>
+                  {BROKER_CATALOGS.map((c) => (
+                    <button key={c.broker} type="button" onClick={() => { setBrokerFilter(c.broker); searchTickers(ticker); }}
+                      className={`text-[10px] px-1.5 py-0.5 rounded ${brokerFilter === c.broker ? 'bg-primary/20 text-primary' : 'text-muted-foreground hover:text-foreground'}`}>
+                      {c.broker}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {pasteMode && !editData && (
+            <div className="space-y-2">
+              <p className="text-xs text-muted-foreground">
+                Uma linha por ativo: <code className="font-mono">TICKER QTD PREÇO [CORRETORA]</code>.
+                Corretora e tipo são auto-preenchidos por regras aprendidas e catálogos.
+              </p>
+              <textarea
+                value={pasteText}
+                onChange={(e) => setPasteText(e.target.value)}
+                rows={8}
+                placeholder={`PETR4 100 32.50\nCSPX.L 8 550 Avenue\nAAPL 10 190`}
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+              {pasteProgress && (
+                <p className="text-xs text-muted-foreground">
+                  Progresso: {pasteProgress.done}/{pasteProgress.total}
+                </p>
+              )}
+              <button
+                type="button"
+                onClick={handlePasteImport}
+                disabled={loading || !pasteText.trim()}
+                className="w-full rounded-md bg-primary py-2.5 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ClipboardPaste className="h-4 w-4" />}
+                Importar lista
+              </button>
+            </div>
+          )}
+
+          {!pasteMode && (
+          <>
+
+
           {/* Ticker with autocomplete - hidden for Imóvel */}
           {type !== 'Imóvel' && (
           <div className="relative">
