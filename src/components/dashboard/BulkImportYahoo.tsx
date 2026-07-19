@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { X, Loader2, Sparkles, CheckCircle2, AlertCircle, Trash2, RefreshCw, Pencil } from 'lucide-react';
+import { X, Loader2, Sparkles, CheckCircle2, AlertCircle, Trash2, RefreshCw, Pencil, Landmark } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { usePortfolio } from '@/hooks/usePortfolio';
 import { classifyAssetType } from '@/lib/assetClassification';
+import { AVENUE_ASSETS } from '@/lib/avenueAssets';
 
 interface Props {
   open: boolean;
