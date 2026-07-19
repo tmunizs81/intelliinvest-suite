@@ -191,9 +191,10 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
     if (irishExchanges.includes(s.exchange)) {
       setSector('ETF Internacional');
     }
-    // Auto-set broker to Avenue if ticker belongs to Avenue catalog
-    if (AVENUE_TICKERS.has(s.symbol.toUpperCase()) && !broker) {
-      setBroker('Avenue');
+    // Auto-set broker from unified broker catalogs (only if unambiguous)
+    if (!broker) {
+      const inferred = inferBrokerFromTicker(s.symbol);
+      if (inferred) setBroker(inferred);
     }
     setShowSuggestions(false);
   };
