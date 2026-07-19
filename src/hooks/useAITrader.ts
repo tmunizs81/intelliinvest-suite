@@ -19,7 +19,7 @@ export type Conversation = {
   updatedAt: Date;
 };
 
-export type AnalysisType = 'position-trades' | 'buy-sell' | 'portfolio-review' | 'macro-analysis' | 'risk-management' | 'free';
+export type AnalysisType = 'position-trades' | 'buy-sell' | 'portfolio-review' | 'macro-analysis' | 'risk-management' | 'debate' | 'free';
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-trader`;
 
