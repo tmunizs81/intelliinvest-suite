@@ -10,6 +10,29 @@ import AICopilotSignal from './AICopilotSignal';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
+import { AVENUE_ASSETS } from '@/lib/avenueAssets';
+
+const AVENUE_TICKERS = new Set(AVENUE_ASSETS.map(a => a.ticker.toUpperCase()));
+
+function searchAvenueLocal(query: string): SearchResult[] {
+  const q = query.trim().toUpperCase();
+  if (!q) return [];
+  return AVENUE_ASSETS
+    .filter(a => a.ticker.toUpperCase().includes(q) || a.name.toUpperCase().includes(q))
+    .slice(0, 8)
+    .map(a => {
+      const isUcits = a.category === 'ucits' || a.ticker.endsWith('.L');
+      return {
+        symbol: a.ticker,
+        name: a.name,
+        type: a.category === 'stock' || a.category === 'adr' ? 'Ação'
+          : a.category === 'reit' ? 'REIT'
+          : isUcits ? 'ETF' : 'ETF',
+        exchange: isUcits ? 'LSE' : 'NMS',
+        exchangeDisplay: isUcits ? 'London' : (a.category === 'reit' ? 'NYSE' : 'NASDAQ'),
+      } as SearchResult;
+    });
+}
 
 const TYPES = ['Ação', 'FII', 'ETF', 'ETF Internacional', 'REIT', 'BDR', 'Internacional', 'Cripto', 'Renda Fixa', 'Imóvel'] as const;
 
