@@ -288,9 +288,30 @@ export function useTaxes() {
     return { monthly, totalTax, totalGains, totalSales, taxPaidMonths, year };
   }, [calculateTaxes]);
 
+  // Positions (cost basis) at a given date, replaying transactions
+  const getPositionsAtDate = useCallback((dateISO: string) => {
+    const positions: Record<string, { ticker: string; name: string; type: string; broker: string; quantity: number; custoTotal: number }> = {};
+    const txs = [...transactions].filter(t => t.date <= dateISO).sort((a, b) => a.date.localeCompare(b.date));
+    for (const tx of txs) {
+      const key = `${tx.ticker}||${(tx as any).broker || 'N/A'}`;
+      if (!positions[key]) positions[key] = { ticker: tx.ticker, name: tx.name, type: tx.type, broker: (tx as any).broker || 'N/A', quantity: 0, custoTotal: 0 };
+      const p = positions[key];
+      if (tx.operation === 'buy') {
+        p.custoTotal += tx.price * tx.quantity + tx.fees;
+        p.quantity += tx.quantity;
+      } else {
+        const avg = p.quantity > 0 ? p.custoTotal / p.quantity : 0;
+        p.custoTotal = avg * Math.max(0, p.quantity - tx.quantity);
+        p.quantity -= tx.quantity;
+      }
+    }
+    return Object.values(positions).filter(p => p.quantity > 0.0000001);
+  }, [transactions]);
+
   return {
     transactions, loading, error,
     addTransaction, deleteTransaction, loadTransactions,
-    calculateTaxes, getAnnualSummary,
+    calculateTaxes, getAnnualSummary, getPositionsAtDate,
   };
+
 }
