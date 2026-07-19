@@ -47,10 +47,14 @@ function ActionCard({ action }: { action: ParsedAction }) {
     const { error } = await supabase.from('alerts').insert({
       user_id: user.id,
       ticker: action.ticker,
-      condition: action.direction === 'above' ? 'price_above' : 'price_below',
+      name: `AI Trader — ${action.ticker} ${action.direction === 'above' ? '≥' : '≤'} R$${action.price.toFixed(2)}`,
+      alert_type: action.direction === 'above' ? 'price_above' : 'price_below',
       target_value: action.price,
-      is_active: true,
-      note: action.note || `Sugestão AI Trader (${action.direction === 'above' ? 'alvo' : 'stop'})`,
+      condition_logic: 'AND',
+      status: 'active',
+      notify_email: true,
+      notify_telegram: false,
+      notes: action.note || 'Sugestão AI Trader',
     } as never);
     if (error) {
       toast.error('Falha ao criar alerta: ' + error.message);
