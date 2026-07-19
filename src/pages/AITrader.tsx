@@ -9,7 +9,6 @@ import {
   Wallet, ArrowUpRight, ArrowDownRight,
   Plus, MessageSquare, Clock, MoreVertical, X,
 } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
 import { ActionTagRenderer } from '@/components/ai-trader/ActionTagRenderer';
 import { PieChart as RechartsPie, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 
