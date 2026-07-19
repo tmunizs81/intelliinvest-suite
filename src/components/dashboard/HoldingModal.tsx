@@ -85,6 +85,14 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
   const inputRef = useRef<HTMLInputElement>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
 
+  // Nova UX: filtro por corretora, cola-lista e confirmação UCITS
+  const [brokerFilter, setBrokerFilter] = useState<string | null>(null);
+  const [pasteMode, setPasteMode] = useState(false);
+  const [pasteText, setPasteText] = useState('');
+  const [pasteProgress, setPasteProgress] = useState<{ done: number; total: number } | null>(null);
+  const [ucitsAck, setUcitsAck] = useState(false);
+  const ucitsHint = useMemo(() => detectUCITS(ticker, name), [ticker, name]);
+
   useEffect(() => {
     if (open) {
       setTicker(editData?.ticker || '');
