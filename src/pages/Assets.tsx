@@ -8,6 +8,7 @@ import {
 import { usePortfolio, type HoldingRow } from '@/hooks/usePortfolio';
 import HoldingModal from '@/components/dashboard/HoldingModal';
 import BulkImportYahoo from '@/components/dashboard/BulkImportYahoo';
+import CsvBulkImportModal from '@/components/dashboard/CsvBulkImportModal';
 import SellModal from '@/components/dashboard/SellModal';
 import CashBalanceModal from '@/components/dashboard/CashBalanceModal';
 import BrokerageImportPanel from '@/components/dashboard/BrokerageImportPanel';
@@ -44,6 +45,7 @@ export default function Assets() {
   const [cashModalOpen, setCashModalOpen] = useState(false);
   const [custodyOpen, setCustodyOpen] = useState(false);
   const [bulkYahooOpen, setBulkYahooOpen] = useState(false);
+  const [csvBulkOpen, setCsvBulkOpen] = useState(false);
 
   const handleSell = (holdingRow: HoldingRow, asset: Asset) => {
     setSellingHolding(holdingRow);
@@ -202,7 +204,7 @@ export default function Assets() {
             Importar via Yahoo
           </button>
           <button
-            onClick={() => setImportOpen(true)}
+            onClick={() => setCsvBulkOpen(true)}
             className="h-9 px-3 rounded-lg border border-border bg-card text-sm text-muted-foreground hover:text-foreground flex items-center gap-2 transition-all"
           >
             <Upload className="h-4 w-4" />
@@ -628,6 +630,7 @@ export default function Assets() {
       />
 
       <BulkImportYahoo open={bulkYahooOpen} onClose={() => setBulkYahooOpen(false)} />
+      <CsvBulkImportModal open={csvBulkOpen} onClose={() => setCsvBulkOpen(false)} />
     </div>
   );
 }

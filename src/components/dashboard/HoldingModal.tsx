@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { X, Plus, Loader2, Search, CalendarIcon } from 'lucide-react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { X, Plus, Loader2, Search, CalendarIcon, ClipboardPaste, ShieldCheck } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
@@ -10,16 +10,27 @@ import AICopilotSignal from './AICopilotSignal';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
-import { searchBrokerCatalogs, inferBrokerFromTicker } from '@/lib/brokerCatalogs';
+import { BROKER_CATALOGS, searchBrokerCatalogs, inferBrokerFromTicker, type UnifiedSearchResult } from '@/lib/brokerCatalogs';
+import { getRule, learnRule } from '@/lib/tickerMappingRules';
+import { detectUCITS } from '@/lib/ucitsDetector';
 
-function searchBrokerLocal(query: string): SearchResult[] {
-  return searchBrokerCatalogs(query, 10).map(r => ({
-    symbol: r.symbol,
-    name: r.name,
-    type: r.type,
-    exchange: r.exchange,
-    exchangeDisplay: r.exchangeDisplay,
-  }));
+function toResult(r: UnifiedSearchResult): SearchResult {
+  return { symbol: r.symbol, name: r.name, type: r.type, exchange: r.exchange, exchangeDisplay: r.exchangeDisplay };
+}
+
+function searchBrokerLocal(query: string, brokerFilter?: string | null): SearchResult[] {
+  if (brokerFilter) {
+    const cat = BROKER_CATALOGS.find(c => c.broker === brokerFilter);
+    if (!cat) return [];
+    const q = query.trim().toUpperCase();
+    const list = q
+      ? cat.assets.filter(a => a.ticker.toUpperCase().includes(q) || a.name.toUpperCase().includes(q))
+      : cat.assets.slice(0, 30);
+    return list.slice(0, 30).map(a => toResult({
+      symbol: a.ticker, name: a.name, type: '', exchange: '', exchangeDisplay: cat.broker, broker: cat.broker,
+    } as UnifiedSearchResult));
+  }
+  return searchBrokerCatalogs(query, 10).map(toResult);
 }
 
 const TYPES = ['Ação', 'FII', 'ETF', 'ETF Internacional', 'REIT', 'BDR', 'Internacional', 'Cripto', 'Renda Fixa', 'Imóvel'] as const;
@@ -74,6 +85,14 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
   const inputRef = useRef<HTMLInputElement>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
 
+  // Nova UX: filtro por corretora, cola-lista e confirmação UCITS
+  const [brokerFilter, setBrokerFilter] = useState<string | null>(null);
+  const [pasteMode, setPasteMode] = useState(false);
+  const [pasteText, setPasteText] = useState('');
+  const [pasteProgress, setPasteProgress] = useState<{ done: number; total: number } | null>(null);
+  const [ucitsAck, setUcitsAck] = useState(false);
+  const ucitsHint = useMemo(() => detectUCITS(ticker, name), [ticker, name]);
+
   useEffect(() => {
     if (open) {
       setTicker(editData?.ticker || '');
@@ -95,6 +114,11 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
       setError('');
       setSuggestions([]);
       setShowSuggestions(false);
+      setBrokerFilter(null);
+      setPasteMode(false);
+      setPasteText('');
+      setPasteProgress(null);
+      setUcitsAck(false);
     }
   }, [open, editData]);
 
@@ -111,29 +135,32 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
   }, []);
 
   const searchTickers = useCallback(async (query: string) => {
-    if (query.length < 1) {
+    if (query.length < 1 && !brokerFilter) {
       setSuggestions([]);
       setShowSuggestions(false);
       return;
     }
     setSearching(true);
-    // Seed with local broker-catalog matches instantly
-    const localAvenue = searchBrokerLocal(query);
-    if (localAvenue.length) {
-      setSuggestions(localAvenue);
+    const local = searchBrokerLocal(query, brokerFilter);
+    if (local.length) {
+      setSuggestions(local);
       setShowSuggestions(true);
+    }
+    // Se um filtro de corretora está ativo, não consulta remotos
+    if (brokerFilter) {
+      setSearching(false);
+      return;
     }
     try {
       const { data, error } = await supabase.functions.invoke('ticker-search', {
         body: { query },
       });
       if (!error && data?.results) {
-        // Merge: Avenue first, dedupe by symbol
-        const seen = new Set(localAvenue.map(r => r.symbol.toUpperCase()));
+        const seen = new Set(local.map(r => r.symbol.toUpperCase()));
         const remote: SearchResult[] = (data.results as SearchResult[]).filter(
           r => !seen.has(r.symbol.toUpperCase())
         );
-        const merged = [...localAvenue, ...remote];
+        const merged = [...local, ...remote];
         setSuggestions(merged);
         setShowSuggestions(merged.length > 0);
         setSelectedIndex(-1);
@@ -143,12 +170,19 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
     } finally {
       setSearching(false);
     }
-  }, []);
+  }, [brokerFilter]);
 
 
   const handleTickerChange = (value: string) => {
     const upper = value.toUpperCase();
     setTicker(upper);
+    setUcitsAck(false);
+    // Auto-aplica regra aprendida (ticker → broker/type)
+    const rule = getRule(upper);
+    if (rule) {
+      if (rule.broker && !broker) setBroker(rule.broker);
+      if (rule.type) setType(rule.type);
+    }
     // Auto-classify type as user types
     if (upper.length >= 2) {
       const detected = classifyAssetType(upper);
@@ -246,10 +280,21 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
         return;
       }
 
+      // Bloqueio de confirmação UCITS
+      if (!editData && ucitsHint.isUcits && !ucitsAck) {
+        setError('Confirme abaixo que este é um ETF irlandês UCITS antes de salvar.');
+        setLoading(false);
+        return;
+      }
+
       if (editData && onUpdate) {
         await onUpdate(editData.id, data);
       } else {
         await onSave(data);
+      }
+      // Aprende mapeamento ticker → broker/type
+      if (!isProperty && data.broker) {
+        learnRule(data.ticker, { broker: data.broker, type: data.type });
       }
       onClose();
     } catch (err: any) {
@@ -261,6 +306,56 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Import em massa por cola-lista dentro do próprio modal.
+  const handlePasteImport = async () => {
+    setError('');
+    const lines = pasteText.split('\n').map((l) => l.trim()).filter(Boolean);
+    if (!lines.length) { setError('Cole ao menos uma linha: TICKER QTD [PREÇO] [CORRETORA]'); return; }
+    const parsed = lines.map((line) => {
+      const parts = line.split(/[\s,;\t]+/).filter(Boolean);
+      const [tk, qtd, price, ...rest] = parts;
+      return {
+        ticker: (tk || '').toUpperCase(),
+        quantity: parseFloat((qtd || '0').replace(',', '.')),
+        price: price ? parseFloat(price.replace(',', '.')) : NaN,
+        broker: rest.length ? rest.join(' ') : '',
+      };
+    }).filter((p) => p.ticker && p.quantity > 0 && !isNaN(p.price));
+
+    if (!parsed.length) { setError('Nenhuma linha válida. Formato esperado: TICKER QTD PREÇO [CORRETORA]'); return; }
+
+    setLoading(true);
+    setPasteProgress({ done: 0, total: parsed.length });
+    let failures = 0;
+    for (let i = 0; i < parsed.length; i++) {
+      const p = parsed[i];
+      const rule = getRule(p.ticker);
+      const resolvedBroker = (p.broker || rule?.broker || inferBrokerFromTicker(p.ticker) || '').trim();
+      const resolvedType = rule?.type || classifyAssetType(p.ticker) || 'Ação';
+      try {
+        await onSave({
+          ticker: p.ticker,
+          name: p.ticker,
+          type: resolvedType,
+          quantity: p.quantity,
+          avg_price: p.price,
+          sector: null,
+          broker: resolvedBroker || null,
+        } as any);
+        if (resolvedBroker) learnRule(p.ticker, { broker: resolvedBroker, type: resolvedType });
+      } catch {
+        failures++;
+      }
+      setPasteProgress({ done: i + 1, total: parsed.length });
+    }
+    setLoading(false);
+    if (failures) {
+      setError(`${failures} linha(s) falharam. As demais foram adicionadas.`);
+    } else {
+      onClose();
     }
   };
 
@@ -290,6 +385,71 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
           {error && (
             <div className="rounded-md bg-destructive/10 border border-destructive/20 p-3 text-sm text-destructive">{error}</div>
           )}
+
+          {/* Toggle: cadastro individual vs cola-lista */}
+          {!editData && (
+            <div className="flex items-center justify-between rounded-md border border-border bg-muted/30 px-2 py-1.5">
+              <div className="flex items-center gap-1">
+                <button type="button" onClick={() => setPasteMode(false)}
+                  className={`px-2.5 py-1 text-xs rounded ${!pasteMode ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
+                  Individual
+                </button>
+                <button type="button" onClick={() => setPasteMode(true)}
+                  className={`px-2.5 py-1 text-xs rounded inline-flex items-center gap-1 ${pasteMode ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
+                  <ClipboardPaste className="h-3 w-3" /> Colar lista
+                </button>
+              </div>
+              {!pasteMode && (
+                <div className="flex items-center gap-1 flex-wrap justify-end">
+                  <span className="text-[10px] text-muted-foreground mr-1">Só corretora:</span>
+                  <button type="button" onClick={() => setBrokerFilter(null)}
+                    className={`text-[10px] px-1.5 py-0.5 rounded ${!brokerFilter ? 'bg-accent text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
+                    Todas
+                  </button>
+                  {BROKER_CATALOGS.map((c) => (
+                    <button key={c.broker} type="button" onClick={() => { setBrokerFilter(c.broker); searchTickers(ticker); }}
+                      className={`text-[10px] px-1.5 py-0.5 rounded ${brokerFilter === c.broker ? 'bg-primary/20 text-primary' : 'text-muted-foreground hover:text-foreground'}`}>
+                      {c.broker}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {pasteMode && !editData && (
+            <div className="space-y-2">
+              <p className="text-xs text-muted-foreground">
+                Uma linha por ativo: <code className="font-mono">TICKER QTD PREÇO [CORRETORA]</code>.
+                Corretora e tipo são auto-preenchidos por regras aprendidas e catálogos.
+              </p>
+              <textarea
+                value={pasteText}
+                onChange={(e) => setPasteText(e.target.value)}
+                rows={8}
+                placeholder={`PETR4 100 32.50\nCSPX.L 8 550 Avenue\nAAPL 10 190`}
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+              {pasteProgress && (
+                <p className="text-xs text-muted-foreground">
+                  Progresso: {pasteProgress.done}/{pasteProgress.total}
+                </p>
+              )}
+              <button
+                type="button"
+                onClick={handlePasteImport}
+                disabled={loading || !pasteText.trim()}
+                className="w-full rounded-md bg-primary py-2.5 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ClipboardPaste className="h-4 w-4" />}
+                Importar lista
+              </button>
+            </div>
+          )}
+
+          {!pasteMode && (
+          <>
+
 
           {/* Ticker with autocomplete - hidden for Imóvel */}
           {type !== 'Imóvel' && (
@@ -568,6 +728,28 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
             />
           )}
 
+          {/* UCITS banner + confirmação */}
+          {ucitsHint.isUcits && !editData && (
+            <div className="rounded-md border border-emerald-500/30 bg-emerald-500/5 p-3 text-xs space-y-2">
+              <div className="flex items-start gap-2">
+                <ShieldCheck className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-semibold text-emerald-400">
+                    ETF irlandês UCITS detectado{ucitsHint.kind === 'acc' ? ' (acumulação)' : ucitsHint.kind === 'dist' ? ' (distribuição)' : ''}
+                  </p>
+                  <p className="text-muted-foreground mt-0.5">
+                    {ucitsHint.reason}. Ativos UCITS têm tributação e reinvestimento próprios — confirme antes de salvar.
+                  </p>
+                </div>
+              </div>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked={ucitsAck} onChange={(e) => setUcitsAck(e.target.checked)}
+                  className="h-3.5 w-3.5 accent-emerald-500" />
+                <span>Confirmo que este ativo é um ETF UCITS irlandês.</span>
+              </label>
+            </div>
+          )}
+
           <button
             type="submit" disabled={loading}
             className="w-full rounded-md bg-primary py-2.5 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2"
@@ -575,6 +757,8 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
             {editData ? 'Salvar alterações' : 'Adicionar ativo'}
           </button>
+          </>
+          )}
         </form>
       </div>
     </div>
