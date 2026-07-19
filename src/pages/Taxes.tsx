@@ -471,18 +471,35 @@ export default function Taxes() {
         <TaxChart monthly={annual.monthly} year={selectedYear} />
 
         {/* Tabs */}
-        <div className="flex items-center gap-4 mb-4 border-b border-border">
+        <div className="flex items-center gap-4 mb-4 border-b border-border overflow-x-auto">
           <button onClick={() => setTab('taxes')}
-            className={`pb-2.5 text-sm font-medium border-b-2 transition-all ${tab === 'taxes' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>
+            className={`pb-2.5 text-sm font-medium border-b-2 transition-all whitespace-nowrap ${tab === 'taxes' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>
             <Calculator className="h-3.5 w-3.5 inline mr-1.5" />Impostos por Mês
           </button>
+          <button onClick={() => setTab('declaration')}
+            className={`pb-2.5 text-sm font-medium border-b-2 transition-all whitespace-nowrap ${tab === 'declaration' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>
+            <Sparkles className="h-3.5 w-3.5 inline mr-1.5" />Declaração IRPF
+          </button>
+          <button onClick={() => setTab('chat')}
+            className={`pb-2.5 text-sm font-medium border-b-2 transition-all whitespace-nowrap ${tab === 'chat' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>
+            <MessageCircle className="h-3.5 w-3.5 inline mr-1.5" />Assistente IA
+          </button>
           <button onClick={() => setTab('transactions')}
-            className={`pb-2.5 text-sm font-medium border-b-2 transition-all ${tab === 'transactions' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>
+            className={`pb-2.5 text-sm font-medium border-b-2 transition-all whitespace-nowrap ${tab === 'transactions' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>
             <FileText className="h-3.5 w-3.5 inline mr-1.5" />Operações ({transactions.filter(t => t.date.startsWith(String(selectedYear))).length})
           </button>
         </div>
 
-        {tab === 'taxes' ? (
+        {tab === 'declaration' ? (
+          <Suspense fallback={<div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>}>
+            <IRDeclarationPanel year={selectedYear} positions={positions} previousPositions={previousPositions} monthlyTaxes={annual.monthly} />
+          </Suspense>
+        ) : tab === 'chat' ? (
+          <Suspense fallback={<div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>}>
+            <TaxChatPanel context={carteiraContext} />
+          </Suspense>
+        ) : tab === 'taxes' ? (
+
           <div className="space-y-3">
             {annual.monthly.length === 0 ? (
               <div className="rounded-xl border border-border bg-card p-12 text-center">
