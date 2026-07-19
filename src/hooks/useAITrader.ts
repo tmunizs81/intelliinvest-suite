@@ -323,7 +323,7 @@ export function useAITrader() {
     messages, isLoading, loadingHistory, error,
     conversations, activeConversationId,
     sendMessage, newChat, stopGeneration,
-    loadConversation, deleteConversation,
+    loadConversation, deleteConversation, deleteAllConversations,
     updateConversationTitle,
   };
 }
