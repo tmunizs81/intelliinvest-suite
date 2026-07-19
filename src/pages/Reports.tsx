@@ -862,6 +862,7 @@ export default function Reports() {
           </div>
         )}
       </div>
+      <RebalanceModal open={rebalanceOpen} onClose={() => setRebalanceOpen(false)} />
     </div>
   );
 }
