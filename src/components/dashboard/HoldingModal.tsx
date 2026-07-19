@@ -135,29 +135,32 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
   }, []);
 
   const searchTickers = useCallback(async (query: string) => {
-    if (query.length < 1) {
+    if (query.length < 1 && !brokerFilter) {
       setSuggestions([]);
       setShowSuggestions(false);
       return;
     }
     setSearching(true);
-    // Seed with local broker-catalog matches instantly
-    const localAvenue = searchBrokerLocal(query);
-    if (localAvenue.length) {
-      setSuggestions(localAvenue);
+    const local = searchBrokerLocal(query, brokerFilter);
+    if (local.length) {
+      setSuggestions(local);
       setShowSuggestions(true);
+    }
+    // Se um filtro de corretora está ativo, não consulta remotos
+    if (brokerFilter) {
+      setSearching(false);
+      return;
     }
     try {
       const { data, error } = await supabase.functions.invoke('ticker-search', {
         body: { query },
       });
       if (!error && data?.results) {
-        // Merge: Avenue first, dedupe by symbol
-        const seen = new Set(localAvenue.map(r => r.symbol.toUpperCase()));
+        const seen = new Set(local.map(r => r.symbol.toUpperCase()));
         const remote: SearchResult[] = (data.results as SearchResult[]).filter(
           r => !seen.has(r.symbol.toUpperCase())
         );
-        const merged = [...localAvenue, ...remote];
+        const merged = [...local, ...remote];
         setSuggestions(merged);
         setShowSuggestions(merged.length > 0);
         setSelectedIndex(-1);
@@ -167,12 +170,19 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
     } finally {
       setSearching(false);
     }
-  }, []);
+  }, [brokerFilter]);
 
 
   const handleTickerChange = (value: string) => {
     const upper = value.toUpperCase();
     setTicker(upper);
+    setUcitsAck(false);
+    // Auto-aplica regra aprendida (ticker → broker/type)
+    const rule = getRule(upper);
+    if (rule) {
+      if (rule.broker && !broker) setBroker(rule.broker);
+      if (rule.type) setType(rule.type);
+    }
     // Auto-classify type as user types
     if (upper.length >= 2) {
       const detected = classifyAssetType(upper);
