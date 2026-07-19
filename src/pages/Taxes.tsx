@@ -1,11 +1,14 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, lazy, Suspense } from 'react';
 import { useTaxes, type Transaction, type MonthlyTaxSummary } from '@/hooks/useTaxes';
 import { formatCurrency, formatPercent } from '@/lib/mockData';
 import {
   Calculator, FileText, Plus, Trash2, Loader2, ChevronDown, ChevronRight,
   AlertTriangle, CheckCircle2, Download, Receipt, CalendarDays, TrendingDown,
-  Upload,
+  Upload, Sparkles, MessageCircle,
 } from 'lucide-react';
+
+const IRDeclarationPanel = lazy(() => import('@/components/dashboard/IRDeclarationPanel'));
+const TaxChatPanel = lazy(() => import('@/components/dashboard/TaxChatPanel'));
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
 const currentYear = new Date().getFullYear();
