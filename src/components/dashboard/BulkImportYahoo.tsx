@@ -89,7 +89,7 @@ export default function BulkImportYahoo({ open, onClose }: Props) {
         type: classifyAssetType(p.ticker, 'Ação'),
         currency: q.currency || 'BRL',
         currentPrice: q.currentPriceBRL || q.currentPrice,
-        broker: '',
+        broker: AVENUE_ASSETS.some((a) => a.ticker.toUpperCase() === p.ticker.toUpperCase()) ? 'Avenue' : '',
         status: 'ok', include: true,
       };
     });
