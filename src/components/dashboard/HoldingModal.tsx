@@ -728,6 +728,28 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
             />
           )}
 
+          {/* UCITS banner + confirmação */}
+          {ucitsHint.isUcits && !editData && (
+            <div className="rounded-md border border-emerald-500/30 bg-emerald-500/5 p-3 text-xs space-y-2">
+              <div className="flex items-start gap-2">
+                <ShieldCheck className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-semibold text-emerald-400">
+                    ETF irlandês UCITS detectado{ucitsHint.kind === 'acc' ? ' (acumulação)' : ucitsHint.kind === 'dist' ? ' (distribuição)' : ''}
+                  </p>
+                  <p className="text-muted-foreground mt-0.5">
+                    {ucitsHint.reason}. Ativos UCITS têm tributação e reinvestimento próprios — confirme antes de salvar.
+                  </p>
+                </div>
+              </div>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked={ucitsAck} onChange={(e) => setUcitsAck(e.target.checked)}
+                  className="h-3.5 w-3.5 accent-emerald-500" />
+                <span>Confirmo que este ativo é um ETF UCITS irlandês.</span>
+              </label>
+            </div>
+          )}
+
           <button
             type="submit" disabled={loading}
             className="w-full rounded-md bg-primary py-2.5 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2"
@@ -735,6 +757,8 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
             {editData ? 'Salvar alterações' : 'Adicionar ativo'}
           </button>
+          </>
+          )}
         </form>
       </div>
     </div>
