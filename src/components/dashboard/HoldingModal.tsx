@@ -129,13 +129,25 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
       return;
     }
     setSearching(true);
+    // Seed with Avenue local matches instantly
+    const localAvenue = searchAvenueLocal(query);
+    if (localAvenue.length) {
+      setSuggestions(localAvenue);
+      setShowSuggestions(true);
+    }
     try {
       const { data, error } = await supabase.functions.invoke('ticker-search', {
         body: { query },
       });
       if (!error && data?.results) {
-        setSuggestions(data.results);
-        setShowSuggestions(data.results.length > 0);
+        // Merge: Avenue first, dedupe by symbol
+        const seen = new Set(localAvenue.map(r => r.symbol.toUpperCase()));
+        const remote: SearchResult[] = (data.results as SearchResult[]).filter(
+          r => !seen.has(r.symbol.toUpperCase())
+        );
+        const merged = [...localAvenue, ...remote];
+        setSuggestions(merged);
+        setShowSuggestions(merged.length > 0);
         setSelectedIndex(-1);
       }
     } catch {
@@ -144,6 +156,7 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
       setSearching(false);
     }
   }, []);
+
 
   const handleTickerChange = (value: string) => {
     const upper = value.toUpperCase();
