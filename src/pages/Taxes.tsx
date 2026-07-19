@@ -1,11 +1,14 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, lazy, Suspense } from 'react';
 import { useTaxes, type Transaction, type MonthlyTaxSummary } from '@/hooks/useTaxes';
 import { formatCurrency, formatPercent } from '@/lib/mockData';
 import {
   Calculator, FileText, Plus, Trash2, Loader2, ChevronDown, ChevronRight,
   AlertTriangle, CheckCircle2, Download, Receipt, CalendarDays, TrendingDown,
-  Upload,
+  Upload, Sparkles, MessageCircle,
 } from 'lucide-react';
+
+const IRDeclarationPanel = lazy(() => import('@/components/dashboard/IRDeclarationPanel'));
+const TaxChatPanel = lazy(() => import('@/components/dashboard/TaxChatPanel'));
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
 const currentYear = new Date().getFullYear();
@@ -327,12 +330,20 @@ function DarfCard({ summary }: { summary: MonthlyTaxSummary }) {
 
 // --- Main Page ---
 export default function Taxes() {
-  const { transactions, loading, error, addTransaction, deleteTransaction, getAnnualSummary } = useTaxes();
+  const { transactions, loading, error, addTransaction, deleteTransaction, getAnnualSummary, getPositionsAtDate } = useTaxes();
   const [selectedYear, setSelectedYear] = useState(currentYear);
   const [showForm, setShowForm] = useState(false);
-  const [tab, setTab] = useState<'taxes' | 'transactions'>('taxes');
+  const [tab, setTab] = useState<'taxes' | 'transactions' | 'declaration' | 'chat'>('taxes');
 
   const annual = getAnnualSummary(selectedYear);
+  const positions = useMemo(() => getPositionsAtDate(`${selectedYear}-12-31`), [getPositionsAtDate, selectedYear]);
+  const previousPositions = useMemo(() => getPositionsAtDate(`${selectedYear - 1}-12-31`), [getPositionsAtDate, selectedYear]);
+  const carteiraContext = useMemo(() => {
+    if (positions.length === 0) return undefined;
+    const top = positions.sort((a, b) => b.custoTotal - a.custoTotal).slice(0, 15);
+    return `Carteira em 31/12/${selectedYear} — ${positions.length} ativos, patrimônio a custo ${formatCurrency(positions.reduce((s, p) => s + p.custoTotal, 0))}.\nPrincipais: ${top.map(p => `${p.ticker}(${p.type}) ${formatCurrency(p.custoTotal)}`).join('; ')}.\nImposto ${selectedYear}: ${formatCurrency(annual.totalTax)}, ganho ${formatCurrency(annual.totalGains)}.`;
+  }, [positions, selectedYear, annual]);
+
 
   const exportCSV = () => {
     const yearTxs = transactions.filter(t => t.date.startsWith(String(selectedYear)));
@@ -460,18 +471,35 @@ export default function Taxes() {
         <TaxChart monthly={annual.monthly} year={selectedYear} />
 
         {/* Tabs */}
-        <div className="flex items-center gap-4 mb-4 border-b border-border">
+        <div className="flex items-center gap-4 mb-4 border-b border-border overflow-x-auto">
           <button onClick={() => setTab('taxes')}
-            className={`pb-2.5 text-sm font-medium border-b-2 transition-all ${tab === 'taxes' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>
+            className={`pb-2.5 text-sm font-medium border-b-2 transition-all whitespace-nowrap ${tab === 'taxes' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>
             <Calculator className="h-3.5 w-3.5 inline mr-1.5" />Impostos por Mês
           </button>
+          <button onClick={() => setTab('declaration')}
+            className={`pb-2.5 text-sm font-medium border-b-2 transition-all whitespace-nowrap ${tab === 'declaration' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>
+            <Sparkles className="h-3.5 w-3.5 inline mr-1.5" />Declaração IRPF
+          </button>
+          <button onClick={() => setTab('chat')}
+            className={`pb-2.5 text-sm font-medium border-b-2 transition-all whitespace-nowrap ${tab === 'chat' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>
+            <MessageCircle className="h-3.5 w-3.5 inline mr-1.5" />Assistente IA
+          </button>
           <button onClick={() => setTab('transactions')}
-            className={`pb-2.5 text-sm font-medium border-b-2 transition-all ${tab === 'transactions' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>
+            className={`pb-2.5 text-sm font-medium border-b-2 transition-all whitespace-nowrap ${tab === 'transactions' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>
             <FileText className="h-3.5 w-3.5 inline mr-1.5" />Operações ({transactions.filter(t => t.date.startsWith(String(selectedYear))).length})
           </button>
         </div>
 
-        {tab === 'taxes' ? (
+        {tab === 'declaration' ? (
+          <Suspense fallback={<div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>}>
+            <IRDeclarationPanel year={selectedYear} positions={positions} previousPositions={previousPositions} monthlyTaxes={annual.monthly} />
+          </Suspense>
+        ) : tab === 'chat' ? (
+          <Suspense fallback={<div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>}>
+            <TaxChatPanel context={carteiraContext} />
+          </Suspense>
+        ) : tab === 'taxes' ? (
+
           <div className="space-y-3">
             {annual.monthly.length === 0 ? (
               <div className="rounded-xl border border-border bg-card p-12 text-center">
