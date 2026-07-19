@@ -229,11 +229,14 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
-    // ─── Blocos de contexto ───
+    // ─── Blocos de contexto (paralelo) ───
     const { text: portfolioText, metrics: metricsText } = buildPortfolioBlock(portfolio || []);
-    const ctx = await buildContextForType(supa, userId, analysisType);
+    const [ctx, riskMetrics] = await Promise.all([
+      buildContextForType(supa, userId, analysisType),
+      fetchRiskMetrics(supa, userId),
+    ]);
 
-    const contextBlocks = [portfolioText, metricsText, ctx.macro, ctx.events, ctx.dividends, ctx.news]
+    const contextBlocks = [portfolioText, metricsText, riskMetrics, ctx.macro, ctx.events, ctx.dividends, ctx.news]
       .filter(Boolean).join("\n\n");
 
     // ─── Instruções focadas por tipo ───
