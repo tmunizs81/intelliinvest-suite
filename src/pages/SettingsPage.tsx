@@ -862,26 +862,6 @@ function SerialKeysTab() {
 
       {/* Keys table */}
       <div className="rounded-lg border border-border bg-card overflow-hidden">
-        {loading ? (
-          <div className="p-8 flex justify-center"><Loader2 className="h-5 w-5 animate-spin" /></div>
-        ) : (
-          <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
-            <table className="w-full text-sm">
-              <thead className="sticky top-0 bg-card">
-                <tr className="border-b border-border text-muted-foreground">
-                  <th className="text-left p-3 font-medium text-xs">Chave</th>
-                  <th className="text-left p-3 font-medium text-xs">Plano</th>
-                  <th className="text-left p-3 font-medium text-xs">Status</th>
-                  <th className="text-left p-3 font-medium text-xs">Expira em</th>
-                  <th className="text-right p-3 font-medium text-xs">Ações</th>
-                </tr>
-              </thead>
-              <tbody>
-                {keys.map(k => (
-                  <tr key={k.id} className="border-b border-border/30 hover:bg-accent/20">
-                    <td className="p-3 font-mono text-xs tracking-wider">{k.key}</td>
-      {/* Keys table */}
-      <div className="rounded-lg border border-border bg-card overflow-hidden">
         {selectedIds.size > 0 && (
           <div className="flex items-center justify-between px-4 py-2 bg-destructive/5 border-b border-border">
             <span className="text-xs text-muted-foreground">{selectedIds.size} selecionada(s)</span>
