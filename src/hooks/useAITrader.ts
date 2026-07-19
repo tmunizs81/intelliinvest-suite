@@ -19,7 +19,7 @@ export type Conversation = {
   updatedAt: Date;
 };
 
-export type AnalysisType = 'position-trades' | 'buy-sell' | 'portfolio-review' | 'macro-analysis' | 'risk-management' | 'free';
+export type AnalysisType = 'position-trades' | 'buy-sell' | 'portfolio-review' | 'macro-analysis' | 'risk-management' | 'debate' | 'free';
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-trader`;
 
@@ -295,6 +295,37 @@ export function useAITrader() {
         await saveMessage(convId, 'assistant', assistantContent);
         // Update timestamp
         await supabase.from('ai_conversations').update({ updated_at: new Date().toISOString() }).eq('id', convId);
+        // Record trade decisions from [[ACTION:create-alert|...]] tags
+        try {
+          const re = /\[\[ACTION:create-alert\|([^\]]+)\]\]/g;
+          const rows: any[] = [];
+          let m: RegExpExecArray | null;
+          while ((m = re.exec(assistantContent)) !== null) {
+            const kv: Record<string, string> = {};
+            for (const p of m[1].split('|')) {
+              const [k, ...rest] = p.split('=');
+              if (k) kv[k.trim()] = rest.join('=').trim();
+            }
+            const ticker = (kv.ticker || '').toUpperCase();
+            const price = parseFloat((kv.price || '').replace(',', '.'));
+            if (!ticker || !isFinite(price)) continue;
+            const isStop = kv.type === 'below';
+            rows.push({
+              user_id: user.id,
+              conversation_id: convId,
+              ticker,
+              action: isStop ? 'sell' : 'buy',
+              entry_price: null,
+              stop_price: isStop ? price : null,
+              target_price: isStop ? null : price,
+              rationale: (kv.note || '').slice(0, 500) || null,
+              status: 'open',
+            });
+          }
+          if (rows.length) {
+            await supabase.from('ai_trader_decisions').insert(rows as never);
+          }
+        } catch (e) { console.warn('decision persist failed', e); }
         await loadConversations();
       }
     } catch (err: any) {

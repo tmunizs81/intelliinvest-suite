@@ -11,13 +11,15 @@ const SYSTEM_PROMPT = `Você é um AI Trader especialista no mercado financeiro 
 
 Regras:
 - Sempre responda em português do Brasil
-- Use OBRIGATORIAMENTE os dados de contexto injetados abaixo (preços, eventos, notícias, macro, métricas de risco) - não invente números
+- Use OBRIGATORIAMENTE os dados de contexto injetados abaixo (preços, eventos, notícias, macro, métricas de risco, decisões anteriores) - não invente números
 - Ao sugerir operação: dê entrada, stop, alvo (com % de risco/retorno) e justificativa
 - Cite fontes: "segundo o calendário econômico...", "com Selic a X%...", "o ativo Y caiu Z% hoje..."
 - Considere concentração/correlação da carteira antes de recomendar
 - Nunca garanta retornos; mencione riscos relevantes
 - Use markdown com títulos, listas e negrito para organizar
-- SEMPRE que sugerir uma mudança na carteira (compra, venda, rebalanceamento), inclua uma seção final "📊 Impacto Estimado" com: retorno esperado 12m (antes → depois), volatilidade anualizada (antes → depois), Sharpe (antes → depois) e comentário sobre o Max Drawdown. Use os valores do bloco MÉTRICAS DE RISCO como base "antes".`;
+- SEMPRE que sugerir uma mudança na carteira (compra, venda, rebalanceamento), inclua uma seção final "📊 Impacto Estimado" com: retorno esperado 12m (antes → depois), volatilidade anualizada (antes → depois), Sharpe (antes → depois) e comentário sobre o Max Drawdown. Use os valores do bloco MÉTRICAS DE RISCO como base "antes".
+- Se o bloco DECISÕES ANTERIORES existir, comente brevemente o resultado de cada sugestão ativa (deu certo / stop / segue válida) antes de propor novas.
+- Ao propor uma ação executável (criar alerta, sugerir compra/venda), inclua ao final da recomendação uma linha isolada no formato: \`[[ACTION:create-alert|ticker=XXXX|price=00.00|type=above|note=stop_ou_alvo]]\` — uma tag por sugestão, sem quebrar dentro. Use type=above para gatilho de alta e type=below para queda/stop. O frontend renderiza um botão de aplicar 1-clique a partir dessa tag.`;
 
 async function callAI(body: unknown) {
   const key = Deno.env.get("DEEPSEEK_API_KEY");
@@ -125,9 +127,9 @@ async function buildContextForType(
 ): Promise<Ctx> {
   const ctx: Ctx = {};
   const wants = {
-    macro: analysisType === "macro-analysis" || analysisType === "portfolio-review" || analysisType === "risk-management",
-    events: analysisType === "macro-analysis" || analysisType === "position-trades" || analysisType === "risk-management",
-    dividends: analysisType === "buy-sell" || analysisType === "portfolio-review",
+    macro: analysisType === "macro-analysis" || analysisType === "portfolio-review" || analysisType === "risk-management" || analysisType === "debate",
+    events: analysisType === "macro-analysis" || analysisType === "position-trades" || analysisType === "risk-management" || analysisType === "debate",
+    dividends: analysisType === "buy-sell" || analysisType === "portfolio-review" || analysisType === "debate",
     news: false, // reservado — habilita quando quisermos gastar +1 chamada
   };
 
@@ -205,6 +207,28 @@ async function fetchRiskMetrics(
   }
 }
 
+async function fetchPastDecisions(
+  supa: ReturnType<typeof createClient>,
+  userId: string,
+): Promise<string> {
+  if (!userId) return "";
+  try {
+    const { data } = await supa
+      .from("ai_trader_decisions")
+      .select("ticker,action,entry_price,stop_price,target_price,status,outcome_pct,created_at")
+      .eq("user_id", userId)
+      .in("status", ["open", "triggered"])
+      .order("created_at", { ascending: false })
+      .limit(10);
+    const rows = (data || []) as any[];
+    if (!rows.length) return "";
+    const lines = rows.map((d) =>
+      `• ${new Date(d.created_at).toLocaleDateString("pt-BR")} — ${d.action?.toUpperCase()} ${d.ticker} @ R$${Number(d.entry_price ?? 0).toFixed(2)} | stop R$${Number(d.stop_price ?? 0).toFixed(2)} | alvo R$${Number(d.target_price ?? 0).toFixed(2)} | status: ${d.status}${d.outcome_pct != null ? ` (${Number(d.outcome_pct).toFixed(2)}%)` : ""}`
+    ).join("\n");
+    return `DECISÕES ANTERIORES (avalie e comente cada uma antes de propor novas):\n${lines}`;
+  } catch { return ""; }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -231,12 +255,13 @@ Deno.serve(async (req) => {
 
     // ─── Blocos de contexto (paralelo) ───
     const { text: portfolioText, metrics: metricsText } = buildPortfolioBlock(portfolio || []);
-    const [ctx, riskMetrics] = await Promise.all([
+    const [ctx, riskMetrics, pastDecisions] = await Promise.all([
       buildContextForType(supa, userId, analysisType),
       fetchRiskMetrics(supa, userId),
+      fetchPastDecisions(supa, userId),
     ]);
 
-    const contextBlocks = [portfolioText, metricsText, riskMetrics, ctx.macro, ctx.events, ctx.dividends, ctx.news]
+    const contextBlocks = [portfolioText, metricsText, riskMetrics, pastDecisions, ctx.macro, ctx.events, ctx.dividends, ctx.news]
       .filter(Boolean).join("\n\n");
 
     // ─── Instruções focadas por tipo ───
@@ -246,7 +271,9 @@ Deno.serve(async (req) => {
       "portfolio-review": `\n\nFOCO: Revisão completa. Analise concentração (>15% em 1 ativo é risco), correlação por setor, drawdown potencial, sugira rebalanceamento e liste próximos proventos que reforçarão o caixa.`,
       "macro-analysis": `\n\nFOCO: Analise o cenário macro (Selic, IPCA, USD, próximos eventos de alto impacto) e traduza em ação: quais posições reforçar/reduzir, qual setor tende a se beneficiar/sofrer nas próximas 4-8 semanas.`,
       "risk-management": `\n\nFOCO: Mapa de risco. Identifique concentrações perigosas, correlações escondidas, sugira stops percentuais por ativo (ATR de referência) e proteções (venda coberta, hedge cambial, caixa mínimo) considerando eventos macro à frente.`,
+      "debate": `\n\nFOCO: MODO DEBATE. Produza uma análise adversarial em 3 seções OBRIGATÓRIAS com títulos markdown:\n\n## 🐂 Tese Bull (compra/manutenção)\nArgumentos técnicos, fundamentalistas e macro a favor. Gatilhos de alta, catalisadores, comparáveis.\n\n## 🐻 Tese Bear (venda/redução)\nRiscos, red flags, cenários adversos, correlações perigosas, eventos macro contrários.\n\n## ⚖️ Veredito do Juiz\nPese ambos os lados, atribua probabilidades (%), recomende ação final com entrada/stop/alvo e emita a tag [[ACTION:...]] correspondente.`,
     };
+
 
     const contextPrompt = SYSTEM_PROMPT
       + (contextBlocks ? `\n\n=== CONTEXTO DE MERCADO E CARTEIRA ===\n${contextBlocks}\n=== FIM DO CONTEXTO ===` : "")

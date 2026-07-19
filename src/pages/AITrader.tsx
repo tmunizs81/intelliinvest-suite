@@ -4,12 +4,12 @@ import { useAITrader, type AnalysisType, type Conversation } from '@/hooks/useAI
 import { type Asset, formatCurrency, formatPercent } from '@/lib/mockData';
 import {
   Brain, Send, Trash2, Square, Loader2, Sparkles,
-  TrendingUp, ShoppingCart, PieChart, Globe, Shield,
+  TrendingUp, ShoppingCart, PieChart, Globe, Shield, Scale,
   PanelRightOpen, PanelRightClose, PanelLeftOpen, PanelLeftClose,
   Wallet, ArrowUpRight, ArrowDownRight,
   Plus, MessageSquare, Clock, MoreVertical, X,
 } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
+import { ActionTagRenderer } from '@/components/ai-trader/ActionTagRenderer';
 import { PieChart as RechartsPie, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 
 const analysisOptions: { type: AnalysisType; label: string; icon: React.ElementType; description: string; prompt: string }[] = [
@@ -38,6 +38,11 @@ const analysisOptions: { type: AnalysisType; label: string; icon: React.ElementT
     description: 'Análise de risco e proteção do patrimônio',
     prompt: 'Analise o risco da minha carteira. Identifique concentrações perigosas, sugira stops e dimensionamento adequado das posições.',
   },
+  {
+    type: 'debate', label: 'Debate Bull × Bear', icon: Scale,
+    description: 'Tese de compra vs. tese de venda + veredito',
+    prompt: 'Faça o modo debate sobre a minha carteira (ou sobre o ativo que eu mencionar em seguida): monte a tese Bull, a tese Bear e emita o veredito final com ação executável.',
+  },
 ];
 
 const analysisLabels: Record<string, string> = {
@@ -46,6 +51,7 @@ const analysisLabels: Record<string, string> = {
   'portfolio-review': 'Revisão',
   'macro-analysis': 'Macro',
   'risk-management': 'Risco',
+  'debate': 'Debate',
 };
 
 // --- History Sidebar ---
@@ -497,7 +503,7 @@ export default function AITrader() {
                   }`}>
                     {msg.role === 'assistant' ? (
                       <div className="prose prose-sm prose-invert max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 [&_h1]:text-base [&_h2]:text-sm [&_h3]:text-sm [&_p]:text-sm [&_li]:text-sm [&_strong]:text-foreground [&_em]:text-muted-foreground [&_code]:text-xs [&_code]:bg-muted [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded">
-                        <ReactMarkdown>{msg.content}</ReactMarkdown>
+                        <ActionTagRenderer content={msg.content} />
                       </div>
                     ) : (
                       <p className="text-sm whitespace-pre-wrap">{msg.content}</p>

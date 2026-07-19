@@ -112,6 +112,65 @@ export type Database = {
           },
         ]
       }
+      ai_trader_decisions: {
+        Row: {
+          action: string
+          conversation_id: string | null
+          created_at: string
+          entry_price: number | null
+          id: string
+          outcome_pct: number | null
+          rationale: string | null
+          reviewed_at: string | null
+          status: string
+          stop_price: number | null
+          target_price: number | null
+          ticker: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          action: string
+          conversation_id?: string | null
+          created_at?: string
+          entry_price?: number | null
+          id?: string
+          outcome_pct?: number | null
+          rationale?: string | null
+          reviewed_at?: string | null
+          status?: string
+          stop_price?: number | null
+          target_price?: number | null
+          ticker: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          action?: string
+          conversation_id?: string | null
+          created_at?: string
+          entry_price?: number | null
+          id?: string
+          outcome_pct?: number | null
+          rationale?: string | null
+          reviewed_at?: string | null
+          status?: string
+          stop_price?: number | null
+          target_price?: number | null
+          ticker?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_trader_decisions_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "ai_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       alerts: {
         Row: {
           alert_type: Database["public"]["Enums"]["alert_type"]
