@@ -117,8 +117,8 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
       return;
     }
     setSearching(true);
-    // Seed with Avenue local matches instantly
-    const localAvenue = searchAvenueLocal(query);
+    // Seed with local broker-catalog matches instantly
+    const localAvenue = searchBrokerLocal(query);
     if (localAvenue.length) {
       setSuggestions(localAvenue);
       setShowSuggestions(true);
