@@ -31,12 +31,16 @@ interface Resolved {
   include: boolean;
 }
 
-const EXAMPLE = `PETR4 100 32.50
-VALE3 50
+const EXAMPLE = `# Exemplos B3
+PETR4 100 32.50
 BOVA11 30 105
-BTC-USD 0.05`;
+# Exemplos Avenue (ações US + ETFs irlandeses UCITS)
+AAPL 10 190
+VOO 5 480
+CSPX.L 8 550
+VWRA.L 12 120`;
 
-const ASSET_TYPES = ['Ação', 'FII', 'ETF', 'Cripto', 'Renda Fixa', 'Fundo', 'BDR', 'Ação Internacional'];
+const ASSET_TYPES = ['Ação', 'FII', 'ETF', 'Cripto', 'Renda Fixa', 'Fundo', 'BDR', 'Ação Internacional', 'ETF Internacional', 'REIT'];
 
 function parseInput(raw: string): ParsedLine[] {
   return raw.split('\n').map((l) => l.trim()).filter(Boolean).map((line) => {
