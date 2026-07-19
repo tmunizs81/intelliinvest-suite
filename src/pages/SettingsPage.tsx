@@ -958,14 +958,6 @@ function SerialKeysTab() {
           </div>
         )}
       </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
 
       {assignKey && (
         <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={() => setAssignKey(null)}>
