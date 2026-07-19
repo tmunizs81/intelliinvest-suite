@@ -280,10 +280,21 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
         return;
       }
 
+      // Bloqueio de confirmação UCITS
+      if (!editData && ucitsHint.isUcits && !ucitsAck) {
+        setError('Confirme abaixo que este é um ETF irlandês UCITS antes de salvar.');
+        setLoading(false);
+        return;
+      }
+
       if (editData && onUpdate) {
         await onUpdate(editData.id, data);
       } else {
         await onSave(data);
+      }
+      // Aprende mapeamento ticker → broker/type
+      if (!isProperty && data.broker) {
+        learnRule(data.ticker, { broker: data.broker, type: data.type });
       }
       onClose();
     } catch (err: any) {
@@ -295,6 +306,56 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Import em massa por cola-lista dentro do próprio modal.
+  const handlePasteImport = async () => {
+    setError('');
+    const lines = pasteText.split('\n').map((l) => l.trim()).filter(Boolean);
+    if (!lines.length) { setError('Cole ao menos uma linha: TICKER QTD [PREÇO] [CORRETORA]'); return; }
+    const parsed = lines.map((line) => {
+      const parts = line.split(/[\s,;\t]+/).filter(Boolean);
+      const [tk, qtd, price, ...rest] = parts;
+      return {
+        ticker: (tk || '').toUpperCase(),
+        quantity: parseFloat((qtd || '0').replace(',', '.')),
+        price: price ? parseFloat(price.replace(',', '.')) : NaN,
+        broker: rest.length ? rest.join(' ') : '',
+      };
+    }).filter((p) => p.ticker && p.quantity > 0 && !isNaN(p.price));
+
+    if (!parsed.length) { setError('Nenhuma linha válida. Formato esperado: TICKER QTD PREÇO [CORRETORA]'); return; }
+
+    setLoading(true);
+    setPasteProgress({ done: 0, total: parsed.length });
+    let failures = 0;
+    for (let i = 0; i < parsed.length; i++) {
+      const p = parsed[i];
+      const rule = getRule(p.ticker);
+      const resolvedBroker = (p.broker || rule?.broker || inferBrokerFromTicker(p.ticker) || '').trim();
+      const resolvedType = rule?.type || classifyAssetType(p.ticker) || 'Ação';
+      try {
+        await onSave({
+          ticker: p.ticker,
+          name: p.ticker,
+          type: resolvedType,
+          quantity: p.quantity,
+          avg_price: p.price,
+          sector: null,
+          broker: resolvedBroker || null,
+        } as any);
+        if (resolvedBroker) learnRule(p.ticker, { broker: resolvedBroker, type: resolvedType });
+      } catch {
+        failures++;
+      }
+      setPasteProgress({ done: i + 1, total: parsed.length });
+    }
+    setLoading(false);
+    if (failures) {
+      setError(`${failures} linha(s) falharam. As demais foram adicionadas.`);
+    } else {
+      onClose();
     }
   };
 
