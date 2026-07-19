@@ -39,6 +39,11 @@ const analysisOptions: { type: AnalysisType; label: string; icon: React.ElementT
     description: 'Análise de risco e proteção do patrimônio',
     prompt: 'Analise o risco da minha carteira. Identifique concentrações perigosas, sugira stops e dimensionamento adequado das posições.',
   },
+  {
+    type: 'debate', label: 'Debate Bull × Bear', icon: Scale,
+    description: 'Tese de compra vs. tese de venda + veredito',
+    prompt: 'Faça o modo debate sobre a minha carteira (ou sobre o ativo que eu mencionar em seguida): monte a tese Bull, a tese Bear e emita o veredito final com ação executável.',
+  },
 ];
 
 const analysisLabels: Record<string, string> = {
@@ -47,6 +52,7 @@ const analysisLabels: Record<string, string> = {
   'portfolio-review': 'Revisão',
   'macro-analysis': 'Macro',
   'risk-management': 'Risco',
+  'debate': 'Debate',
 };
 
 // --- History Sidebar ---
