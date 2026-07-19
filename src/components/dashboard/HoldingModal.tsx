@@ -114,6 +114,11 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
       setError('');
       setSuggestions([]);
       setShowSuggestions(false);
+      setBrokerFilter(null);
+      setPasteMode(false);
+      setPasteText('');
+      setPasteProgress(null);
+      setUcitsAck(false);
     }
   }, [open, editData]);
 
