@@ -45,6 +45,7 @@ export default function Assets() {
   const [cashModalOpen, setCashModalOpen] = useState(false);
   const [custodyOpen, setCustodyOpen] = useState(false);
   const [bulkYahooOpen, setBulkYahooOpen] = useState(false);
+  const [csvBulkOpen, setCsvBulkOpen] = useState(false);
 
   const handleSell = (holdingRow: HoldingRow, asset: Asset) => {
     setSellingHolding(holdingRow);
