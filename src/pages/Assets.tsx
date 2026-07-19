@@ -630,6 +630,7 @@ export default function Assets() {
       />
 
       <BulkImportYahoo open={bulkYahooOpen} onClose={() => setBulkYahooOpen(false)} />
+      <CsvBulkImportModal open={csvBulkOpen} onClose={() => setCsvBulkOpen(false)} />
     </div>
   );
 }
