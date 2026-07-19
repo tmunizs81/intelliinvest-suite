@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { X, Plus, Loader2, Search, CalendarIcon } from 'lucide-react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { X, Plus, Loader2, Search, CalendarIcon, ClipboardPaste, ShieldCheck } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
@@ -10,16 +10,27 @@ import AICopilotSignal from './AICopilotSignal';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
-import { searchBrokerCatalogs, inferBrokerFromTicker } from '@/lib/brokerCatalogs';
+import { BROKER_CATALOGS, searchBrokerCatalogs, inferBrokerFromTicker, type UnifiedSearchResult } from '@/lib/brokerCatalogs';
+import { getRule, learnRule } from '@/lib/tickerMappingRules';
+import { detectUCITS } from '@/lib/ucitsDetector';
 
-function searchBrokerLocal(query: string): SearchResult[] {
-  return searchBrokerCatalogs(query, 10).map(r => ({
-    symbol: r.symbol,
-    name: r.name,
-    type: r.type,
-    exchange: r.exchange,
-    exchangeDisplay: r.exchangeDisplay,
-  }));
+function toResult(r: UnifiedSearchResult): SearchResult {
+  return { symbol: r.symbol, name: r.name, type: r.type, exchange: r.exchange, exchangeDisplay: r.exchangeDisplay };
+}
+
+function searchBrokerLocal(query: string, brokerFilter?: string | null): SearchResult[] {
+  if (brokerFilter) {
+    const cat = BROKER_CATALOGS.find(c => c.broker === brokerFilter);
+    if (!cat) return [];
+    const q = query.trim().toUpperCase();
+    const list = q
+      ? cat.assets.filter(a => a.ticker.toUpperCase().includes(q) || a.name.toUpperCase().includes(q))
+      : cat.assets.slice(0, 30);
+    return list.slice(0, 30).map(a => toResult({
+      symbol: a.ticker, name: a.name, type: '', exchange: '', exchangeDisplay: cat.broker, broker: cat.broker,
+    } as UnifiedSearchResult));
+  }
+  return searchBrokerCatalogs(query, 10).map(toResult);
 }
 
 const TYPES = ['Ação', 'FII', 'ETF', 'ETF Internacional', 'REIT', 'BDR', 'Internacional', 'Cripto', 'Renda Fixa', 'Imóvel'] as const;
