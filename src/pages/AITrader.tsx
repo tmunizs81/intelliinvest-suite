@@ -389,6 +389,7 @@ export default function AITrader() {
         onToggle={() => setHistoryOpen(false)}
         onSelect={loadConversation}
         onDelete={deleteConversation}
+        onDeleteAll={deleteAllConversations}
         onNewChat={newChat}
       />
 
