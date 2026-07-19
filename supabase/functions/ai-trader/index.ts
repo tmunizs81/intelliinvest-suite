@@ -11,12 +11,13 @@ const SYSTEM_PROMPT = `Você é um AI Trader especialista no mercado financeiro 
 
 Regras:
 - Sempre responda em português do Brasil
-- Use OBRIGATORIAMENTE os dados de contexto injetados abaixo (preços, eventos, notícias, macro) - não invente números
+- Use OBRIGATORIAMENTE os dados de contexto injetados abaixo (preços, eventos, notícias, macro, métricas de risco) - não invente números
 - Ao sugerir operação: dê entrada, stop, alvo (com % de risco/retorno) e justificativa
 - Cite fontes: "segundo o calendário econômico...", "com Selic a X%...", "o ativo Y caiu Z% hoje..."
 - Considere concentração/correlação da carteira antes de recomendar
 - Nunca garanta retornos; mencione riscos relevantes
-- Use markdown com títulos, listas e negrito para organizar`;
+- Use markdown com títulos, listas e negrito para organizar
+- SEMPRE que sugerir uma mudança na carteira (compra, venda, rebalanceamento), inclua uma seção final "📊 Impacto Estimado" com: retorno esperado 12m (antes → depois), volatilidade anualizada (antes → depois), Sharpe (antes → depois) e comentário sobre o Max Drawdown. Use os valores do bloco MÉTRICAS DE RISCO como base "antes".`;
 
 async function callAI(body: unknown) {
   const key = Deno.env.get("DEEPSEEK_API_KEY");
@@ -138,6 +139,72 @@ async function buildContextForType(
   return ctx;
 }
 
+// ─── Métricas de risco a partir dos snapshots ───
+async function fetchRiskMetrics(
+  supa: ReturnType<typeof createClient>,
+  userId: string,
+): Promise<string> {
+  if (!userId) return "";
+  try {
+    const { data } = await supa
+      .from("portfolio_snapshots")
+      .select("snapshot_date,total_value,total_cost")
+      .eq("user_id", userId)
+      .order("snapshot_date", { ascending: true })
+      .limit(365);
+
+    const rows = (data || []) as { snapshot_date: string; total_value: number; total_cost: number }[];
+    if (rows.length < 5) return "MÉTRICAS DE RISCO: histórico insuficiente (< 5 snapshots) — recomendações usarão apenas dados atuais.";
+
+    // Retornos diários
+    const returns: number[] = [];
+    for (let i = 1; i < rows.length; i++) {
+      const prev = rows[i - 1].total_value;
+      const curr = rows[i].total_value;
+      if (prev > 0) returns.push((curr - prev) / prev);
+    }
+    if (!returns.length) return "";
+
+    const mean = returns.reduce((s, x) => s + x, 0) / returns.length;
+    const variance = returns.reduce((s, x) => s + (x - mean) ** 2, 0) / returns.length;
+    const dailyVol = Math.sqrt(variance);
+    const annualVol = dailyVol * Math.sqrt(252) * 100; // %
+    const annualReturn = (Math.pow(1 + mean, 252) - 1) * 100; // %
+
+    // Sharpe (assume CDI ~11% como taxa livre; pode ser refinado depois com bcb-rates)
+    const riskFree = 11;
+    const sharpe = annualVol > 0 ? (annualReturn - riskFree) / annualVol : 0;
+
+    // Max Drawdown
+    let peak = rows[0].total_value;
+    let maxDD = 0;
+    for (const r of rows) {
+      if (r.total_value > peak) peak = r.total_value;
+      const dd = peak > 0 ? (r.total_value - peak) / peak : 0;
+      if (dd < maxDD) maxDD = dd;
+    }
+
+    // Retorno YTD e 30d
+    const last = rows[rows.length - 1].total_value;
+    const first = rows[0].total_value;
+    const totalReturn = first > 0 ? ((last - first) / first) * 100 : 0;
+    const days30Idx = Math.max(0, rows.length - 22);
+    const val30d = rows[days30Idx].total_value;
+    const ret30d = val30d > 0 ? ((last - val30d) / val30d) * 100 : 0;
+
+    return `MÉTRICAS DE RISCO (${rows.length} snapshots, base ${rows[0].snapshot_date} → ${rows[rows.length - 1].snapshot_date}):
+• Retorno anualizado (base histórica): ${annualReturn.toFixed(2)}%
+• Retorno esperado 12m (projeção linear): ${annualReturn.toFixed(2)}%
+• Volatilidade anualizada: ${annualVol.toFixed(2)}%
+• Sharpe Ratio: ${sharpe.toFixed(2)} (risk-free ${riskFree}% CDI)
+• Max Drawdown histórico: ${(maxDD * 100).toFixed(2)}%
+• Retorno 30d: ${ret30d.toFixed(2)}% | Retorno total período: ${totalReturn.toFixed(2)}%`;
+  } catch (e) {
+    console.warn("fetchRiskMetrics failed:", e);
+    return "";
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -162,11 +229,14 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
-    // ─── Blocos de contexto ───
+    // ─── Blocos de contexto (paralelo) ───
     const { text: portfolioText, metrics: metricsText } = buildPortfolioBlock(portfolio || []);
-    const ctx = await buildContextForType(supa, userId, analysisType);
+    const [ctx, riskMetrics] = await Promise.all([
+      buildContextForType(supa, userId, analysisType),
+      fetchRiskMetrics(supa, userId),
+    ]);
 
-    const contextBlocks = [portfolioText, metricsText, ctx.macro, ctx.events, ctx.dividends, ctx.news]
+    const contextBlocks = [portfolioText, metricsText, riskMetrics, ctx.macro, ctx.events, ctx.dividends, ctx.news]
       .filter(Boolean).join("\n\n");
 
     // ─── Instruções focadas por tipo ───
