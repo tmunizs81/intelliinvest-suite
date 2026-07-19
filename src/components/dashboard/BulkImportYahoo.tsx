@@ -4,6 +4,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { usePortfolio } from '@/hooks/usePortfolio';
 import { classifyAssetType } from '@/lib/assetClassification';
 import { AVENUE_ASSETS } from '@/lib/avenueAssets';
+import { XTB_ASSETS } from '@/lib/xtbAssets';
+import { WEBULL_ASSETS } from '@/lib/webullAssets';
+import { C6_ASSETS } from '@/lib/c6Assets';
+import { BTG_ASSETS } from '@/lib/btgAssets';
+import { inferBrokerFromTicker } from '@/lib/brokerCatalogs';
 
 interface Props {
   open: boolean;
