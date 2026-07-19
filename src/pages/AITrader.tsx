@@ -504,7 +504,7 @@ export default function AITrader() {
                   }`}>
                     {msg.role === 'assistant' ? (
                       <div className="prose prose-sm prose-invert max-w-none [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 [&_h1]:text-base [&_h2]:text-sm [&_h3]:text-sm [&_p]:text-sm [&_li]:text-sm [&_strong]:text-foreground [&_em]:text-muted-foreground [&_code]:text-xs [&_code]:bg-muted [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded">
-                        <ReactMarkdown>{msg.content}</ReactMarkdown>
+                        <ActionTagRenderer content={msg.content} />
                       </div>
                     ) : (
                       <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
