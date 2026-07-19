@@ -49,13 +49,14 @@ const analysisLabels: Record<string, string> = {
 };
 
 // --- History Sidebar ---
-function HistorySidebar({ conversations, activeId, open, onToggle, onSelect, onDelete, onNewChat }: {
+function HistorySidebar({ conversations, activeId, open, onToggle, onSelect, onDelete, onDeleteAll, onNewChat }: {
   conversations: Conversation[];
   activeId: string | null;
   open: boolean;
   onToggle: () => void;
   onSelect: (id: string) => void;
   onDelete: (id: string) => void;
+  onDeleteAll: () => void;
   onNewChat: () => void;
 }) {
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
@@ -63,6 +64,13 @@ function HistorySidebar({ conversations, activeId, open, onToggle, onSelect, onD
   if (!open) return null;
 
   const grouped = groupByDate(conversations);
+
+  const handleClearAll = () => {
+    if (conversations.length === 0) return;
+    if (confirm(`Excluir TODAS as ${conversations.length} conversas do histórico? Esta ação não pode ser desfeita.`)) {
+      onDeleteAll();
+    }
+  };
 
   return (
     <div className="w-72 shrink-0 border-r border-border bg-card flex flex-col h-full overflow-hidden fixed md:relative inset-y-0 left-0 z-40 md:z-auto shadow-xl md:shadow-none">
@@ -80,6 +88,14 @@ function HistorySidebar({ conversations, activeId, open, onToggle, onSelect, onD
             <Plus className="h-3.5 w-3.5" />
           </button>
           <button
+            onClick={handleClearAll}
+            disabled={conversations.length === 0}
+            className="h-7 w-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-loss hover:bg-loss/10 transition-all disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-muted-foreground"
+            title="Limpar todo o histórico"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
+          <button
             onClick={onToggle}
             className="h-7 w-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-all"
           >
@@ -87,6 +103,7 @@ function HistorySidebar({ conversations, activeId, open, onToggle, onSelect, onD
           </button>
         </div>
       </div>
+
 
       <div className="flex-1 overflow-y-auto">
         {conversations.length === 0 ? (
@@ -328,7 +345,7 @@ export default function AITrader() {
     messages, isLoading, loadingHistory, error,
     conversations, activeConversationId,
     sendMessage, newChat, stopGeneration,
-    loadConversation, deleteConversation,
+    loadConversation, deleteConversation, deleteAllConversations,
   } = useAITrader();
   const [input, setInput] = useState('');
   const [historyOpen, setHistoryOpen] = useState(typeof window !== 'undefined' && window.innerWidth >= 768);
@@ -372,6 +389,7 @@ export default function AITrader() {
         onToggle={() => setHistoryOpen(false)}
         onSelect={loadConversation}
         onDelete={deleteConversation}
+        onDeleteAll={deleteAllConversations}
         onNewChat={newChat}
       />
 
