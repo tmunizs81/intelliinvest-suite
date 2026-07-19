@@ -704,6 +704,27 @@ function SerialKeysTab() {
   const [assignKey, setAssignKey] = useState<any>(null);
   const [assignUserId, setAssignUserId] = useState<string>('');
   const [assigning, setAssigning] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+  const toggleSelectAll = () => {
+    setSelectedIds(prev => prev.size === keys.length ? new Set() : new Set(keys.map(k => k.id)));
+  };
+  const bulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+    if (!confirm(`Excluir ${selectedIds.size} chave(s) selecionada(s)? Esta ação não pode ser desfeita.`)) return;
+    const { error } = await supabase.from('serial_keys').delete().in('id', Array.from(selectedIds));
+    if (error) { toast.error(`Erro: ${error.message}`); return; }
+    toast.success(`${selectedIds.size} chave(s) excluída(s)`);
+    setSelectedIds(new Set());
+    await loadKeys();
+  };
 
   const loadKeys = useCallback(async () => {
     setLoading(true);
@@ -841,6 +862,14 @@ function SerialKeysTab() {
 
       {/* Keys table */}
       <div className="rounded-lg border border-border bg-card overflow-hidden">
+        {selectedIds.size > 0 && (
+          <div className="flex items-center justify-between px-4 py-2 bg-destructive/5 border-b border-border">
+            <span className="text-xs text-muted-foreground">{selectedIds.size} selecionada(s)</span>
+            <button onClick={bulkDelete} className="px-3 py-1.5 rounded-md bg-destructive text-destructive-foreground text-xs font-medium hover:opacity-90 flex items-center gap-1.5">
+              <Trash2 className="h-3.5 w-3.5" /> Excluir selecionadas
+            </button>
+          </div>
+        )}
         {loading ? (
           <div className="p-8 flex justify-center"><Loader2 className="h-5 w-5 animate-spin" /></div>
         ) : (
@@ -848,6 +877,15 @@ function SerialKeysTab() {
             <table className="w-full text-sm">
               <thead className="sticky top-0 bg-card">
                 <tr className="border-b border-border text-muted-foreground">
+                  <th className="p-3 w-10">
+                    <input
+                      type="checkbox"
+                      checked={keys.length > 0 && selectedIds.size === keys.length}
+                      ref={el => { if (el) el.indeterminate = selectedIds.size > 0 && selectedIds.size < keys.length; }}
+                      onChange={toggleSelectAll}
+                      className="h-4 w-4 rounded border-border cursor-pointer accent-primary"
+                    />
+                  </th>
                   <th className="text-left p-3 font-medium text-xs">Chave</th>
                   <th className="text-left p-3 font-medium text-xs">Plano</th>
                   <th className="text-left p-3 font-medium text-xs">Status</th>
@@ -857,7 +895,15 @@ function SerialKeysTab() {
               </thead>
               <tbody>
                 {keys.map(k => (
-                  <tr key={k.id} className="border-b border-border/30 hover:bg-accent/20">
+                  <tr key={k.id} className={`border-b border-border/30 hover:bg-accent/20 ${selectedIds.has(k.id) ? 'bg-destructive/5' : ''}`}>
+                    <td className="p-3">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(k.id)}
+                        onChange={() => toggleSelect(k.id)}
+                        className="h-4 w-4 rounded border-border cursor-pointer accent-primary"
+                      />
+                    </td>
                     <td className="p-3 font-mono text-xs tracking-wider">{k.key}</td>
                     <td className="p-3 text-xs">{k.plan_type === 'annual' ? 'Anual' : 'Mensal'}</td>
                     <td className="p-3">
