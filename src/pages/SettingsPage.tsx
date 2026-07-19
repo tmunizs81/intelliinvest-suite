@@ -696,19 +696,56 @@ function UsersTab() {
 function SerialKeysTab() {
   const { user } = useAuth();
   const [keys, setKeys] = useState<any[]>([]);
+  const [profiles, setProfiles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [genPlan, setGenPlan] = useState<'monthly' | 'annual'>('monthly');
   const [genCount, setGenCount] = useState(1);
+  const [assignKey, setAssignKey] = useState<any>(null);
+  const [assignUserId, setAssignUserId] = useState<string>('');
+  const [assigning, setAssigning] = useState(false);
 
   const loadKeys = useCallback(async () => {
     setLoading(true);
-    const { data } = await supabase.from('serial_keys').select('*').order('created_at', { ascending: false });
-    setKeys(data || []);
+    const [{ data: k }, { data: p }] = await Promise.all([
+      supabase.from('serial_keys').select('*').order('created_at', { ascending: false }),
+      supabase.from('profiles').select('user_id, display_name').order('display_name'),
+    ]);
+    setKeys(k || []);
+    setProfiles(p || []);
     setLoading(false);
   }, []);
 
   useEffect(() => { loadKeys(); }, [loadKeys]);
+
+  const assignToUser = async () => {
+    if (!assignKey || !assignUserId) return;
+    setAssigning(true);
+    try {
+      const now = new Date();
+      const expiresAt = new Date(now);
+      if (assignKey.plan_type === 'annual') expiresAt.setFullYear(expiresAt.getFullYear() + 1);
+      else expiresAt.setMonth(expiresAt.getMonth() + 1);
+      const { error } = await supabase
+        .from('serial_keys')
+        .update({
+          status: 'used',
+          used_by: assignUserId,
+          activated_at: now.toISOString(),
+          expires_at: expiresAt.toISOString(),
+        })
+        .eq('id', assignKey.id);
+      if (error) throw error;
+      toast.success('Licença vinculada ao usuário');
+      setAssignKey(null);
+      setAssignUserId('');
+      await loadKeys();
+    } catch (err: any) {
+      toast.error(`Erro ao vincular: ${err.message || 'desconhecido'}`);
+    } finally {
+      setAssigning(false);
+    }
+  };
 
   const generateKeys = async () => {
     if (!user) return;
