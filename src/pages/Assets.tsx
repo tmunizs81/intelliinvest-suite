@@ -204,7 +204,7 @@ export default function Assets() {
             Importar via Yahoo
           </button>
           <button
-            onClick={() => setImportOpen(true)}
+            onClick={() => setCsvBulkOpen(true)}
             className="h-9 px-3 rounded-lg border border-border bg-card text-sm text-muted-foreground hover:text-foreground flex items-center gap-2 transition-all"
           >
             <Upload className="h-4 w-4" />
