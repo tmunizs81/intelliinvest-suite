@@ -330,12 +330,20 @@ function DarfCard({ summary }: { summary: MonthlyTaxSummary }) {
 
 // --- Main Page ---
 export default function Taxes() {
-  const { transactions, loading, error, addTransaction, deleteTransaction, getAnnualSummary } = useTaxes();
+  const { transactions, loading, error, addTransaction, deleteTransaction, getAnnualSummary, getPositionsAtDate } = useTaxes();
   const [selectedYear, setSelectedYear] = useState(currentYear);
   const [showForm, setShowForm] = useState(false);
-  const [tab, setTab] = useState<'taxes' | 'transactions'>('taxes');
+  const [tab, setTab] = useState<'taxes' | 'transactions' | 'declaration' | 'chat'>('taxes');
 
   const annual = getAnnualSummary(selectedYear);
+  const positions = useMemo(() => getPositionsAtDate(`${selectedYear}-12-31`), [getPositionsAtDate, selectedYear]);
+  const previousPositions = useMemo(() => getPositionsAtDate(`${selectedYear - 1}-12-31`), [getPositionsAtDate, selectedYear]);
+  const carteiraContext = useMemo(() => {
+    if (positions.length === 0) return undefined;
+    const top = positions.sort((a, b) => b.custoTotal - a.custoTotal).slice(0, 15);
+    return `Carteira em 31/12/${selectedYear} — ${positions.length} ativos, patrimônio a custo ${formatCurrency(positions.reduce((s, p) => s + p.custoTotal, 0))}.\nPrincipais: ${top.map(p => `${p.ticker}(${p.type}) ${formatCurrency(p.custoTotal)}`).join('; ')}.\nImposto ${selectedYear}: ${formatCurrency(annual.totalTax)}, ganho ${formatCurrency(annual.totalGains)}.`;
+  }, [positions, selectedYear, annual]);
+
 
   const exportCSV = () => {
     const yearTxs = transactions.filter(t => t.date.startsWith(String(selectedYear)));
