@@ -297,30 +297,47 @@ export function useAITrader() {
         await supabase.from('ai_conversations').update({ updated_at: new Date().toISOString() }).eq('id', convId);
         // Record trade decisions from [[ACTION:create-alert|...]] tags
         try {
-          const re = /\[\[ACTION:create-alert\|([^\]]+)\]\]/g;
+          const re = /\[\[ACTION:(create-alert|risk-alert)\|([^\]]+)\]\]/g;
           const rows: any[] = [];
           let m: RegExpExecArray | null;
           while ((m = re.exec(assistantContent)) !== null) {
+            const kind = m[1];
             const kv: Record<string, string> = {};
-            for (const p of m[1].split('|')) {
+            for (const p of m[2].split('|')) {
               const [k, ...rest] = p.split('=');
               if (k) kv[k.trim()] = rest.join('=').trim();
             }
             const ticker = (kv.ticker || '').toUpperCase();
-            const price = parseFloat((kv.price || '').replace(',', '.'));
-            if (!ticker || !isFinite(price)) continue;
-            const isStop = kv.type === 'below';
-            rows.push({
-              user_id: user.id,
-              conversation_id: convId,
-              ticker,
-              action: isStop ? 'sell' : 'buy',
-              entry_price: null,
-              stop_price: isStop ? price : null,
-              target_price: isStop ? null : price,
-              rationale: (kv.note || '').slice(0, 500) || null,
-              status: 'open',
-            });
+            if (!ticker) continue;
+            if (kind === 'create-alert') {
+              const price = parseFloat((kv.price || '').replace(',', '.'));
+              if (!isFinite(price)) continue;
+              const isStop = kv.type === 'below';
+              rows.push({
+                user_id: user.id, conversation_id: convId, ticker,
+                action: isStop ? 'sell' : 'buy',
+                entry_price: null,
+                stop_price: isStop ? price : null,
+                target_price: isStop ? null : price,
+                rationale: (kv.note || '').slice(0, 500) || null,
+                status: 'open',
+              });
+            } else {
+              // risk-alert: registra como decisão "risk" com stop/alvo em preço absoluto
+              const ref = parseFloat((kv.ref || '').replace(',', '.'));
+              const stopPct = parseFloat((kv.stop_pct || kv.stop || '-8').replace(',', '.'));
+              const targetPct = parseFloat((kv.target_pct || kv.target || '15').replace(',', '.'));
+              if (!isFinite(ref) || ref <= 0) continue;
+              rows.push({
+                user_id: user.id, conversation_id: convId, ticker,
+                action: 'risk',
+                entry_price: ref,
+                stop_price: +(ref * (1 + stopPct / 100)).toFixed(4),
+                target_price: +(ref * (1 + targetPct / 100)).toFixed(4),
+                rationale: (kv.note || `risk-alert ${kv.window || 30}d, vol máx ${kv.vol_pct || 25}%`).slice(0, 500),
+                status: 'open',
+              });
+            }
           }
           if (rows.length) {
             await supabase.from('ai_trader_decisions').insert(rows as never);

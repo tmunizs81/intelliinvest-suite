@@ -1,13 +1,15 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import {
   FileText, Download, TrendingUp, TrendingDown, DollarSign, PieChart,
-  BarChart3, Calendar, Filter, Loader2, Printer, ArrowUpRight, ArrowDownRight, FileSpreadsheet,
+  BarChart3, Calendar, Filter, Loader2, Printer, ArrowUpRight, ArrowDownRight, FileSpreadsheet, Scale,
 } from 'lucide-react';
 import { usePortfolio } from '@/hooks/usePortfolio';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { formatCurrency, formatPercent } from '@/lib/mockData';
 import { exportPortfolioCSV, exportTransactionsCSV } from '@/lib/exportUtils';
+import { MonthlyReportButton } from '@/components/reports/MonthlyReportButton';
+import { RebalanceModal } from '@/components/rebalance/RebalanceModal';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart as RechartsPie, Pie, Cell, LineChart, Line, CartesianGrid,
@@ -60,6 +62,7 @@ export default function Reports() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loadingTx, setLoadingTx] = useState(false);
   const reportRef = useRef<HTMLDivElement>(null);
+  const [rebalanceOpen, setRebalanceOpen] = useState(false);
 
   const periodConfig = PERIODS.find(p => p.id === period) || PERIODS[4];
   const periodDate = getPeriodDate(periodConfig.months);
@@ -323,6 +326,15 @@ export default function Reports() {
             <FileSpreadsheet className="h-4 w-4" />
             CSV Transações
           </button>
+          <button
+            onClick={() => setRebalanceOpen(true)}
+            disabled={assets.length === 0}
+            className="h-9 px-4 rounded-lg border border-primary/40 bg-primary/10 text-primary text-sm font-medium flex items-center gap-2 hover:bg-primary/20 transition-colors disabled:opacity-50"
+          >
+            <Scale className="h-4 w-4" />
+            Rebalancear
+          </button>
+          <MonthlyReportButton />
           <button
             onClick={handleExportPDF}
             className="h-9 px-4 rounded-lg bg-primary text-primary-foreground text-sm font-medium flex items-center gap-2 hover:opacity-90 transition-opacity"
@@ -850,6 +862,7 @@ export default function Reports() {
           </div>
         )}
       </div>
+      <RebalanceModal open={rebalanceOpen} onClose={() => setRebalanceOpen(false)} />
     </div>
   );
 }
