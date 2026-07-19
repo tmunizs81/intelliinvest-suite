@@ -10,28 +10,16 @@ import AICopilotSignal from './AICopilotSignal';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
-import { AVENUE_ASSETS } from '@/lib/avenueAssets';
+import { searchBrokerCatalogs, inferBrokerFromTicker } from '@/lib/brokerCatalogs';
 
-const AVENUE_TICKERS = new Set(AVENUE_ASSETS.map(a => a.ticker.toUpperCase()));
-
-function searchAvenueLocal(query: string): SearchResult[] {
-  const q = query.trim().toUpperCase();
-  if (!q) return [];
-  return AVENUE_ASSETS
-    .filter(a => a.ticker.toUpperCase().includes(q) || a.name.toUpperCase().includes(q))
-    .slice(0, 8)
-    .map(a => {
-      const isUcits = a.category === 'ucits' || a.ticker.endsWith('.L');
-      return {
-        symbol: a.ticker,
-        name: a.name,
-        type: a.category === 'stock' || a.category === 'adr' ? 'Ação'
-          : a.category === 'reit' ? 'REIT'
-          : isUcits ? 'ETF' : 'ETF',
-        exchange: isUcits ? 'LSE' : 'NMS',
-        exchangeDisplay: isUcits ? 'London' : (a.category === 'reit' ? 'NYSE' : 'NASDAQ'),
-      } as SearchResult;
-    });
+function searchBrokerLocal(query: string): SearchResult[] {
+  return searchBrokerCatalogs(query, 10).map(r => ({
+    symbol: r.symbol,
+    name: r.name,
+    type: r.type,
+    exchange: r.exchange,
+    exchangeDisplay: r.exchangeDisplay,
+  }));
 }
 
 const TYPES = ['Ação', 'FII', 'ETF', 'ETF Internacional', 'REIT', 'BDR', 'Internacional', 'Cripto', 'Renda Fixa', 'Imóvel'] as const;
@@ -129,8 +117,8 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
       return;
     }
     setSearching(true);
-    // Seed with Avenue local matches instantly
-    const localAvenue = searchAvenueLocal(query);
+    // Seed with local broker-catalog matches instantly
+    const localAvenue = searchBrokerLocal(query);
     if (localAvenue.length) {
       setSuggestions(localAvenue);
       setShowSuggestions(true);
@@ -203,9 +191,10 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
     if (irishExchanges.includes(s.exchange)) {
       setSector('ETF Internacional');
     }
-    // Auto-set broker to Avenue if ticker belongs to Avenue catalog
-    if (AVENUE_TICKERS.has(s.symbol.toUpperCase()) && !broker) {
-      setBroker('Avenue');
+    // Auto-set broker from unified broker catalogs (only if unambiguous)
+    if (!broker) {
+      const inferred = inferBrokerFromTicker(s.symbol);
+      if (inferred) setBroker(inferred);
     }
     setShowSuggestions(false);
   };
