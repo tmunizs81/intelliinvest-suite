@@ -874,9 +874,14 @@ function SerialKeysTab() {
                           <Copy className="h-3.5 w-3.5" />
                         </button>
                         {k.status === 'active' && (
-                          <button onClick={() => revokeKey(k.id)} className="h-7 w-7 rounded flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10" title="Revogar">
-                            <X className="h-3.5 w-3.5" />
-                          </button>
+                          <>
+                            <button onClick={() => { setAssignKey(k); setAssignUserId(''); }} className="h-7 px-2 rounded flex items-center justify-center text-xs text-primary hover:bg-primary/10" title="Vincular a usuário">
+                              Vincular
+                            </button>
+                            <button onClick={() => revokeKey(k.id)} className="h-7 w-7 rounded flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10" title="Revogar">
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                          </>
                         )}
                       </div>
                     </td>
@@ -887,6 +892,30 @@ function SerialKeysTab() {
           </div>
         )}
       </div>
+
+      {assignKey && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={() => setAssignKey(null)}>
+          <div className="bg-card border border-border rounded-lg p-5 max-w-md w-full space-y-3" onClick={e => e.stopPropagation()}>
+            <h3 className="font-semibold">Vincular licença a usuário</h3>
+            <p className="text-xs text-muted-foreground font-mono">{assignKey.key} · {assignKey.plan_type === 'annual' ? 'Anual' : 'Mensal'}</p>
+            <div>
+              <label className="text-xs text-muted-foreground">Usuário</label>
+              <select value={assignUserId} onChange={e => setAssignUserId(e.target.value)} className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                <option value="">Selecione um usuário...</option>
+                {profiles.map(p => (
+                  <option key={p.user_id} value={p.user_id}>{p.display_name || p.user_id}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex gap-2 justify-end pt-2">
+              <button onClick={() => setAssignKey(null)} className="px-3 py-2 rounded-md border border-border text-sm">Cancelar</button>
+              <button onClick={assignToUser} disabled={!assignUserId || assigning} className="px-3 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium disabled:opacity-50 flex items-center gap-2">
+                {assigning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />} Vincular
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
