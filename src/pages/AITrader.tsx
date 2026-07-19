@@ -345,7 +345,7 @@ export default function AITrader() {
     messages, isLoading, loadingHistory, error,
     conversations, activeConversationId,
     sendMessage, newChat, stopGeneration,
-    loadConversation, deleteConversation,
+    loadConversation, deleteConversation, deleteAllConversations,
   } = useAITrader();
   const [input, setInput] = useState('');
   const [historyOpen, setHistoryOpen] = useState(typeof window !== 'undefined' && window.innerWidth >= 768);
