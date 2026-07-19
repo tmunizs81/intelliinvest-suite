@@ -127,9 +127,9 @@ async function buildContextForType(
 ): Promise<Ctx> {
   const ctx: Ctx = {};
   const wants = {
-    macro: analysisType === "macro-analysis" || analysisType === "portfolio-review" || analysisType === "risk-management",
-    events: analysisType === "macro-analysis" || analysisType === "position-trades" || analysisType === "risk-management",
-    dividends: analysisType === "buy-sell" || analysisType === "portfolio-review",
+    macro: analysisType === "macro-analysis" || analysisType === "portfolio-review" || analysisType === "risk-management" || analysisType === "debate",
+    events: analysisType === "macro-analysis" || analysisType === "position-trades" || analysisType === "risk-management" || analysisType === "debate",
+    dividends: analysisType === "buy-sell" || analysisType === "portfolio-review" || analysisType === "debate",
     news: false, // reservado — habilita quando quisermos gastar +1 chamada
   };
 
