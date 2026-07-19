@@ -704,6 +704,27 @@ function SerialKeysTab() {
   const [assignKey, setAssignKey] = useState<any>(null);
   const [assignUserId, setAssignUserId] = useState<string>('');
   const [assigning, setAssigning] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+  const toggleSelectAll = () => {
+    setSelectedIds(prev => prev.size === keys.length ? new Set() : new Set(keys.map(k => k.id)));
+  };
+  const bulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+    if (!confirm(`Excluir ${selectedIds.size} chave(s) selecionada(s)? Esta ação não pode ser desfeita.`)) return;
+    const { error } = await supabase.from('serial_keys').delete().in('id', Array.from(selectedIds));
+    if (error) { toast.error(`Erro: ${error.message}`); return; }
+    toast.success(`${selectedIds.size} chave(s) excluída(s)`);
+    setSelectedIds(new Set());
+    await loadKeys();
+  };
 
   const loadKeys = useCallback(async () => {
     setLoading(true);
