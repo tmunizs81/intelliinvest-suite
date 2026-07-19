@@ -172,8 +172,42 @@ export default function BulkImportYahoo({ open, onClose }: Props) {
             <div className="space-y-4">
               <div className="rounded-md bg-primary/5 border border-primary/20 p-3 text-xs text-muted-foreground">
                 Cole uma linha por ativo: <code className="font-mono text-foreground">TICKER QUANTIDADE [PREÇO]</code>.
-                Se omitir o preço, usamos a cotação atual. Você poderá revisar e corrigir cada linha antes de confirmar.
+                Se omitir o preço, usamos a cotação atual. ETFs irlandeses UCITS use sufixo <code className="font-mono text-foreground">.L</code> (ex: <code className="font-mono text-foreground">CSPX.L</code>, <code className="font-mono text-foreground">VUAA.L</code>).
               </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-[11px] font-medium text-muted-foreground">Presets:</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const lines = AVENUE_ASSETS.map((a) => `${a.ticker} 1`).join('\n');
+                    setText((prev) => (prev.trim() ? prev.trim() + '\n' : '') + lines);
+                  }}
+                  className="inline-flex items-center gap-1.5 rounded-md border border-primary/30 bg-primary/10 px-2.5 py-1 text-[11px] font-medium text-primary hover:bg-primary/20"
+                  title={`${AVENUE_ASSETS.length} ativos Avenue (ações US, ETFs, ADRs, UCITS irlandeses)`}
+                >
+                  <Landmark className="h-3 w-3" />
+                  Avenue completo ({AVENUE_ASSETS.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const lines = AVENUE_ASSETS.filter((a) => a.category === 'ucits').map((a) => `${a.ticker} 1`).join('\n');
+                    setText((prev) => (prev.trim() ? prev.trim() + '\n' : '') + lines);
+                  }}
+                  className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted/40 px-2.5 py-1 text-[11px] font-medium text-foreground hover:bg-muted"
+                >
+                  Só ETFs irlandeses UCITS
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setText('')}
+                  className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[11px] font-medium text-muted-foreground hover:text-loss"
+                >
+                  Limpar
+                </button>
+              </div>
+
               {err && <div className="rounded-md bg-loss/10 border border-loss/20 p-3 text-sm text-loss">{err}</div>}
               <textarea
                 value={text}
