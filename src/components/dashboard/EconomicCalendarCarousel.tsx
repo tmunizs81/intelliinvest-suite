@@ -3,7 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 import {
   CalendarClock, Loader2, RefreshCw,
   Filter, Globe, Bell, BellOff, X, ExternalLink, Clock, Target,
-  ChevronDown, ChevronUp,
+  ChevronDown, ChevronUp, ChevronLeft, ChevronRight,
+  List, LayoutGrid,
 } from 'lucide-react';
 
 
@@ -26,9 +27,9 @@ interface EcoEvent {
 }
 
 const impactMeta = {
-  high:   { label: 'Alto Impacto',  ring: 'border-loss/40 bg-loss/5',           dot: 'bg-loss',        chip: 'bg-loss/15 text-loss' },
-  medium: { label: 'Médio Impacto', ring: 'border-yellow-500/40 bg-yellow-500/5', dot: 'bg-yellow-500', chip: 'bg-yellow-500/15 text-yellow-600 dark:text-yellow-400' },
-  low:    { label: 'Baixo Impacto', ring: 'border-gain/40 bg-gain/5',           dot: 'bg-gain',        chip: 'bg-gain/15 text-gain' },
+  high:   { label: 'Alto Impacto',  ring: 'border-loss/40 bg-loss/5',           dot: 'bg-loss',        chip: 'bg-loss/15 text-loss',        stripe: 'bg-loss' },
+  medium: { label: 'Médio Impacto', ring: 'border-yellow-500/40 bg-yellow-500/5', dot: 'bg-yellow-500', chip: 'bg-yellow-500/15 text-yellow-600 dark:text-yellow-400', stripe: 'bg-yellow-500' },
+  low:    { label: 'Baixo Impacto', ring: 'border-gain/40 bg-gain/5',           dot: 'bg-gain',        chip: 'bg-gain/15 text-gain',        stripe: 'bg-gain' },
 } as const;
 type ImpactKey = keyof typeof impactMeta;
 
@@ -60,8 +61,13 @@ const TIMEZONES = [
 const LS_FILTERS = 'econcal:filters:v1';
 const LS_TZ = 'econcal:tz:v1';
 const LS_ALERTS = 'econcal:alerts:v1';
+const LS_VIEW = 'econcal:view:v1';
+const LS_CACHE_PREFIX = 'econcal:cache:v1:';
+const CACHE_TTL_MS = 10 * 60 * 1000; // 10 min
+const PAGE_SIZE = 8;
 
 type Filters = { countries: string[]; impacts: ImpactKey[] };
+type ViewMode = 'list' | 'grid';
 
 function loadFilters(): Filters {
   try {
@@ -71,10 +77,24 @@ function loadFilters(): Filters {
   return { countries: COUNTRIES.map(c => c.code), impacts: ['high', 'medium', 'low'] };
 }
 function loadTz(): string { return localStorage.getItem(LS_TZ) || 'local'; }
+function loadView(): ViewMode { return (localStorage.getItem(LS_VIEW) as ViewMode) || 'grid'; }
 function loadAlerts(): Record<string, true> {
   try { return JSON.parse(localStorage.getItem(LS_ALERTS) || '{}'); } catch { return {}; }
 }
 function saveAlerts(a: Record<string, true>) { localStorage.setItem(LS_ALERTS, JSON.stringify(a)); }
+
+function loadCache(key: string): { at: number; events: EcoEvent[] } | null {
+  try {
+    const raw = localStorage.getItem(LS_CACHE_PREFIX + key);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed && Array.isArray(parsed.events) && typeof parsed.at === 'number') return parsed;
+  } catch {}
+  return null;
+}
+function saveCache(key: string, events: EcoEvent[]) {
+  try { localStorage.setItem(LS_CACHE_PREFIX + key, JSON.stringify({ at: Date.now(), events })); } catch {}
+}
 
 function fmtTime(iso: string, tz: string) {
   try {
@@ -91,23 +111,55 @@ function fmtDateTime(iso: string, tz: string) {
   } catch { return new Date(iso).toLocaleString('pt-BR'); }
 }
 
+function impactSummary(ev: EcoEvent, affectedCount: number): string {
+  const key = bucket(ev.importance);
+  const base = key === 'high' ? 'Alto potencial de volatilidade'
+    : key === 'medium' ? 'Impacto moderado esperado'
+    : 'Impacto reduzido no mercado';
+  const ctx = ev.country === 'BR' ? 'Ibov/USD-BRL/DI'
+    : ev.country === 'US' ? 'S&P/Nasdaq/Treasuries'
+    : 'mercados regionais';
+  return affectedCount > 0
+    ? `${base} · ${ctx} · ${affectedCount} ativo(s) da carteira`
+    : `${base} · ${ctx}`;
+}
+
 export default function EconomicCalendarPanel({ assets = [] }: { assets?: Asset[] } = {}) {
-  const [events, setEvents] = useState<EcoEvent[]>([]);
+  const [filters, setFilters] = useState<Filters>(loadFilters);
+  const cacheKey = useMemo(() => [...filters.countries].sort().join(','), [filters.countries]);
+  const initialCache = useMemo(() => loadCache(cacheKey), [cacheKey]);
+
+  const [events, setEvents] = useState<EcoEvent[]>(initialCache?.events ?? []);
+  const [lastFetchAt, setLastFetchAt] = useState<number>(initialCache?.at ?? 0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [filters, setFilters] = useState<Filters>(loadFilters);
   const [tz, setTz] = useState<string>(loadTz);
   const [alerts, setAlerts] = useState<Record<string, true>>(loadAlerts);
   const [showFilters, setShowFilters] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+  const [view, setView] = useState<ViewMode>(loadView);
+  const [page, setPage] = useState(0);
   const [modalEvent, setModalEvent] = useState<EcoEvent | null>(null);
   const alertTimers = useRef<number[]>([]);
+  const inflight = useRef<string | null>(null);
 
 
   useEffect(() => { localStorage.setItem(LS_FILTERS, JSON.stringify(filters)); }, [filters]);
   useEffect(() => { localStorage.setItem(LS_TZ, tz); }, [tz]);
+  useEffect(() => { localStorage.setItem(LS_VIEW, view); }, [view]);
+  useEffect(() => { setPage(0); }, [filters.impacts, filters.countries, view]);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (force = false) => {
+    // Dedup concurrent requests per cache key
+    if (inflight.current === cacheKey) return;
+    // Hydrate from cache immediately
+    const cached = loadCache(cacheKey);
+    if (cached) {
+      setEvents(cached.events);
+      setLastFetchAt(cached.at);
+      if (!force && Date.now() - cached.at < CACHE_TTL_MS) return; // fresh
+    }
+    inflight.current = cacheKey;
     setLoading(true);
     setError(null);
     try {
@@ -116,27 +168,49 @@ export default function EconomicCalendarPanel({ assets = [] }: { assets?: Asset[
       if (fnError) throw fnError;
       const evts: EcoEvent[] = Array.isArray(data?.events) ? data.events : [];
       setEvents(evts);
+      setLastFetchAt(Date.now());
+      saveCache(cacheKey, evts);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao carregar calendário');
     } finally {
       setLoading(false);
+      inflight.current = null;
     }
-  }, [filters.countries]);
+  }, [cacheKey, filters.countries]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { load(false); }, [load]);
+
+  // Auto-refresh in background every CACHE_TTL_MS
+  useEffect(() => {
+    const id = window.setInterval(() => load(false), CACHE_TTL_MS);
+    return () => window.clearInterval(id);
+  }, [load]);
 
   const filtered = useMemo(() => events.filter(e =>
     filters.countries.includes(e.country) && filters.impacts.includes(bucket(e.importance))
   ), [events, filters]);
 
-  const grouped = useMemo(() => {
-    const g: Record<ImpactKey, EcoEvent[]> = { high: [], medium: [], low: [] };
-    filtered.forEach(e => g[bucket(e.importance)].push(e));
-    (Object.keys(g) as ImpactKey[]).forEach(k =>
-      g[k].sort((a, b) => (a.date > b.date ? 1 : -1))
-    );
-    return g;
+  const sorted = useMemo(() => {
+    // High → Medium → Low, then by date asc
+    const order: Record<ImpactKey, number> = { high: 0, medium: 1, low: 2 };
+    return [...filtered].sort((a, b) => {
+      const oa = order[bucket(a.importance)], ob = order[bucket(b.importance)];
+      if (oa !== ob) return oa - ob;
+      return a.date > b.date ? 1 : -1;
+    });
   }, [filtered]);
+
+  const counts = useMemo(() => {
+    const c: Record<ImpactKey, number> = { high: 0, medium: 0, low: 0 };
+    filtered.forEach(e => { c[bucket(e.importance)]++; });
+    return c;
+  }, [filtered]);
+
+  const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
+  const pageItems = useMemo(
+    () => view === 'list' ? sorted.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE) : sorted,
+    [sorted, page, view]
+  );
 
   // Schedule browser notifications for enabled alerts (10 min before)
   useEffect(() => {
@@ -196,47 +270,68 @@ export default function EconomicCalendarPanel({ assets = [] }: { assets?: Asset[
     });
   };
 
-
+  const freshnessLabel = lastFetchAt
+    ? (() => {
+        const mins = Math.floor((Date.now() - lastFetchAt) / 60000);
+        return mins < 1 ? 'agora' : `${mins}m`;
+      })()
+    : '';
 
   return (
     <div className="rounded-lg border border-border bg-card overflow-hidden animate-fade-in">
-      {/* Compact header: title + impact chips (as filters) + actions */}
-      <div className="px-3 py-2 flex items-center gap-2 flex-wrap">
+      {/* Compact header — responsive: chips wrap on mobile */}
+      <div className="px-2 sm:px-3 py-2 flex items-center gap-1.5 sm:gap-2 flex-wrap">
         <button
           onClick={() => setCollapsed(c => !c)}
           className="flex items-center gap-1.5 min-w-0 hover:opacity-80 transition-opacity"
           title={collapsed ? 'Expandir' : 'Recolher'}
         >
           <CalendarClock className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-          <span className="text-xs font-semibold">Calendário Econômico</span>
+          <span className="text-xs font-semibold whitespace-nowrap">Calendário Econômico</span>
           {collapsed ? <ChevronDown className="h-3 w-3 text-muted-foreground" /> : <ChevronUp className="h-3 w-3 text-muted-foreground" />}
         </button>
 
-        {/* Impact filter chips with counts — always visible */}
+        {/* Impact filter chips with counts */}
         <div className="flex items-center gap-1">
           {(['high', 'medium', 'low'] as ImpactKey[]).map(k => {
             const on = filters.impacts.includes(k);
             const meta = impactMeta[k];
-            const count = grouped[k].length;
             return (
               <button key={k} onClick={() => toggleImpact(k)}
                 title={meta.label}
                 className={`text-[10px] px-1.5 h-6 rounded border transition-all flex items-center gap-1 ${on ? meta.chip + ' border-transparent' : 'border-border text-muted-foreground opacity-60 hover:opacity-100'}`}>
                 <span className={`h-1.5 w-1.5 rounded-full ${meta.dot}`} />
-                <span className="font-mono">{count}</span>
+                <span className="font-mono">{counts[k]}</span>
               </button>
             );
           })}
         </div>
 
-        <div className="flex-1" />
+        <div className="flex-1 min-w-0" />
 
         <div className="flex items-center gap-1">
+          {/* View mode toggle */}
+          <div className="hidden sm:flex items-center rounded border border-border overflow-hidden">
+            <button onClick={() => setView('list')} title="Modo lista paginada"
+              className={`h-6 w-6 flex items-center justify-center transition-all ${view === 'list' ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground'}`}>
+              <List className="h-3 w-3" />
+            </button>
+            <button onClick={() => setView('grid')} title="Modo grade densa"
+              className={`h-6 w-6 flex items-center justify-center transition-all ${view === 'grid' ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground'}`}>
+              <LayoutGrid className="h-3 w-3" />
+            </button>
+          </div>
+          {/* Mobile: single toggle button */}
+          <button onClick={() => setView(v => v === 'list' ? 'grid' : 'list')}
+            title={view === 'list' ? 'Modo grade densa' : 'Modo lista paginada'}
+            className="sm:hidden h-6 w-6 rounded border border-border flex items-center justify-center text-muted-foreground hover:text-foreground transition-all">
+            {view === 'list' ? <LayoutGrid className="h-3 w-3" /> : <List className="h-3 w-3" />}
+          </button>
           <button onClick={() => setShowFilters(s => !s)} title="Filtros de país/fuso"
             className={`h-6 w-6 rounded border flex items-center justify-center transition-all ${showFilters ? 'border-primary/60 text-primary bg-primary/5' : 'border-border text-muted-foreground hover:text-foreground'}`}>
             <Filter className="h-3 w-3" />
           </button>
-          <button onClick={load} disabled={loading}
+          <button onClick={() => load(true)} disabled={loading} title={freshnessLabel ? `Atualizado há ${freshnessLabel}` : 'Atualizar'}
             className="h-6 w-6 rounded border border-border flex items-center justify-center text-muted-foreground hover:text-foreground transition-all disabled:opacity-50">
             {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
           </button>
@@ -244,8 +339,8 @@ export default function EconomicCalendarPanel({ assets = [] }: { assets?: Asset[
       </div>
 
       {showFilters && !collapsed && (
-        <div className="border-t border-border bg-muted/20 px-3 py-2 space-y-2">
-          <div className="flex items-center gap-2 flex-wrap">
+        <div className="border-t border-border bg-muted/20 px-2 sm:px-3 py-2 space-y-2">
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
             <span className="text-[10px] font-semibold uppercase text-muted-foreground flex items-center gap-1">
               <Globe className="h-3 w-3" /> Países
             </span>
@@ -259,7 +354,7 @@ export default function EconomicCalendarPanel({ assets = [] }: { assets?: Asset[
               );
             })}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <span className="text-[10px] font-semibold uppercase text-muted-foreground flex items-center gap-1">
               <Clock className="h-3 w-3" /> Fuso
             </span>
@@ -270,11 +365,13 @@ export default function EconomicCalendarPanel({ assets = [] }: { assets?: Asset[
             >
               {TIMEZONES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
             </select>
+            {freshnessLabel && (
+              <span className="text-[10px] text-muted-foreground ml-auto">Atualizado há {freshnessLabel}</span>
+            )}
           </div>
         </div>
       )}
 
-      {/* Compact horizontal strip of events */}
       {!collapsed && (
         <div className="border-t border-border">
           {loading && !filtered.length ? (
@@ -286,16 +383,16 @@ export default function EconomicCalendarPanel({ assets = [] }: { assets?: Asset[
             <p className="px-3 py-2 text-[10px] text-loss">⚠️ {error}</p>
           ) : !filtered.length ? (
             <p className="px-3 py-2 text-[10px] text-muted-foreground">Nenhum evento com os filtros atuais.</p>
-          ) : (
-            <div className="flex gap-1.5 overflow-x-auto no-scrollbar px-2 py-2">
-              {filtered.map(ev => {
+          ) : view === 'grid' ? (
+            /* Dense grid — auto-fill responsive columns */
+            <div className="p-2 grid gap-1.5 grid-cols-[repeat(auto-fill,minmax(220px,1fr))]">
+              {pageItems.map(ev => {
                 const key = bucket(ev.importance);
                 const meta = impactMeta[key];
                 const c = countryOf(ev.country);
                 const time = fmtTime(ev.date, tz);
                 const alertOn = !!alerts[ev.id];
                 const affected = computeAffectedHoldings(ev, assets, 1);
-                const stripeCls = key === 'high' ? 'bg-loss' : key === 'medium' ? 'bg-yellow-500' : 'bg-gain';
                 const surprise = (() => {
                   const a = Number(ev.actual), f = Number(ev.forecast);
                   if (!isFinite(a) || !isFinite(f) || f === 0) return null;
@@ -305,42 +402,116 @@ export default function EconomicCalendarPanel({ assets = [] }: { assets?: Asset[
                   <button
                     key={ev.id}
                     onClick={() => setModalEvent(ev)}
-                    title={`${ev.title}${affected.length ? ` · ${affected.length} ativo(s) da sua carteira` : ''}`}
-                    className={`group shrink-0 max-w-[240px] text-left rounded-md border ${meta.ring} flex overflow-hidden hover:scale-[1.02] transition-transform`}
+                    title={impactSummary(ev, affected.length)}
+                    className={`group text-left rounded-md border ${meta.ring} flex overflow-hidden hover:scale-[1.01] transition-transform`}
                   >
-                    <div className={`w-0.5 shrink-0 ${stripeCls}`} />
-                    <div className="px-2 py-1.5 min-w-0 flex items-center gap-1.5">
-                      <span className="text-xs">{c?.flag || '🌐'}</span>
-                      <span className="text-[10px] font-mono text-muted-foreground shrink-0">{time}</span>
-                      <span className="text-[11px] font-medium truncate max-w-[130px]">{ev.title}</span>
-                      {surprise !== null && (
-                        <span className={`text-[9px] font-mono font-semibold shrink-0 ${surprise >= 0 ? 'text-gain' : 'text-loss'}`}>
-                          {surprise >= 0 ? '+' : ''}{surprise.toFixed(1)}%
+                    <div className={`w-1 shrink-0 ${meta.stripe}`} />
+                    <div className="px-2 py-1.5 min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs">{c?.flag || '🌐'}</span>
+                        <span className="text-[10px] font-mono text-muted-foreground shrink-0">{time}</span>
+                        <span className="text-[11px] font-medium truncate flex-1">{ev.title}</span>
+                        {surprise !== null && (
+                          <span className={`text-[9px] font-mono font-semibold shrink-0 ${surprise >= 0 ? 'text-gain' : 'text-loss'}`}>
+                            {surprise >= 0 ? '+' : ''}{surprise.toFixed(1)}%
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        {affected.length > 0 && <Target className="h-2.5 w-2.5 text-primary shrink-0" />}
+                        <span className="text-[9px] text-muted-foreground truncate">{impactSummary(ev, affected.length)}</span>
+                        <span
+                          role="button"
+                          tabIndex={0}
+                          onClick={(e) => { e.stopPropagation(); toggleAlert(ev); }}
+                          onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); toggleAlert(ev); } }}
+                          className={`ml-auto h-4 w-4 rounded flex items-center justify-center shrink-0 cursor-pointer ${alertOn ? 'text-primary' : 'text-muted-foreground/50 opacity-0 group-hover:opacity-100'}`}
+                        >
+                          {alertOn ? <Bell className="h-2.5 w-2.5" /> : <BellOff className="h-2.5 w-2.5" />}
                         </span>
-                      )}
-                      {affected.length > 0 && (
-                        <Target className="h-2.5 w-2.5 text-primary shrink-0" />
-                      )}
-                      <span
-                        role="button"
-                        tabIndex={0}
-                        onClick={(e) => { e.stopPropagation(); toggleAlert(ev); }}
-                        onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); toggleAlert(ev); } }}
-                        className={`h-4 w-4 rounded flex items-center justify-center shrink-0 cursor-pointer ${alertOn ? 'text-primary' : 'text-muted-foreground/50 opacity-0 group-hover:opacity-100'}`}
-                      >
-                        {alertOn ? <Bell className="h-2.5 w-2.5" /> : <BellOff className="h-2.5 w-2.5" />}
-                      </span>
+                      </div>
                     </div>
                   </button>
                 );
               })}
             </div>
+          ) : (
+            /* Paginated list — one row per event, impact summary before content */
+            <>
+              <ul className="divide-y divide-border">
+                {pageItems.map(ev => {
+                  const key = bucket(ev.importance);
+                  const meta = impactMeta[key];
+                  const c = countryOf(ev.country);
+                  const time = fmtTime(ev.date, tz);
+                  const alertOn = !!alerts[ev.id];
+                  const affected = computeAffectedHoldings(ev, assets, 1);
+                  const surprise = (() => {
+                    const a = Number(ev.actual), f = Number(ev.forecast);
+                    if (!isFinite(a) || !isFinite(f) || f === 0) return null;
+                    return ((a - f) / Math.abs(f)) * 100;
+                  })();
+                  return (
+                    <li key={ev.id}>
+                      <button
+                        onClick={() => setModalEvent(ev)}
+                        className="w-full text-left px-2 sm:px-3 py-2 flex items-start gap-2 hover:bg-muted/40 transition-colors"
+                      >
+                        <div className={`w-1 self-stretch rounded-full shrink-0 ${meta.stripe}`} />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-xs">{c?.flag || '🌐'}</span>
+                            <span className="text-[10px] font-mono text-muted-foreground shrink-0">{time}</span>
+                            <span className="text-[11px] sm:text-xs font-medium truncate flex-1 min-w-0">{ev.title}</span>
+                            {surprise !== null && (
+                              <span className={`text-[9px] font-mono font-semibold shrink-0 ${surprise >= 0 ? 'text-gain' : 'text-loss'}`}>
+                                {surprise >= 0 ? '+' : ''}{surprise.toFixed(1)}%
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            {affected.length > 0 && <Target className="h-2.5 w-2.5 text-primary shrink-0" />}
+                            <span className="text-[9px] sm:text-[10px] text-muted-foreground truncate">
+                              {impactSummary(ev, affected.length)}
+                            </span>
+                          </div>
+                        </div>
+                        <span
+                          role="button"
+                          tabIndex={0}
+                          onClick={(e) => { e.stopPropagation(); toggleAlert(ev); }}
+                          onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); toggleAlert(ev); } }}
+                          className={`h-5 w-5 rounded flex items-center justify-center shrink-0 cursor-pointer ${alertOn ? 'text-primary' : 'text-muted-foreground/60'}`}
+                        >
+                          {alertOn ? <Bell className="h-3 w-3" /> : <BellOff className="h-3 w-3" />}
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+              {totalPages > 1 && (
+                <div className="px-2 sm:px-3 py-1.5 border-t border-border flex items-center justify-between gap-2">
+                  <span className="text-[10px] text-muted-foreground">
+                    {page * PAGE_SIZE + 1}–{Math.min(sorted.length, (page + 1) * PAGE_SIZE)} de {sorted.length}
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <button onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0}
+                      className="h-6 w-6 rounded border border-border flex items-center justify-center text-muted-foreground hover:text-foreground disabled:opacity-30">
+                      <ChevronLeft className="h-3 w-3" />
+                    </button>
+                    <span className="text-[10px] font-mono px-1">{page + 1}/{totalPages}</span>
+                    <button onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))} disabled={page >= totalPages - 1}
+                      className="h-6 w-6 rounded border border-border flex items-center justify-center text-muted-foreground hover:text-foreground disabled:opacity-30">
+                      <ChevronRight className="h-3 w-3" />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
       )}
-
-
-
 
       {modalEvent && (
         <EventModal
