@@ -36,6 +36,8 @@ export default function Assets() {
   const [sellingPrice, setSellingPrice] = useState(0);
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('');
+  const [brokerFilter, setBrokerFilter] = useState<string>('');
+  const [sortBy, setSortBy] = useState<'default' | 'value_desc' | 'value_asc' | 'name_asc' | 'broker_asc' | 'change_desc'>('default');
   const [importOpen, setImportOpen] = useState(false);
   const [importData, setImportData] = useState('');
   const [importing, setImporting] = useState(false);
@@ -54,11 +56,44 @@ export default function Assets() {
     setSellOpen(true);
   };
 
-  const filtered = assets.filter(a => {
-    const matchSearch = !search || a.ticker.toLowerCase().includes(search.toLowerCase()) || a.name.toLowerCase().includes(search.toLowerCase());
-    const matchType = !typeFilter || a.type === typeFilter;
-    return matchSearch && matchType;
-  });
+  // Corretoras únicas presentes na carteira (contagem para exibir no chip)
+  const brokerFacets = useMemo(() => {
+    const map = new Map<string, number>();
+    holdings.forEach((h) => {
+      const b = (h.broker || '').trim();
+      if (!b) return;
+      map.set(b, (map.get(b) || 0) + 1);
+    });
+    return Array.from(map.entries()).sort((a, b) => b[1] - a[1]);
+  }, [holdings]);
+
+  const brokerByTicker = useMemo(() => {
+    const m = new Map<string, string>();
+    holdings.forEach((h) => { if (h.broker) m.set(h.ticker, h.broker); });
+    return m;
+  }, [holdings]);
+
+  const filtered = useMemo(() => {
+    const list = assets.filter(a => {
+      const matchSearch = !search || a.ticker.toLowerCase().includes(search.toLowerCase()) || a.name.toLowerCase().includes(search.toLowerCase());
+      const matchType = !typeFilter || a.type === typeFilter;
+      const matchBroker = !brokerFilter || (brokerByTicker.get(a.ticker) || '') === brokerFilter;
+      return matchSearch && matchType && matchBroker;
+    });
+    if (sortBy === 'default') return list;
+    const sorted = [...list];
+    sorted.sort((a, b) => {
+      switch (sortBy) {
+        case 'value_desc': return (b.currentPrice * b.quantity) - (a.currentPrice * a.quantity);
+        case 'value_asc': return (a.currentPrice * a.quantity) - (b.currentPrice * b.quantity);
+        case 'name_asc': return a.ticker.localeCompare(b.ticker);
+        case 'broker_asc': return (brokerByTicker.get(a.ticker) || 'zz').localeCompare(brokerByTicker.get(b.ticker) || 'zz');
+        case 'change_desc': return (b.change24h || 0) - (a.change24h || 0);
+        default: return 0;
+      }
+    });
+    return sorted;
+  }, [assets, search, typeFilter, brokerFilter, sortBy, brokerByTicker]);
 
   const total = assets.reduce((s, a) => s + a.currentPrice * a.quantity, 0);
   const cost = assets.reduce((s, a) => s + a.avgPrice * a.quantity, 0);
