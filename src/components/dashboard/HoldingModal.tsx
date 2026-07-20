@@ -351,7 +351,7 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
     for (let i = 0; i < parsed.length; i++) {
       const p = parsed[i];
       const rule = getRule(p.ticker);
-      const resolvedBroker = (p.broker || rule?.broker || inferBrokerFromTicker(p.ticker) || '').trim();
+      const resolvedBroker = (p.broker || rule?.broker || inferBrokerFromTicker(p.ticker, { preferredBrokers }) || '').trim();
       const resolvedType = rule?.type || classifyAssetType(p.ticker) || 'Ação';
       try {
         await onSave({
