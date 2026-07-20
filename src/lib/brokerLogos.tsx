@@ -67,7 +67,9 @@ interface Props {
 
 export function BrokerLogo({ broker, size = 16, className = '' }: Props) {
   const [failed, setFailed] = useState(false);
-  const url = getBrokerLogoUrl(broker, Math.max(32, size * 2));
+  const { overrides } = useBrokerLogoSettings();
+  const override = overrides[broker];
+  const url = override || getBrokerLogoUrl(broker, Math.max(32, size * 2));
   const initials = broker
     .split(/\s+/)
     .map((w) => w[0])
