@@ -493,130 +493,44 @@ export default function EconomicCalendarPanel({ assets = [] }: { assets?: Asset[
           ) : !filtered.length ? (
             <p className="px-3 py-2 text-[10px] text-muted-foreground">Nenhum evento com os filtros atuais.</p>
           ) : view === 'grid' ? (
-            /* Dense grid — auto-fill responsive columns */
-            <div className="p-2 grid gap-1.5 grid-cols-[repeat(auto-fill,minmax(220px,1fr))]">
-              {pageItems.map(ev => {
-                const key = bucket(ev.importance);
-                const meta = impactMeta[key];
-                const c = countryOf(ev.country);
-                const time = fmtTime(ev.date, tz);
-                const alertOn = !!alerts[ev.id];
-                const affected = computeAffectedHoldings(ev, assets, 1);
-                const surprise = (() => {
-                  const a = Number(ev.actual), f = Number(ev.forecast);
-                  if (!isFinite(a) || !isFinite(f) || f === 0) return null;
-                  return ((a - f) / Math.abs(f)) * 100;
-                })();
-                const detail = detailedImpactExplanation(ev);
-                return (
-                  <button
-                    key={ev.id}
-                    type="button"
-                    onClick={() => setModalEvent(ev)}
-                    aria-label={`${meta.label}. ${time}. ${ev.title}. ${detail.aggregate}${detail.surprise ? '. ' + detail.surprise.label : ''}. Abrir detalhes.`}
-                    className={`group text-left rounded-md border ${meta.ring} flex overflow-hidden hover:scale-[1.01] transition-transform focus:outline-none focus-visible:ring-2 focus-visible:ring-primary`}
-                  >
-                    <div className={`w-1 shrink-0 ${meta.stripe}`} aria-hidden="true" />
-                    <div className="px-2 py-1.5 min-w-0 flex-1">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-xs" aria-hidden="true">{c?.flag || '🌐'}</span>
-                        <span className="text-[10px] font-mono text-muted-foreground shrink-0">{time}</span>
-                        <span className="text-[11px] font-medium truncate flex-1">{ev.title}</span>
-                        {surprise !== null && (
-                          <span className={`text-[9px] font-mono font-semibold shrink-0 ${surprise >= 0 ? 'text-gain' : 'text-loss'}`}>
-                            {surprise >= 0 ? '+' : ''}{surprise.toFixed(1)}%
-                          </span>
-                        )}
-                      </div>
-                      {/* Detailed explanation before the item */}
-                      <p className="text-[9px] text-muted-foreground/90 mt-0.5 leading-snug line-clamp-2">
-                        {detail.aggregate}
-                        {detail.surprise && <> · <span className={detail.surprise.value >= 0 ? 'text-gain' : 'text-loss'}>{detail.surprise.label}</span></>}
-                        {detail.historical && <> · {detail.historical.label}</>}
-                      </p>
-                      <div className="flex items-center gap-1.5 mt-0.5">
-                        {affected.length > 0 && <Target className="h-2.5 w-2.5 text-primary shrink-0" aria-hidden="true" />}
-                        <span className="text-[9px] text-muted-foreground truncate">{impactSummary(ev, affected.length)}</span>
-                        <span
-                          role="button"
-                          tabIndex={0}
-                          aria-pressed={alertOn}
-                          aria-label={alertOn ? `Remover alerta de ${ev.title}` : `Criar alerta 10 min antes de ${ev.title}`}
-                          onClick={(e) => { e.stopPropagation(); toggleAlert(ev); }}
-                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); toggleAlert(ev); } }}
-                          className={`ml-auto h-5 w-5 rounded flex items-center justify-center shrink-0 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary ${alertOn ? 'text-primary' : 'text-muted-foreground/50 opacity-100 sm:opacity-0 group-hover:opacity-100 group-focus-within:opacity-100'}`}
-                        >
-                          {alertOn ? <Bell className="h-2.5 w-2.5" /> : <BellOff className="h-2.5 w-2.5" />}
-                        </span>
-                      </div>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
+            /* Dense grid — auto-fill responsive columns, incremental windowing */
+            <>
+              <div className="p-2 grid gap-1.5 grid-cols-[repeat(auto-fill,minmax(220px,1fr))]">
+                {pageItems.map(ev => {
+                  const d = enrichedById.get(ev.id)!;
+                  return (
+                    <GridCard
+                      key={ev.id}
+                      ev={ev}
+                      d={d}
+                      alertOn={!!alerts[ev.id]}
+                      onOpen={setModalEvent}
+                      onToggleAlert={toggleAlert}
+                    />
+                  );
+                })}
+              </div>
+              {gridLimit < sorted.length && (
+                <div ref={sentinelRef} className="py-2 flex items-center justify-center text-[10px] text-muted-foreground">
+                  <Loader2 className="h-3 w-3 animate-spin mr-1" /> Carregando mais…
+                </div>
+              )}
+            </>
           ) : (
             /* Paginated list — one row per event, impact summary before content */
             <>
               <ul className="divide-y divide-border">
                 {pageItems.map(ev => {
-                  const key = bucket(ev.importance);
-                  const meta = impactMeta[key];
-                  const c = countryOf(ev.country);
-                  const time = fmtTime(ev.date, tz);
-                  const alertOn = !!alerts[ev.id];
-                  const affected = computeAffectedHoldings(ev, assets, 1);
-                  const surprise = (() => {
-                    const a = Number(ev.actual), f = Number(ev.forecast);
-                    if (!isFinite(a) || !isFinite(f) || f === 0) return null;
-                    return ((a - f) / Math.abs(f)) * 100;
-                  })();
-                  const detail = detailedImpactExplanation(ev);
+                  const d = enrichedById.get(ev.id)!;
                   return (
-                    <li key={ev.id}>
-                      <button
-                        type="button"
-                        onClick={() => setModalEvent(ev)}
-                        aria-label={`${meta.label}. ${time}. ${ev.title}. ${detail.aggregate}${detail.surprise ? '. ' + detail.surprise.label : ''}. Abrir detalhes.`}
-                        className="w-full text-left px-2 sm:px-3 py-2 flex items-start gap-2 hover:bg-muted/40 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
-                      >
-                        <div className={`w-1 self-stretch rounded-full shrink-0 ${meta.stripe}`} aria-hidden="true" />
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="text-xs" aria-hidden="true">{c?.flag || '🌐'}</span>
-                            <span className="text-[10px] font-mono text-muted-foreground shrink-0">{time}</span>
-                            <span className="text-[11px] sm:text-xs font-medium truncate flex-1 min-w-0">{ev.title}</span>
-                            {surprise !== null && (
-                              <span className={`text-[9px] font-mono font-semibold shrink-0 ${surprise >= 0 ? 'text-gain' : 'text-loss'}`}>
-                                {surprise >= 0 ? '+' : ''}{surprise.toFixed(1)}%
-                              </span>
-                            )}
-                          </div>
-                          {/* Detailed explanation shown before the item */}
-                          <p className="text-[9px] sm:text-[10px] text-muted-foreground/90 mt-0.5 leading-snug">
-                            {detail.aggregate}
-                            {detail.surprise && <> · <span className={detail.surprise.value >= 0 ? 'text-gain' : 'text-loss'}>{detail.surprise.label}</span></>}
-                            {detail.historical && <> · {detail.historical.label}</>}
-                          </p>
-                          <div className="flex items-center gap-1.5 mt-0.5">
-                            {affected.length > 0 && <Target className="h-2.5 w-2.5 text-primary shrink-0" aria-hidden="true" />}
-                            <span className="text-[9px] sm:text-[10px] text-muted-foreground truncate">
-                              {impactSummary(ev, affected.length)}
-                            </span>
-                          </div>
-                        </div>
-                        <span
-                          role="button"
-                          tabIndex={0}
-                          aria-pressed={alertOn}
-                          aria-label={alertOn ? `Remover alerta de ${ev.title}` : `Criar alerta 10 min antes de ${ev.title}`}
-                          onClick={(e) => { e.stopPropagation(); toggleAlert(ev); }}
-                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); toggleAlert(ev); } }}
-                          className={`h-6 w-6 rounded flex items-center justify-center shrink-0 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary ${alertOn ? 'text-primary' : 'text-muted-foreground/60'}`}
-                        >
-                          {alertOn ? <Bell className="h-3 w-3" /> : <BellOff className="h-3 w-3" />}
-                        </span>
-                      </button>
-                    </li>
+                    <ListRow
+                      key={ev.id}
+                      ev={ev}
+                      d={d}
+                      alertOn={!!alerts[ev.id]}
+                      onOpen={setModalEvent}
+                      onToggleAlert={toggleAlert}
+                    />
                   );
                 })}
               </ul>
