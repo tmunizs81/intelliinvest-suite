@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import {
-  CalendarClock, ChevronLeft, ChevronRight, Loader2, Pause, Play, RefreshCw,
+  CalendarClock, Loader2, RefreshCw,
   Filter, Globe, Bell, BellOff, X, ExternalLink, Clock, Target,
 } from 'lucide-react';
+
 import { toast } from '@/hooks/use-toast';
 import { type Asset } from '@/lib/mockData';
 import { computeAffectedHoldings, type AffectedHolding } from '@/lib/eventImpactMap';
