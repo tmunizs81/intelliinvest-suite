@@ -141,28 +141,25 @@ function colorFor(name: string): string {
   return `hsl(${Math.abs(h) % 360} 65% 45%)`;
 }
 
+/**
+ * URL primária: Clearbit Logo API (logos oficiais em alta qualidade, PNG transparente).
+ * Fallback: DuckDuckGo icons (favicon de alta resolução, mais confiável que S2 do Google
+ * para muitas corretoras). Se ambos falharem, renderiza iniciais coloridas.
+ */
 export function getBrokerLogoUrl(broker: string, size = 64): string | null {
   const cacheKey = `${broker}@${size}`;
   const cached = urlCache.get(cacheKey);
   if (cached !== undefined) return cached || null;
   const domain = BROKER_DOMAINS[broker];
-  const url = domain ? `https://www.google.com/s2/favicons?domain=${domain}&sz=${size}` : '';
+  const url = domain ? `https://logo.clearbit.com/${domain}?size=${size}` : '';
   urlCache.set(cacheKey, url);
   return url || null;
 }
 
-/**
- * Retorna variantes AVIF/WebP servidas via proxy wsrv.nl.
- * O proxy detecta e converte o PNG original para formatos modernos.
- * Se o proxy falhar, o <img> PNG dentro do <picture> serve de fallback nativo.
- */
-function getVariants(pngUrl: string, size: number) {
-  const enc = encodeURIComponent(pngUrl.replace(/^https?:\/\//, ''));
-  const base = `https://wsrv.nl/?url=${enc}&w=${size}&h=${size}&fit=contain&we`;
-  return {
-    avif: `${base}&output=avif&q=70`,
-    webp: `${base}&output=webp&q=80`,
-  };
+export function getBrokerLogoFallbackUrl(broker: string): string | null {
+  const domain = BROKER_DOMAINS[broker];
+  if (!domain) return null;
+  return `https://icons.duckduckgo.com/ip3/${domain}.ico`;
 }
 
 export function preloadBrokers(brokers: string[], size = 64) {
