@@ -8,6 +8,13 @@ import { XTB_ASSETS } from './xtbAssets';
 import { WEBULL_ASSETS } from './webullAssets';
 import { C6_ASSETS } from './c6Assets';
 import { BTG_ASSETS } from './btgAssets';
+import {
+  BINANCE_ASSETS,
+  COINBASE_ASSETS,
+  KUCOIN_ASSETS,
+  MERCADO_BITCOIN_ASSETS,
+  FOXBIT_ASSETS,
+} from './cryptoAssets';
 
 export interface BrokerCatalogEntry {
   ticker: string;
@@ -19,14 +26,20 @@ export interface BrokerCatalog {
   broker: string;
   assets: BrokerCatalogEntry[];
   tickerSet: Set<string>;
+  kind?: 'stock' | 'crypto';
 }
 
 export const BROKER_CATALOGS: BrokerCatalog[] = [
-  { broker: 'Avenue', assets: AVENUE_ASSETS, tickerSet: new Set(AVENUE_ASSETS.map(a => a.ticker.toUpperCase())) },
-  { broker: 'XTB', assets: XTB_ASSETS, tickerSet: new Set(XTB_ASSETS.map(a => a.ticker.toUpperCase())) },
-  { broker: 'Webull', assets: WEBULL_ASSETS, tickerSet: new Set(WEBULL_ASSETS.map(a => a.ticker.toUpperCase())) },
-  { broker: 'C6 Bank', assets: C6_ASSETS, tickerSet: new Set(C6_ASSETS.map(a => a.ticker.toUpperCase())) },
-  { broker: 'BTG Pactual', assets: BTG_ASSETS, tickerSet: new Set(BTG_ASSETS.map(a => a.ticker.toUpperCase())) },
+  { broker: 'Avenue', assets: AVENUE_ASSETS, tickerSet: new Set(AVENUE_ASSETS.map(a => a.ticker.toUpperCase())), kind: 'stock' },
+  { broker: 'XTB', assets: XTB_ASSETS, tickerSet: new Set(XTB_ASSETS.map(a => a.ticker.toUpperCase())), kind: 'stock' },
+  { broker: 'Webull', assets: WEBULL_ASSETS, tickerSet: new Set(WEBULL_ASSETS.map(a => a.ticker.toUpperCase())), kind: 'stock' },
+  { broker: 'C6 Bank', assets: C6_ASSETS, tickerSet: new Set(C6_ASSETS.map(a => a.ticker.toUpperCase())), kind: 'stock' },
+  { broker: 'BTG Pactual', assets: BTG_ASSETS, tickerSet: new Set(BTG_ASSETS.map(a => a.ticker.toUpperCase())), kind: 'stock' },
+  { broker: 'Binance', assets: BINANCE_ASSETS, tickerSet: new Set(BINANCE_ASSETS.map(a => a.ticker.toUpperCase())), kind: 'crypto' },
+  { broker: 'Coinbase', assets: COINBASE_ASSETS, tickerSet: new Set(COINBASE_ASSETS.map(a => a.ticker.toUpperCase())), kind: 'crypto' },
+  { broker: 'KuCoin', assets: KUCOIN_ASSETS, tickerSet: new Set(KUCOIN_ASSETS.map(a => a.ticker.toUpperCase())), kind: 'crypto' },
+  { broker: 'Mercado Bitcoin', assets: MERCADO_BITCOIN_ASSETS, tickerSet: new Set(MERCADO_BITCOIN_ASSETS.map(a => a.ticker.toUpperCase())), kind: 'crypto' },
+  { broker: 'Foxbit', assets: FOXBIT_ASSETS, tickerSet: new Set(FOXBIT_ASSETS.map(a => a.ticker.toUpperCase())), kind: 'crypto' },
 ];
 
 /**
