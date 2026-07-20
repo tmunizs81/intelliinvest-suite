@@ -41,8 +41,14 @@ section "3. Resposta pública do domínio"
 run "curl -sSIL --max-time 10 http://$DOMAIN/ | head -20 || echo 'FALHA'"
 run "curl -sSIL --max-time 10 https://$DOMAIN/ | head -20 || echo 'sem HTTPS'"
 
+section "3.1. Hard refresh / cache bypass"
+run "curl -sSIL --max-time 10 -H 'Cache-Control: no-cache' -H 'Pragma: no-cache' http://$DOMAIN/ | head -20 || echo 'FALHA'"
+run "curl -sSIL --max-time 10 -H 'Cache-Control: no-cache' -H 'Pragma: no-cache' https://$DOMAIN/ | head -20 || echo 'sem HTTPS'"
+run "curl -sSIL --max-time 10 -H 'Cache-Control: no-cache' https://$DOMAIN/assets/nonexistent-hard-refresh-test.js | head -20 || true"
+
 section "4. Nginx: config ativa para o domínio"
-run "sudo nginx -T 2>/dev/null | grep -A3 -B1 '$DOMAIN' | head -40 || true"
+run "sudo nginx -T 2>/dev/null | grep -A35 -B3 '$DOMAIN' | head -120 || true"
+run "sudo nginx -T 2>/dev/null | awk '/server_name[[:space:]].*'$DOMAIN'/{flag=1} flag{print} flag && /}/{flag=0}' | grep -nE 'listen|server_name|root|alias|try_files|proxy_pass|ssl_certificate' || true"
 run "ls -la /etc/nginx/sites-enabled/ 2>/dev/null | grep -i simply || echo 'proxy simplynvest NÃO ativado em sites-enabled'"
 
 section "5. Últimas 30 linhas de error.log"
@@ -67,15 +73,19 @@ run "ls -la /opt/simplynvest/docker/ 2>/dev/null | head -15 || echo 'path não e
 section "8. Diagnóstico automático"
 STATUS_INT=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 5 "http://127.0.0.1:$CONTAINER_PORT/" 2>/dev/null || echo "000")
 STATUS_EXT=$(curl -sSL -o /dev/null -w '%{http_code}' --max-time 10 "http://$DOMAIN/" 2>/dev/null || echo "000")
+STATUS_EXT_NOCACHE=$(curl -sSL -o /dev/null -w '%{http_code}' --max-time 10 -H 'Cache-Control: no-cache' -H 'Pragma: no-cache' "https://$DOMAIN/" 2>/dev/null || echo "000")
 CONTAINER_UP=$(docker ps --format '{{.Names}}' 2>/dev/null | grep -c -i "$CONTAINER_NAME_PATTERN")
 PROXY_ACTIVE=$(ls /etc/nginx/sites-enabled/ 2>/dev/null | grep -c -i simply)
+SSL_ROOT_MISCONFIG=$(sudo nginx -T 2>/dev/null | awk '/server_name[[:space:]].*'$DOMAIN'/{flag=1} flag{print} flag && /}/{flag=0}' | grep -Ec 'root[[:space:]]|alias[[:space:]]|try_files[[:space:]]' || true)
 
 {
   echo ""
   echo "Container up:       $CONTAINER_UP (esperado ≥1)"
   echo "HTTP interno:       $STATUS_INT (esperado 200)"
   echo "HTTP externo:       $STATUS_EXT (esperado 200)"
+  echo "HTTPS no-cache:     $STATUS_EXT_NOCACHE (Ctrl+Shift+R esperado 200)"
   echo "Proxy ativado:      $PROXY_ACTIVE (esperado 1)"
+  echo "Root/try_files host:$SSL_ROOT_MISCONFIG (esperado 0 no bloco do domínio)"
   echo ""
   if [ "$CONTAINER_UP" = "0" ]; then
     echo ">>> CAUSA PROVÁVEL: container parado. Rode: cd /opt/simplynvest/docker && docker compose up -d"
@@ -84,8 +94,12 @@ PROXY_ACTIVE=$(ls /etc/nginx/sites-enabled/ 2>/dev/null | grep -c -i simply)
   elif [ "$PROXY_ACTIVE" = "0" ]; then
     echo ">>> CAUSA PROVÁVEL: proxy nginx do domínio não está ativado em sites-enabled."
     echo "    Rode: sudo ln -sf /etc/nginx/sites-available/simplynvest /etc/nginx/sites-enabled/ && sudo nginx -t && sudo systemctl reload nginx"
+  elif [ "$STATUS_EXT_NOCACHE" = "403" ]; then
+    echo ">>> CAUSA PROVÁVEL: o bloco HTTPS (:443) do Nginx host está servindo diretório local/default no hard refresh."
+    echo "    Corrija /etc/nginx/sites-available/simplynvest para proxy_pass http://127.0.0.1:$CONTAINER_PORT em 80 e 443."
+    echo "    Remova root/alias/try_files desse server block, teste: sudo nginx -t && sudo systemctl reload nginx"
   elif [ "$STATUS_EXT" = "403" ]; then
-    echo ">>> CAUSA PROVÁVEL: nginx host servindo /var/www/html vazio ou default. Remova /etc/nginx/sites-enabled/default e recarregue."
+    echo ">>> CAUSA PROVÁVEL: nginx host servindo /var/www/html vazio ou default. Remova /etc/nginx/sites-enabled/default ou ajuste server_name/proxy_pass."
   elif [ "$STATUS_EXT" = "200" ]; then
     echo ">>> Tudo saudável."
   else

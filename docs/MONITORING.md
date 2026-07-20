@@ -43,6 +43,39 @@ ls -lt /var/log/simplynvest/diagnose-*.log | head
 tail -f /var/log/simplynvest/monitor.log
 ```
 
+## Quando aparece mais no Ctrl+Shift+R
+
+`Ctrl+Shift+R` força o navegador a ignorar cache e buscar tudo de novo no
+Nginx. Se a tela vira **403 Forbidden**, quase sempre o domínio HTTPS está
+caindo em um `server { listen 443 ... root /var/www/html; }` default/antigo em
+vez de passar pelo proxy para o container.
+
+Checklist rápido na VPS:
+
+```bash
+sudo bash /opt/simplynvest/scripts/diagnose-403.sh simplynvest.t2systems.com.br
+sudo nginx -T | grep -A35 -B3 'server_name simplynvest.t2systems.com.br'
+```
+
+O bloco ativo do domínio, tanto em `80` quanto em `443`, deve ter:
+
+```nginx
+location / {
+    proxy_pass http://127.0.0.1:3080;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+}
+```
+
+E não deve ter `root`, `alias` ou `try_files` apontando para diretório local no
+server block público do SimplyNvest. Depois de ajustar:
+
+```bash
+sudo nginx -t && sudo systemctl reload nginx
+```
+
 ## Descobrir o `TELEGRAM_CHAT_ID`
 
 ```bash
