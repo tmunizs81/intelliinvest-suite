@@ -124,6 +124,54 @@ function impactSummary(ev: EcoEvent, affectedCount: number): string {
     : `${base} · ${ctx}`;
 }
 
+/**
+ * Rich, multi-part explanation shown before each event so the user
+ * grasps relevance quickly:
+ *  - Aggregated relevance from importance + country
+ *  - Surprise (Atual vs Previsão)
+ *  - Histórico (Anterior → Previsão): revisão de expectativa
+ */
+function detailedImpactExplanation(ev: EcoEvent): {
+  aggregate: string;
+  surprise: { value: number; label: string } | null;
+  historical: { delta: number; label: string } | null;
+} {
+  const key = bucket(ev.importance);
+  const region = ev.country === 'BR' ? 'no mercado brasileiro'
+    : ev.country === 'US' ? 'nos mercados dos EUA e derivados globais'
+    : ev.country === 'EU' ? 'na Zona do Euro'
+    : ev.country === 'CN' ? 'na China e cadeias de commodities'
+    : ev.country === 'GB' ? 'no Reino Unido'
+    : ev.country === 'JP' ? 'no Japão'
+    : 'nos mercados regionais';
+  const aggregate = key === 'high'
+    ? `Evento de alta relevância ${region}: costuma gerar movimentos rápidos em índices, câmbio e juros.`
+    : key === 'medium'
+      ? `Relevância moderada ${region}: pode ajustar expectativas sem grande volatilidade imediata.`
+      : `Baixa relevância ${region}: efeito marginal, monitorado como leitura complementar.`;
+
+  const a = Number(ev.actual), f = Number(ev.forecast), p = Number(ev.previous);
+  let surprise: { value: number; label: string } | null = null;
+  if (isFinite(a) && isFinite(f) && f !== 0) {
+    const v = ((a - f) / Math.abs(f)) * 100;
+    surprise = {
+      value: v,
+      label: v >= 0
+        ? `Atual (${ev.actual}) veio ${Math.abs(v).toFixed(1)}% acima da previsão (${ev.forecast})`
+        : `Atual (${ev.actual}) veio ${Math.abs(v).toFixed(1)}% abaixo da previsão (${ev.forecast})`,
+    };
+  }
+  let historical: { delta: number; label: string } | null = null;
+  if (isFinite(f) && isFinite(p) && p !== 0) {
+    const d = ((f - p) / Math.abs(p)) * 100;
+    historical = {
+      delta: d,
+      label: `Previsão (${ev.forecast}) vs. anterior (${ev.previous}): ${d >= 0 ? '+' : ''}${d.toFixed(1)}%`,
+    };
+  }
+  return { aggregate, surprise, historical };
+}
+
 export default function EconomicCalendarPanel({ assets = [] }: { assets?: Asset[] } = {}) {
   const [filters, setFilters] = useState<Filters>(loadFilters);
   const cacheKey = useMemo(() => [...filters.countries].sort().join(','), [filters.countries]);
@@ -292,15 +340,17 @@ export default function EconomicCalendarPanel({ assets = [] }: { assets?: Asset[
         </button>
 
         {/* Impact filter chips with counts */}
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1" role="group" aria-label="Filtrar por impacto">
           {(['high', 'medium', 'low'] as ImpactKey[]).map(k => {
             const on = filters.impacts.includes(k);
             const meta = impactMeta[k];
             return (
-              <button key={k} onClick={() => toggleImpact(k)}
+              <button key={k} type="button" onClick={() => toggleImpact(k)}
+                aria-pressed={on}
+                aria-label={`${meta.label}: ${counts[k]} evento(s). ${on ? 'Mostrando' : 'Ocultado'}. Clique para alternar.`}
                 title={meta.label}
-                className={`text-[10px] px-1.5 h-6 rounded border transition-all flex items-center gap-1 ${on ? meta.chip + ' border-transparent' : 'border-border text-muted-foreground opacity-60 hover:opacity-100'}`}>
-                <span className={`h-1.5 w-1.5 rounded-full ${meta.dot}`} />
+                className={`text-[10px] px-1.5 h-6 rounded border transition-all flex items-center gap-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary ${on ? meta.chip + ' border-transparent' : 'border-border text-muted-foreground opacity-60 hover:opacity-100'}`}>
+                <span className={`h-1.5 w-1.5 rounded-full ${meta.dot}`} aria-hidden="true" />
                 <span className="font-mono">{counts[k]}</span>
               </button>
             );
@@ -398,17 +448,19 @@ export default function EconomicCalendarPanel({ assets = [] }: { assets?: Asset[
                   if (!isFinite(a) || !isFinite(f) || f === 0) return null;
                   return ((a - f) / Math.abs(f)) * 100;
                 })();
+                const detail = detailedImpactExplanation(ev);
                 return (
                   <button
                     key={ev.id}
+                    type="button"
                     onClick={() => setModalEvent(ev)}
-                    title={impactSummary(ev, affected.length)}
-                    className={`group text-left rounded-md border ${meta.ring} flex overflow-hidden hover:scale-[1.01] transition-transform`}
+                    aria-label={`${meta.label}. ${time}. ${ev.title}. ${detail.aggregate}${detail.surprise ? '. ' + detail.surprise.label : ''}. Abrir detalhes.`}
+                    className={`group text-left rounded-md border ${meta.ring} flex overflow-hidden hover:scale-[1.01] transition-transform focus:outline-none focus-visible:ring-2 focus-visible:ring-primary`}
                   >
-                    <div className={`w-1 shrink-0 ${meta.stripe}`} />
+                    <div className={`w-1 shrink-0 ${meta.stripe}`} aria-hidden="true" />
                     <div className="px-2 py-1.5 min-w-0 flex-1">
                       <div className="flex items-center gap-1.5">
-                        <span className="text-xs">{c?.flag || '🌐'}</span>
+                        <span className="text-xs" aria-hidden="true">{c?.flag || '🌐'}</span>
                         <span className="text-[10px] font-mono text-muted-foreground shrink-0">{time}</span>
                         <span className="text-[11px] font-medium truncate flex-1">{ev.title}</span>
                         {surprise !== null && (
@@ -417,15 +469,23 @@ export default function EconomicCalendarPanel({ assets = [] }: { assets?: Asset[
                           </span>
                         )}
                       </div>
+                      {/* Detailed explanation before the item */}
+                      <p className="text-[9px] text-muted-foreground/90 mt-0.5 leading-snug line-clamp-2">
+                        {detail.aggregate}
+                        {detail.surprise && <> · <span className={detail.surprise.value >= 0 ? 'text-gain' : 'text-loss'}>{detail.surprise.label}</span></>}
+                        {detail.historical && <> · {detail.historical.label}</>}
+                      </p>
                       <div className="flex items-center gap-1.5 mt-0.5">
-                        {affected.length > 0 && <Target className="h-2.5 w-2.5 text-primary shrink-0" />}
+                        {affected.length > 0 && <Target className="h-2.5 w-2.5 text-primary shrink-0" aria-hidden="true" />}
                         <span className="text-[9px] text-muted-foreground truncate">{impactSummary(ev, affected.length)}</span>
                         <span
                           role="button"
                           tabIndex={0}
+                          aria-pressed={alertOn}
+                          aria-label={alertOn ? `Remover alerta de ${ev.title}` : `Criar alerta 10 min antes de ${ev.title}`}
                           onClick={(e) => { e.stopPropagation(); toggleAlert(ev); }}
-                          onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); toggleAlert(ev); } }}
-                          className={`ml-auto h-4 w-4 rounded flex items-center justify-center shrink-0 cursor-pointer ${alertOn ? 'text-primary' : 'text-muted-foreground/50 opacity-0 group-hover:opacity-100'}`}
+                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); toggleAlert(ev); } }}
+                          className={`ml-auto h-5 w-5 rounded flex items-center justify-center shrink-0 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary ${alertOn ? 'text-primary' : 'text-muted-foreground/50 opacity-100 sm:opacity-0 group-hover:opacity-100 group-focus-within:opacity-100'}`}
                         >
                           {alertOn ? <Bell className="h-2.5 w-2.5" /> : <BellOff className="h-2.5 w-2.5" />}
                         </span>
@@ -451,16 +511,19 @@ export default function EconomicCalendarPanel({ assets = [] }: { assets?: Asset[
                     if (!isFinite(a) || !isFinite(f) || f === 0) return null;
                     return ((a - f) / Math.abs(f)) * 100;
                   })();
+                  const detail = detailedImpactExplanation(ev);
                   return (
                     <li key={ev.id}>
                       <button
+                        type="button"
                         onClick={() => setModalEvent(ev)}
-                        className="w-full text-left px-2 sm:px-3 py-2 flex items-start gap-2 hover:bg-muted/40 transition-colors"
+                        aria-label={`${meta.label}. ${time}. ${ev.title}. ${detail.aggregate}${detail.surprise ? '. ' + detail.surprise.label : ''}. Abrir detalhes.`}
+                        className="w-full text-left px-2 sm:px-3 py-2 flex items-start gap-2 hover:bg-muted/40 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
                       >
-                        <div className={`w-1 self-stretch rounded-full shrink-0 ${meta.stripe}`} />
+                        <div className={`w-1 self-stretch rounded-full shrink-0 ${meta.stripe}`} aria-hidden="true" />
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="text-xs">{c?.flag || '🌐'}</span>
+                            <span className="text-xs" aria-hidden="true">{c?.flag || '🌐'}</span>
                             <span className="text-[10px] font-mono text-muted-foreground shrink-0">{time}</span>
                             <span className="text-[11px] sm:text-xs font-medium truncate flex-1 min-w-0">{ev.title}</span>
                             {surprise !== null && (
@@ -469,8 +532,14 @@ export default function EconomicCalendarPanel({ assets = [] }: { assets?: Asset[
                               </span>
                             )}
                           </div>
+                          {/* Detailed explanation shown before the item */}
+                          <p className="text-[9px] sm:text-[10px] text-muted-foreground/90 mt-0.5 leading-snug">
+                            {detail.aggregate}
+                            {detail.surprise && <> · <span className={detail.surprise.value >= 0 ? 'text-gain' : 'text-loss'}>{detail.surprise.label}</span></>}
+                            {detail.historical && <> · {detail.historical.label}</>}
+                          </p>
                           <div className="flex items-center gap-1.5 mt-0.5">
-                            {affected.length > 0 && <Target className="h-2.5 w-2.5 text-primary shrink-0" />}
+                            {affected.length > 0 && <Target className="h-2.5 w-2.5 text-primary shrink-0" aria-hidden="true" />}
                             <span className="text-[9px] sm:text-[10px] text-muted-foreground truncate">
                               {impactSummary(ev, affected.length)}
                             </span>
@@ -479,9 +548,11 @@ export default function EconomicCalendarPanel({ assets = [] }: { assets?: Asset[
                         <span
                           role="button"
                           tabIndex={0}
+                          aria-pressed={alertOn}
+                          aria-label={alertOn ? `Remover alerta de ${ev.title}` : `Criar alerta 10 min antes de ${ev.title}`}
                           onClick={(e) => { e.stopPropagation(); toggleAlert(ev); }}
-                          onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); toggleAlert(ev); } }}
-                          className={`h-5 w-5 rounded flex items-center justify-center shrink-0 cursor-pointer ${alertOn ? 'text-primary' : 'text-muted-foreground/60'}`}
+                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); toggleAlert(ev); } }}
+                          className={`h-6 w-6 rounded flex items-center justify-center shrink-0 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary ${alertOn ? 'text-primary' : 'text-muted-foreground/60'}`}
                         >
                           {alertOn ? <Bell className="h-3 w-3" /> : <BellOff className="h-3 w-3" />}
                         </span>
@@ -549,33 +620,72 @@ function EventModal({ event, tz, alertOn, affected, onToggleAlert, onCreateTicke
     { label: 'Notícias (Google)', url: `https://www.google.com/search?q=${query}&tbm=nws` },
   ];
 
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const closeBtnRef = useRef<HTMLButtonElement>(null);
+  const titleId = `eco-ev-${event.id}-title`;
+  const descId = `eco-ev-${event.id}-desc`;
+
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    closeBtnRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { e.stopPropagation(); onClose(); return; }
+      if (e.key === 'Tab' && dialogRef.current) {
+        const focusables = dialogRef.current.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), select, [tabindex]:not([tabindex="-1"])'
+        );
+        if (!focusables.length) return;
+        const first = focusables[0], last = focusables[focusables.length - 1];
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+      }
+    };
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      previouslyFocused?.focus?.();
+    };
   }, [onClose]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in p-4" onClick={onClose}>
-      <div className="bg-card border border-border rounded-xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-auto" onClick={(e) => e.stopPropagation()}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in p-4"
+      onClick={onClose}
+      role="presentation"
+    >
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        aria-describedby={descId}
+        className="bg-card border border-border rounded-xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-auto focus:outline-none"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="p-4 border-b border-border flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="flex items-center gap-2 mb-1 flex-wrap">
-              <span className="text-lg">{c?.flag || '🌐'}</span>
+              <span className="text-lg" aria-hidden="true">{c?.flag || '🌐'}</span>
               <span className="text-xs font-mono text-muted-foreground">{event.country}</span>
               {event.currency && <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{event.currency}</span>}
               <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold flex items-center gap-1 ${meta.chip}`}>
-                <span className={`h-1.5 w-1.5 rounded-full ${meta.dot}`} /> {meta.label}
+                <span className={`h-1.5 w-1.5 rounded-full ${meta.dot}`} aria-hidden="true" /> {meta.label}
               </span>
             </div>
-            <h3 className="text-base font-semibold leading-snug">{event.title}</h3>
-            <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-              <Clock className="h-3 w-3" /> {fmtDateTime(event.date, tz)}
+            <h3 id={titleId} className="text-base font-semibold leading-snug">{event.title}</h3>
+            <p id={descId} className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+              <Clock className="h-3 w-3" aria-hidden="true" /> {fmtDateTime(event.date, tz)}
               {event.period && <> · Período: <span className="font-mono">{event.period}</span></>}
             </p>
           </div>
-          <button onClick={onClose} className="shrink-0 h-8 w-8 rounded-md hover:bg-muted flex items-center justify-center">
-            <X className="h-4 w-4" />
+          <button
+            ref={closeBtnRef}
+            type="button"
+            onClick={onClose}
+            aria-label="Fechar detalhes do evento"
+            className="shrink-0 h-8 w-8 rounded-md hover:bg-muted flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          >
+            <X className="h-4 w-4" aria-hidden="true" />
           </button>
         </div>
 
