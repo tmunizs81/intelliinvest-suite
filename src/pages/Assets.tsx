@@ -1,9 +1,9 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Plus, Upload, Download, Search, Pencil, Trash2, ArrowUpRight,
   ArrowDownRight, ChevronRight, Loader2, FileSpreadsheet, X, AlertTriangle, FileUp,
-  Wallet, DollarSign, Building2,
+  Wallet, DollarSign, Building2, ArrowUpDown,
 } from 'lucide-react';
 import { usePortfolio, type HoldingRow } from '@/hooks/usePortfolio';
 import HoldingModal from '@/components/dashboard/HoldingModal';
@@ -15,6 +15,7 @@ import BrokerageImportPanel from '@/components/dashboard/BrokerageImportPanel';
 import B3ImportPanel from '@/components/dashboard/B3ImportPanel';
 import { type Asset, formatCurrency, formatPercent } from '@/lib/mockData';
 import CustodyModal from '@/components/dashboard/CustodyModal';
+import { BrokerLogo } from '@/lib/brokerLogos';
 
 const typeBadgeClass: Record<string, string> = {
   'Ação': 'bg-primary/10 text-primary',
@@ -35,6 +36,8 @@ export default function Assets() {
   const [sellingPrice, setSellingPrice] = useState(0);
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('');
+  const [brokerFilter, setBrokerFilter] = useState<string>('');
+  const [sortBy, setSortBy] = useState<'default' | 'value_desc' | 'value_asc' | 'name_asc' | 'broker_asc' | 'change_desc'>('default');
   const [importOpen, setImportOpen] = useState(false);
   const [importData, setImportData] = useState('');
   const [importing, setImporting] = useState(false);
@@ -53,11 +56,44 @@ export default function Assets() {
     setSellOpen(true);
   };
 
-  const filtered = assets.filter(a => {
-    const matchSearch = !search || a.ticker.toLowerCase().includes(search.toLowerCase()) || a.name.toLowerCase().includes(search.toLowerCase());
-    const matchType = !typeFilter || a.type === typeFilter;
-    return matchSearch && matchType;
-  });
+  // Corretoras únicas presentes na carteira (contagem para exibir no chip)
+  const brokerFacets = useMemo(() => {
+    const map = new Map<string, number>();
+    holdings.forEach((h) => {
+      const b = (h.broker || '').trim();
+      if (!b) return;
+      map.set(b, (map.get(b) || 0) + 1);
+    });
+    return Array.from(map.entries()).sort((a, b) => b[1] - a[1]);
+  }, [holdings]);
+
+  const brokerByTicker = useMemo(() => {
+    const m = new Map<string, string>();
+    holdings.forEach((h) => { if (h.broker) m.set(h.ticker, h.broker); });
+    return m;
+  }, [holdings]);
+
+  const filtered = useMemo(() => {
+    const list = assets.filter(a => {
+      const matchSearch = !search || a.ticker.toLowerCase().includes(search.toLowerCase()) || a.name.toLowerCase().includes(search.toLowerCase());
+      const matchType = !typeFilter || a.type === typeFilter;
+      const matchBroker = !brokerFilter || (brokerByTicker.get(a.ticker) || '') === brokerFilter;
+      return matchSearch && matchType && matchBroker;
+    });
+    if (sortBy === 'default') return list;
+    const sorted = [...list];
+    sorted.sort((a, b) => {
+      switch (sortBy) {
+        case 'value_desc': return (b.currentPrice * b.quantity) - (a.currentPrice * a.quantity);
+        case 'value_asc': return (a.currentPrice * a.quantity) - (b.currentPrice * b.quantity);
+        case 'name_asc': return a.ticker.localeCompare(b.ticker);
+        case 'broker_asc': return (brokerByTicker.get(a.ticker) || 'zz').localeCompare(brokerByTicker.get(b.ticker) || 'zz');
+        case 'change_desc': return (b.change24h || 0) - (a.change24h || 0);
+        default: return 0;
+      }
+    });
+    return sorted;
+  }, [assets, search, typeFilter, brokerFilter, sortBy, brokerByTicker]);
 
   const total = assets.reduce((s, a) => s + a.currentPrice * a.quantity, 0);
   const cost = assets.reduce((s, a) => s + a.avgPrice * a.quantity, 0);
@@ -260,7 +296,51 @@ export default function Assets() {
             </button>
           ))}
         </div>
+        <div className="relative">
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+            className="appearance-none rounded-lg border border-input bg-card pl-8 pr-3 py-2.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+            aria-label="Ordenar ativos"
+          >
+            <option value="default">Ordem padrão</option>
+            <option value="value_desc">Maior valor</option>
+            <option value="value_asc">Menor valor</option>
+            <option value="change_desc">Maior variação 24h</option>
+            <option value="name_asc">Ticker (A–Z)</option>
+            <option value="broker_asc">Corretora (A–Z)</option>
+          </select>
+          <ArrowUpDown className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+        </div>
       </div>
+
+      {/* Broker filter chips */}
+      {brokerFacets.length > 0 && (
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-2 mb-4 -mt-2">
+          <button
+            onClick={() => setBrokerFilter('')}
+            className={`shrink-0 inline-flex items-center gap-1.5 text-[11px] px-2 py-1 rounded-full border transition-colors ${
+              !brokerFilter ? 'bg-primary/15 border-primary/40 text-primary' : 'border-border text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            Todas ({holdings.length})
+          </button>
+          {brokerFacets.map(([b, count]) => (
+            <button
+              key={b}
+              onClick={() => setBrokerFilter(brokerFilter === b ? '' : b)}
+              className={`shrink-0 inline-flex items-center gap-1.5 text-[11px] px-2 py-1 rounded-full border transition-colors ${
+                brokerFilter === b ? 'bg-primary/15 border-primary/40 text-primary' : 'border-border text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <BrokerLogo broker={b} size={12} />
+              {b}
+              <span className="opacity-60">({count})</span>
+            </button>
+          ))}
+        </div>
+      )}
+
 
       {/* B3 Integration Banner */}
       <div className="mb-6 rounded-lg border border-primary/20 bg-primary/5 p-4 flex items-start gap-3">

@@ -10,7 +10,8 @@ import AICopilotSignal from './AICopilotSignal';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
-import { BROKER_CATALOGS, searchBrokerCatalogs, inferBrokerFromTicker, type UnifiedSearchResult } from '@/lib/brokerCatalogs';
+import { BROKER_CATALOGS, searchBrokerCatalogs, inferBrokerFromTicker, isTickerInBroker, brokersForTicker, type UnifiedSearchResult } from '@/lib/brokerCatalogs';
+import { BrokerLogo } from '@/lib/brokerLogos';
 import { getRule, learnRule } from '@/lib/tickerMappingRules';
 import { detectUCITS } from '@/lib/ucitsDetector';
 
@@ -92,6 +93,23 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
   const [pasteProgress, setPasteProgress] = useState<{ done: number; total: number } | null>(null);
   const [ucitsAck, setUcitsAck] = useState(false);
   const ucitsHint = useMemo(() => detectUCITS(ticker, name), [ticker, name]);
+
+  // Corretoras que o usuário já usa — dão preferência ao auto-preencher tickers ambíguos
+  const preferredBrokers = useMemo(() => {
+    const set = new Set<string>();
+    assets.forEach((a: any) => { if (a?.broker) set.add(a.broker); });
+    return Array.from(set);
+  }, [assets]);
+
+  // Aviso de mismatch: broker escolhido mas ticker fora do catálogo curado dele
+  const brokerMismatch = useMemo(() => {
+    if (!ticker || !broker) return null;
+    const cat = BROKER_CATALOGS.find(c => c.broker === broker);
+    if (!cat) return null; // corretora livre (não é catálogo curado) — não valida
+    if (isTickerInBroker(ticker, broker)) return null;
+    const alt = brokersForTicker(ticker);
+    return { alt };
+  }, [ticker, broker]);
 
   useEffect(() => {
     if (open) {
@@ -225,9 +243,9 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
     if (irishExchanges.includes(s.exchange)) {
       setSector('ETF Internacional');
     }
-    // Auto-set broker from unified broker catalogs (only if unambiguous)
+    // Auto-set broker from unified broker catalogs (only if unambiguous or preferido)
     if (!broker) {
-      const inferred = inferBrokerFromTicker(s.symbol);
+      const inferred = inferBrokerFromTicker(s.symbol, { preferredBrokers });
       if (inferred) setBroker(inferred);
     }
     setShowSuggestions(false);
@@ -333,7 +351,7 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
     for (let i = 0; i < parsed.length; i++) {
       const p = parsed[i];
       const rule = getRule(p.ticker);
-      const resolvedBroker = (p.broker || rule?.broker || inferBrokerFromTicker(p.ticker) || '').trim();
+      const resolvedBroker = (p.broker || rule?.broker || inferBrokerFromTicker(p.ticker, { preferredBrokers }) || '').trim();
       const resolvedType = rule?.type || classifyAssetType(p.ticker) || 'Ação';
       try {
         await onSave({
@@ -408,7 +426,8 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
                   </button>
                   {BROKER_CATALOGS.map((c) => (
                     <button key={c.broker} type="button" onClick={() => { setBrokerFilter(c.broker); searchTickers(ticker); }}
-                      className={`text-[10px] px-1.5 py-0.5 rounded ${brokerFilter === c.broker ? 'bg-primary/20 text-primary' : 'text-muted-foreground hover:text-foreground'}`}>
+                      className={`inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded ${brokerFilter === c.broker ? 'bg-primary/20 text-primary' : 'text-muted-foreground hover:text-foreground'}`}>
+                      <BrokerLogo broker={c.broker} size={12} />
                       {c.broker}
                     </button>
                   ))}
@@ -560,6 +579,28 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
           </div>
 
           <BrokerAutocomplete value={broker} onChange={setBroker} />
+
+          {brokerMismatch && type !== 'Renda Fixa' && type !== 'Imóvel' && (
+            <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-2.5 text-xs text-amber-500 dark:text-amber-400 space-y-1.5">
+              <p>
+                <strong>{ticker}</strong> não consta no catálogo curado de <strong>{broker}</strong>.
+                Confirme se você realmente possui este ativo nessa corretora antes de salvar.
+              </p>
+              {brokerMismatch.alt.length > 0 && (
+                <div className="flex items-center gap-1 flex-wrap">
+                  <span className="opacity-70">Sugestões:</span>
+                  {brokerMismatch.alt.map(b => (
+                    <button key={b} type="button" onClick={() => setBroker(b)}
+                      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-500/10 hover:bg-amber-500/20 text-[10px]">
+                      <BrokerLogo broker={b} size={12} /> {b}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+
 
           {/* Campos de Renda Fixa */}
           {type === 'Renda Fixa' && (
@@ -811,10 +852,11 @@ function BrokerAutocomplete({ value, onChange }: { value: string; onChange: (v: 
               key={b}
               type="button"
               onClick={() => { onChange(b); setOpen(false); }}
-              className={`w-full text-left px-3 py-2 text-sm hover:bg-accent/50 transition-colors ${
+              className={`w-full flex items-center gap-2 text-left px-3 py-2 text-sm hover:bg-accent/50 transition-colors ${
                 value === b ? 'bg-accent/30 font-medium' : ''
               }`}
             >
+              <BrokerLogo broker={b} size={14} />
               {b}
             </button>
           ))}
