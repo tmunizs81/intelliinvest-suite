@@ -83,9 +83,47 @@ const KUCOIN_EXTRA: CryptoAsset[] = [
   { ticker: 'RNDR-USD', name: 'Render', category: 'crypto' },
 ];
 
+const OKX_EXTRA: CryptoAsset[] = [
+  { ticker: 'OKB-USD', name: 'OKB', category: 'crypto' },
+  { ticker: 'SHIB-USD', name: 'Shiba Inu', category: 'crypto' },
+  { ticker: 'ORDI-USD', name: 'ORDI', category: 'crypto' },
+  { ticker: 'SATS-USD', name: 'SATS', category: 'crypto' },
+  { ticker: 'SUI-USD', name: 'Sui', category: 'crypto' },
+  { ticker: 'TIA-USD', name: 'Celestia', category: 'crypto' },
+];
+
+const BYBIT_EXTRA: CryptoAsset[] = [
+  { ticker: 'SHIB-USD', name: 'Shiba Inu', category: 'crypto' },
+  { ticker: 'PEPE-USD', name: 'Pepe', category: 'crypto' },
+  { ticker: 'SUI-USD', name: 'Sui', category: 'crypto' },
+  { ticker: 'TIA-USD', name: 'Celestia', category: 'crypto' },
+  { ticker: 'WLD-USD', name: 'Worldcoin', category: 'crypto' },
+  { ticker: 'JTO-USD', name: 'Jito', category: 'crypto' },
+];
+
+const BINGX_EXTRA: CryptoAsset[] = [
+  { ticker: 'SHIB-USD', name: 'Shiba Inu', category: 'crypto' },
+  { ticker: 'PEPE-USD', name: 'Pepe', category: 'crypto' },
+  { ticker: 'SUI-USD', name: 'Sui', category: 'crypto' },
+  { ticker: 'WIF-USD', name: 'dogwifhat', category: 'crypto' },
+  { ticker: 'BONK-USD', name: 'Bonk', category: 'crypto' },
+];
+
+const BITGET_EXTRA: CryptoAsset[] = [
+  { ticker: 'BGB-USD', name: 'Bitget Token', category: 'crypto' },
+  { ticker: 'SHIB-USD', name: 'Shiba Inu', category: 'crypto' },
+  { ticker: 'PEPE-USD', name: 'Pepe', category: 'crypto' },
+  { ticker: 'SUI-USD', name: 'Sui', category: 'crypto' },
+  { ticker: 'TIA-USD', name: 'Celestia', category: 'crypto' },
+];
+
 // Brasileiras focam em top-market-cap (menor variedade de altcoins)
 export const BINANCE_ASSETS: CryptoAsset[] = [...CORE_CRYPTO, ...BINANCE_EXTRA];
 export const COINBASE_ASSETS: CryptoAsset[] = [...CORE_CRYPTO, ...COINBASE_EXTRA];
 export const KUCOIN_ASSETS: CryptoAsset[] = [...CORE_CRYPTO, ...KUCOIN_EXTRA];
+export const OKX_ASSETS: CryptoAsset[] = [...CORE_CRYPTO, ...OKX_EXTRA];
+export const BYBIT_ASSETS: CryptoAsset[] = [...CORE_CRYPTO, ...BYBIT_EXTRA];
+export const BINGX_ASSETS: CryptoAsset[] = [...CORE_CRYPTO, ...BINGX_EXTRA];
+export const BITGET_ASSETS: CryptoAsset[] = [...CORE_CRYPTO, ...BITGET_EXTRA];
 export const MERCADO_BITCOIN_ASSETS: CryptoAsset[] = CORE_CRYPTO;
 export const FOXBIT_ASSETS: CryptoAsset[] = CORE_CRYPTO;
