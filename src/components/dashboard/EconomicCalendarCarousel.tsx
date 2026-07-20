@@ -68,7 +68,10 @@ const LS_ALERTS = 'econcal:alerts:v1';
 const LS_VIEW = 'econcal:view:v1';
 const LS_CACHE_PREFIX = 'econcal:cache:v1:';
 const CACHE_TTL_MS = 10 * 60 * 1000; // 10 min
-const PAGE_SIZE = 8;
+const PAGE_SIZE_DESKTOP = 8;
+const PAGE_SIZE_MOBILE = 5;
+const GRID_INITIAL = 24;
+const GRID_STEP = 24;
 
 type Filters = { countries: string[]; impacts: ImpactKey[] };
 type ViewMode = 'list' | 'grid';
