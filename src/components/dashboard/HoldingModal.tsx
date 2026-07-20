@@ -426,7 +426,8 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
                   </button>
                   {BROKER_CATALOGS.map((c) => (
                     <button key={c.broker} type="button" onClick={() => { setBrokerFilter(c.broker); searchTickers(ticker); }}
-                      className={`text-[10px] px-1.5 py-0.5 rounded ${brokerFilter === c.broker ? 'bg-primary/20 text-primary' : 'text-muted-foreground hover:text-foreground'}`}>
+                      className={`inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded ${brokerFilter === c.broker ? 'bg-primary/20 text-primary' : 'text-muted-foreground hover:text-foreground'}`}>
+                      <BrokerLogo broker={c.broker} size={12} />
                       {c.broker}
                     </button>
                   ))}
