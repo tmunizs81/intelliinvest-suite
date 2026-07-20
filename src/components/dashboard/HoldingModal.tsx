@@ -243,9 +243,9 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
     if (irishExchanges.includes(s.exchange)) {
       setSector('ETF Internacional');
     }
-    // Auto-set broker from unified broker catalogs (only if unambiguous)
+    // Auto-set broker from unified broker catalogs (only if unambiguous or preferido)
     if (!broker) {
-      const inferred = inferBrokerFromTicker(s.symbol);
+      const inferred = inferBrokerFromTicker(s.symbol, { preferredBrokers });
       if (inferred) setBroker(inferred);
     }
     setShowSuggestions(false);
