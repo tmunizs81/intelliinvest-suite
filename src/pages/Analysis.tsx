@@ -17,6 +17,7 @@ import AssetProfilePanel from '@/components/analysis/AssetProfilePanel';
 import MarketNewsPanel from '@/components/analysis/MarketNewsPanel';
 import FiiPropertiesPanel from '@/components/analysis/FiiPropertiesPanel';
 import FiiBuyHoldChecklist from '@/components/analysis/FiiBuyHoldChecklist';
+import { BrokerLogo } from '@/lib/brokerLogos';
 
 type RangeOption = '1mo' | '3mo' | '6mo' | '1y' | '2y' | '5y' | '10y' | 'max';
 
