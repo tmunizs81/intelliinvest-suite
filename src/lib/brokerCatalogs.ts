@@ -51,6 +51,8 @@ export function inferBrokerFromTicker(ticker: string): string | null {
   const upper = ticker.toUpperCase();
   const matches = BROKER_CATALOGS.filter(c => c.tickerSet.has(upper));
   if (matches.length === 1) return matches[0].broker;
+  // Cripto aparece em múltiplas exchanges — default para Binance (maior volume global)
+  if (upper.endsWith('-USD') && matches.some(m => m.kind === 'crypto')) return 'Binance';
   return null;
 }
 
