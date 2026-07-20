@@ -93,14 +93,11 @@ export default function EconomicCalendarPanel({ assets = [] }: { assets?: Asset[
   const [events, setEvents] = useState<EcoEvent[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [index, setIndex] = useState(0);
-  const [paused, setPaused] = useState(false);
   const [filters, setFilters] = useState<Filters>(loadFilters);
   const [tz, setTz] = useState<string>(loadTz);
   const [alerts, setAlerts] = useState<Record<string, true>>(loadAlerts);
   const [showFilters, setShowFilters] = useState(false);
   const [modalEvent, setModalEvent] = useState<EcoEvent | null>(null);
-  const timerRef = useRef<number | null>(null);
   const alertTimers = useRef<number[]>([]);
 
   useEffect(() => { localStorage.setItem(LS_FILTERS, JSON.stringify(filters)); }, [filters]);
@@ -115,7 +112,6 @@ export default function EconomicCalendarPanel({ assets = [] }: { assets?: Asset[
       if (fnError) throw fnError;
       const evts: EcoEvent[] = Array.isArray(data?.events) ? data.events : [];
       setEvents(evts);
-      setIndex(0);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao carregar calendário');
     } finally {
@@ -125,18 +121,18 @@ export default function EconomicCalendarPanel({ assets = [] }: { assets?: Asset[
 
   useEffect(() => { load(); }, [load]);
 
-  // Filter locally by impact + country
   const filtered = useMemo(() => events.filter(e =>
     filters.countries.includes(e.country) && filters.impacts.includes(bucket(e.importance))
   ), [events, filters]);
 
-  useEffect(() => { setIndex(0); }, [filtered.length]);
-
-  useEffect(() => {
-    if (paused || filtered.length <= 1) return;
-    timerRef.current = window.setInterval(() => setIndex(i => (i + 1) % filtered.length), 5000);
-    return () => { if (timerRef.current) window.clearInterval(timerRef.current); };
-  }, [paused, filtered.length]);
+  const grouped = useMemo(() => {
+    const g: Record<ImpactKey, EcoEvent[]> = { high: [], medium: [], low: [] };
+    filtered.forEach(e => g[bucket(e.importance)].push(e));
+    (Object.keys(g) as ImpactKey[]).forEach(k =>
+      g[k].sort((a, b) => (a.date > b.date ? 1 : -1))
+    );
+    return g;
+  }, [filtered]);
 
   // Schedule browser notifications for enabled alerts (10 min before)
   useEffect(() => {
@@ -179,11 +175,6 @@ export default function EconomicCalendarPanel({ assets = [] }: { assets?: Asset[
     });
   };
 
-  const go = (delta: number) => {
-    if (!filtered.length) return;
-    setIndex(i => (i + delta + filtered.length) % filtered.length);
-  };
-
   const toggleCountry = (c: string) => setFilters(f => ({
     ...f, countries: f.countries.includes(c) ? f.countries.filter(x => x !== c) : [...f.countries, c],
   }));
@@ -191,22 +182,16 @@ export default function EconomicCalendarPanel({ assets = [] }: { assets?: Asset[
     ...f, impacts: f.impacts.includes(k) ? f.impacts.filter(x => x !== k) : [...f.impacts, k],
   }));
 
-  const current = filtered[index];
   const countryOf = (c: string) => COUNTRIES.find(x => x.code === c);
-  const currentAffected = useMemo<AffectedHolding[]>(
-    () => (current ? computeAffectedHoldings(current, assets, 6) : []),
-    [current, assets]
-  );
 
   const createTickerAlert = (ticker: string) => {
-    // Broadcast to any listener (SmartAlertsPanelV2 can pick this up);
-    // fall back to a toast guiding the user to the Alertas tab.
     window.dispatchEvent(new CustomEvent('open-alert-modal', { detail: { ticker } }));
     toast({
       title: `Novo alerta para ${ticker}`,
       description: 'Abra a aba "Alertas" para configurar preço, stop-loss ou take-profit.',
     });
   };
+
 
 
   return (
