@@ -4,6 +4,7 @@
  * Cai para iniciais coloridas quando o domínio é desconhecido ou a imagem falha.
  */
 import { useState } from 'react';
+import { useBrokerLogoSettings } from './brokerLogoSettings';
 
 // Domínio oficial de cada corretora suportada.
 export const BROKER_DOMAINS: Record<string, string> = {
