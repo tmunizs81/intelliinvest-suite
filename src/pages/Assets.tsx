@@ -520,14 +520,22 @@ export default function Assets() {
                     onClick={() => navigate(`/analysis?ticker=${asset.ticker}`)}
                   >
                     <div className="flex items-start justify-between mb-2">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold font-mono">{asset.ticker}</span>
-                          <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${typeBadgeClass[asset.type] || ''}`}>
-                            {asset.type}
-                          </span>
+                      <div className="flex items-start gap-2 min-w-0">
+                        {brokerByTicker.get(asset.ticker) && (
+                          <BrokerLogo broker={brokerByTicker.get(asset.ticker)!} size={22} className="mt-0.5" />
+                        )}
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold font-mono">{asset.ticker}</span>
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${typeBadgeClass[asset.type] || ''}`}>
+                              {asset.type}
+                            </span>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-0.5 truncate">{asset.name}</p>
+                          {brokerByTicker.get(asset.ticker) && (
+                            <p className="text-[10px] text-muted-foreground/70">{brokerByTicker.get(asset.ticker)}</p>
+                          )}
                         </div>
-                        <p className="text-xs text-muted-foreground mt-0.5">{asset.name}</p>
                       </div>
                       <div className="text-right">
                         <p className="font-mono font-semibold text-sm">
