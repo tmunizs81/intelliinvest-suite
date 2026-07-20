@@ -540,7 +540,13 @@ export default function Assets() {
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex items-start gap-2 min-w-0">
                         {brokerByTicker.get(asset.ticker) && (
-                          <BrokerLogo broker={brokerByTicker.get(asset.ticker)!} size={22} className="mt-0.5" />
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setBrokerFilter(brokerByTicker.get(asset.ticker)!); }}
+                            title={`Filtrar apenas ${brokerByTicker.get(asset.ticker)}`}
+                            className="shrink-0 rounded-sm hover:ring-2 hover:ring-primary/50 transition mt-0.5"
+                          >
+                            <BrokerLogo broker={brokerByTicker.get(asset.ticker)!} size={22} />
+                          </button>
                         )}
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
@@ -550,7 +556,7 @@ export default function Assets() {
                             </span>
                           </div>
                           <p className="text-xs text-muted-foreground mt-0.5 truncate">{asset.name}</p>
-                          {brokerByTicker.get(asset.ticker) && (
+                          {density === 'full' && brokerByTicker.get(asset.ticker) && (
                             <p className="text-[10px] text-muted-foreground/70">{brokerByTicker.get(asset.ticker)}</p>
                           )}
                         </div>
