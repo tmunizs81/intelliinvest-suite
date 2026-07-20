@@ -340,10 +340,6 @@ export default function EconomicCalendarPanel({ assets = [] }: { assets?: Asset[
       )}
 
 
-            </section>
-          );
-        })}
-      </div>
 
 
       {modalEvent && (
