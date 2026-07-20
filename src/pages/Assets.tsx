@@ -296,7 +296,51 @@ export default function Assets() {
             </button>
           ))}
         </div>
+        <div className="relative">
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+            className="appearance-none rounded-lg border border-input bg-card pl-8 pr-3 py-2.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+            aria-label="Ordenar ativos"
+          >
+            <option value="default">Ordem padrão</option>
+            <option value="value_desc">Maior valor</option>
+            <option value="value_asc">Menor valor</option>
+            <option value="change_desc">Maior variação 24h</option>
+            <option value="name_asc">Ticker (A–Z)</option>
+            <option value="broker_asc">Corretora (A–Z)</option>
+          </select>
+          <ArrowUpDown className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+        </div>
       </div>
+
+      {/* Broker filter chips */}
+      {brokerFacets.length > 0 && (
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-2 mb-4 -mt-2">
+          <button
+            onClick={() => setBrokerFilter('')}
+            className={`shrink-0 inline-flex items-center gap-1.5 text-[11px] px-2 py-1 rounded-full border transition-colors ${
+              !brokerFilter ? 'bg-primary/15 border-primary/40 text-primary' : 'border-border text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            Todas ({holdings.length})
+          </button>
+          {brokerFacets.map(([b, count]) => (
+            <button
+              key={b}
+              onClick={() => setBrokerFilter(brokerFilter === b ? '' : b)}
+              className={`shrink-0 inline-flex items-center gap-1.5 text-[11px] px-2 py-1 rounded-full border transition-colors ${
+                brokerFilter === b ? 'bg-primary/15 border-primary/40 text-primary' : 'border-border text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <BrokerLogo broker={b} size={12} />
+              {b}
+              <span className="opacity-60">({count})</span>
+            </button>
+          ))}
+        </div>
+      )}
+
 
       {/* B3 Integration Banner */}
       <div className="mb-6 rounded-lg border border-primary/20 bg-primary/5 p-4 flex items-start gap-3">
