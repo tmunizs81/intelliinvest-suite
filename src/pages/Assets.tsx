@@ -16,6 +16,7 @@ import B3ImportPanel from '@/components/dashboard/B3ImportPanel';
 import { type Asset, formatCurrency, formatPercent } from '@/lib/mockData';
 import CustodyModal from '@/components/dashboard/CustodyModal';
 import { BrokerLogo } from '@/lib/brokerLogos';
+import { useBrokerLogoSettings, setLogoDensity } from '@/lib/brokerLogoSettings';
 
 const typeBadgeClass: Record<string, string> = {
   'Ação': 'bg-primary/10 text-primary',
@@ -28,6 +29,7 @@ const typeBadgeClass: Record<string, string> = {
 
 export default function Assets() {
   const navigate = useNavigate();
+  const { density } = useBrokerLogoSettings();
   const { assets, holdings, cashBalance, cashBalances, loading, refresh, addHolding, updateHolding, deleteHolding, sellHolding, updateCashBalance, loadCashMovements } = usePortfolio();
   const [modalOpen, setModalOpen] = useState(false);
   const [editingHolding, setEditingHolding] = useState<HoldingRow | null>(null);
@@ -338,6 +340,16 @@ export default function Assets() {
               <span className="opacity-60">({count})</span>
             </button>
           ))}
+          <div className="ml-auto flex items-center gap-1 shrink-0 text-[10px] text-muted-foreground">
+            <span className="hidden sm:inline">Logos:</span>
+            <button
+              onClick={() => setLogoDensity(density === 'full' ? 'compact' : 'full')}
+              className="rounded-full border border-border px-2 py-0.5 hover:text-foreground transition-colors"
+              title="Alternar densidade das logos de corretora"
+            >
+              {density === 'full' ? 'Completo' : 'Compacto'}
+            </button>
+          </div>
         </div>
       )}
 
@@ -414,7 +426,13 @@ export default function Assets() {
                         <td className="p-4">
                           <div className="flex items-center gap-2">
                             {brokerByTicker.get(asset.ticker) && (
-                              <BrokerLogo broker={brokerByTicker.get(asset.ticker)!} size={20} />
+                              <button
+                                onClick={(e) => { e.stopPropagation(); setBrokerFilter(brokerByTicker.get(asset.ticker)!); }}
+                                title={`Filtrar apenas ${brokerByTicker.get(asset.ticker)}`}
+                                className="shrink-0 rounded-sm hover:ring-2 hover:ring-primary/50 transition"
+                              >
+                                <BrokerLogo broker={brokerByTicker.get(asset.ticker)!} size={20} />
+                              </button>
                             )}
                             <div className="min-w-0">
                               <div className="flex items-center gap-1.5">
@@ -422,7 +440,7 @@ export default function Assets() {
                                 <ChevronRight className="h-3 w-3 text-muted-foreground" />
                               </div>
                               <p className="text-xs text-muted-foreground truncate">{asset.name}</p>
-                              {brokerByTicker.get(asset.ticker) && (
+                              {density === 'full' && brokerByTicker.get(asset.ticker) && (
                                 <p className="text-[10px] text-muted-foreground/70">{brokerByTicker.get(asset.ticker)}</p>
                               )}
                             </div>
@@ -522,7 +540,13 @@ export default function Assets() {
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex items-start gap-2 min-w-0">
                         {brokerByTicker.get(asset.ticker) && (
-                          <BrokerLogo broker={brokerByTicker.get(asset.ticker)!} size={22} className="mt-0.5" />
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setBrokerFilter(brokerByTicker.get(asset.ticker)!); }}
+                            title={`Filtrar apenas ${brokerByTicker.get(asset.ticker)}`}
+                            className="shrink-0 rounded-sm hover:ring-2 hover:ring-primary/50 transition mt-0.5"
+                          >
+                            <BrokerLogo broker={brokerByTicker.get(asset.ticker)!} size={22} />
+                          </button>
                         )}
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
@@ -532,7 +556,7 @@ export default function Assets() {
                             </span>
                           </div>
                           <p className="text-xs text-muted-foreground mt-0.5 truncate">{asset.name}</p>
-                          {brokerByTicker.get(asset.ticker) && (
+                          {density === 'full' && brokerByTicker.get(asset.ticker) && (
                             <p className="text-[10px] text-muted-foreground/70">{brokerByTicker.get(asset.ticker)}</p>
                           )}
                         </div>

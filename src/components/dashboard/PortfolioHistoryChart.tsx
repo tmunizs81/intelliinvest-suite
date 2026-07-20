@@ -3,6 +3,8 @@ import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianG
 import { formatCurrency } from '@/lib/mockData';
 import { type SnapshotRow } from '@/hooks/usePortfolioSnapshots';
 import { TrendingUp, TrendingDown, Database, Loader2 } from 'lucide-react';
+import { usePortfolio } from '@/hooks/usePortfolio';
+import { BrokerLogo } from '@/lib/brokerLogos';
 
 const periods = [
   { label: '7D', days: 7 },
@@ -20,6 +22,13 @@ interface Props {
 
 export default function PortfolioHistoryChart({ snapshots, loading }: Props) {
   const [activePeriod, setActivePeriod] = useState(5);
+  const { holdings } = usePortfolio();
+  const brokersInPortfolio = useMemo(() => {
+    const s = new Set<string>();
+    holdings.forEach(h => { if (h.broker) s.add(h.broker); });
+    return Array.from(s);
+  }, [holdings]);
+
 
   const data = useMemo(() => {
     if (snapshots.length === 0) return [];
@@ -79,6 +88,16 @@ export default function PortfolioHistoryChart({ snapshots, loading }: Props) {
           <p className={`text-sm font-mono ${isPositive ? 'text-gain' : 'text-loss'}`}>
             {formatCurrency(change)} ({changePct.toFixed(2)}%)
           </p>
+          {brokersInPortfolio.length > 0 && (
+            <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
+              <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Corretoras:</span>
+              {brokersInPortfolio.map(b => (
+                <span key={b} className="inline-flex items-center gap-1 text-[10px] text-muted-foreground bg-muted/50 rounded-full px-1.5 py-0.5">
+                  <BrokerLogo broker={b} size={10} />{b}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
         <div className="flex gap-1 bg-muted rounded-lg p-1">
           {periods.map((p, i) => (
