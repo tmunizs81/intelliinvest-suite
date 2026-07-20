@@ -340,15 +340,17 @@ export default function EconomicCalendarPanel({ assets = [] }: { assets?: Asset[
         </button>
 
         {/* Impact filter chips with counts */}
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1" role="group" aria-label="Filtrar por impacto">
           {(['high', 'medium', 'low'] as ImpactKey[]).map(k => {
             const on = filters.impacts.includes(k);
             const meta = impactMeta[k];
             return (
-              <button key={k} onClick={() => toggleImpact(k)}
+              <button key={k} type="button" onClick={() => toggleImpact(k)}
+                aria-pressed={on}
+                aria-label={`${meta.label}: ${counts[k]} evento(s). ${on ? 'Mostrando' : 'Ocultado'}. Clique para alternar.`}
                 title={meta.label}
-                className={`text-[10px] px-1.5 h-6 rounded border transition-all flex items-center gap-1 ${on ? meta.chip + ' border-transparent' : 'border-border text-muted-foreground opacity-60 hover:opacity-100'}`}>
-                <span className={`h-1.5 w-1.5 rounded-full ${meta.dot}`} />
+                className={`text-[10px] px-1.5 h-6 rounded border transition-all flex items-center gap-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary ${on ? meta.chip + ' border-transparent' : 'border-border text-muted-foreground opacity-60 hover:opacity-100'}`}>
+                <span className={`h-1.5 w-1.5 rounded-full ${meta.dot}`} aria-hidden="true" />
                 <span className="font-mono">{counts[k]}</span>
               </button>
             );
