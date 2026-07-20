@@ -852,10 +852,11 @@ function BrokerAutocomplete({ value, onChange }: { value: string; onChange: (v: 
               key={b}
               type="button"
               onClick={() => { onChange(b); setOpen(false); }}
-              className={`w-full text-left px-3 py-2 text-sm hover:bg-accent/50 transition-colors ${
+              className={`w-full flex items-center gap-2 text-left px-3 py-2 text-sm hover:bg-accent/50 transition-colors ${
                 value === b ? 'bg-accent/30 font-medium' : ''
               }`}
             >
+              <BrokerLogo broker={b} size={14} />
               {b}
             </button>
           ))}
