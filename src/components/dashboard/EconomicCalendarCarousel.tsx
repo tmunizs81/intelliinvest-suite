@@ -99,8 +99,10 @@ export default function EconomicCalendarPanel({ assets = [] }: { assets?: Asset[
   const [tz, setTz] = useState<string>(loadTz);
   const [alerts, setAlerts] = useState<Record<string, true>>(loadAlerts);
   const [showFilters, setShowFilters] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
   const [modalEvent, setModalEvent] = useState<EcoEvent | null>(null);
   const alertTimers = useRef<number[]>([]);
+
 
   useEffect(() => { localStorage.setItem(LS_FILTERS, JSON.stringify(filters)); }, [filters]);
   useEffect(() => { localStorage.setItem(LS_TZ, tz); }, [tz]);
