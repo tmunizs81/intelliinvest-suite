@@ -511,16 +511,19 @@ export default function EconomicCalendarPanel({ assets = [] }: { assets?: Asset[
                     if (!isFinite(a) || !isFinite(f) || f === 0) return null;
                     return ((a - f) / Math.abs(f)) * 100;
                   })();
+                  const detail = detailedImpactExplanation(ev);
                   return (
                     <li key={ev.id}>
                       <button
+                        type="button"
                         onClick={() => setModalEvent(ev)}
-                        className="w-full text-left px-2 sm:px-3 py-2 flex items-start gap-2 hover:bg-muted/40 transition-colors"
+                        aria-label={`${meta.label}. ${time}. ${ev.title}. ${detail.aggregate}${detail.surprise ? '. ' + detail.surprise.label : ''}. Abrir detalhes.`}
+                        className="w-full text-left px-2 sm:px-3 py-2 flex items-start gap-2 hover:bg-muted/40 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
                       >
-                        <div className={`w-1 self-stretch rounded-full shrink-0 ${meta.stripe}`} />
+                        <div className={`w-1 self-stretch rounded-full shrink-0 ${meta.stripe}`} aria-hidden="true" />
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="text-xs">{c?.flag || '🌐'}</span>
+                            <span className="text-xs" aria-hidden="true">{c?.flag || '🌐'}</span>
                             <span className="text-[10px] font-mono text-muted-foreground shrink-0">{time}</span>
                             <span className="text-[11px] sm:text-xs font-medium truncate flex-1 min-w-0">{ev.title}</span>
                             {surprise !== null && (
@@ -529,8 +532,14 @@ export default function EconomicCalendarPanel({ assets = [] }: { assets?: Asset[
                               </span>
                             )}
                           </div>
+                          {/* Detailed explanation shown before the item */}
+                          <p className="text-[9px] sm:text-[10px] text-muted-foreground/90 mt-0.5 leading-snug">
+                            {detail.aggregate}
+                            {detail.surprise && <> · <span className={detail.surprise.value >= 0 ? 'text-gain' : 'text-loss'}>{detail.surprise.label}</span></>}
+                            {detail.historical && <> · {detail.historical.label}</>}
+                          </p>
                           <div className="flex items-center gap-1.5 mt-0.5">
-                            {affected.length > 0 && <Target className="h-2.5 w-2.5 text-primary shrink-0" />}
+                            {affected.length > 0 && <Target className="h-2.5 w-2.5 text-primary shrink-0" aria-hidden="true" />}
                             <span className="text-[9px] sm:text-[10px] text-muted-foreground truncate">
                               {impactSummary(ev, affected.length)}
                             </span>
@@ -539,9 +548,11 @@ export default function EconomicCalendarPanel({ assets = [] }: { assets?: Asset[
                         <span
                           role="button"
                           tabIndex={0}
+                          aria-pressed={alertOn}
+                          aria-label={alertOn ? `Remover alerta de ${ev.title}` : `Criar alerta 10 min antes de ${ev.title}`}
                           onClick={(e) => { e.stopPropagation(); toggleAlert(ev); }}
-                          onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); toggleAlert(ev); } }}
-                          className={`h-5 w-5 rounded flex items-center justify-center shrink-0 cursor-pointer ${alertOn ? 'text-primary' : 'text-muted-foreground/60'}`}
+                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); toggleAlert(ev); } }}
+                          className={`h-6 w-6 rounded flex items-center justify-center shrink-0 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary ${alertOn ? 'text-primary' : 'text-muted-foreground/60'}`}
                         >
                           {alertOn ? <Bell className="h-3 w-3" /> : <BellOff className="h-3 w-3" />}
                         </span>
