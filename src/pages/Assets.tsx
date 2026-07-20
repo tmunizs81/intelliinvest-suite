@@ -16,6 +16,7 @@ import B3ImportPanel from '@/components/dashboard/B3ImportPanel';
 import { type Asset, formatCurrency, formatPercent } from '@/lib/mockData';
 import CustodyModal from '@/components/dashboard/CustodyModal';
 import { BrokerLogo } from '@/lib/brokerLogos';
+import { useBrokerLogoSettings, setLogoDensity } from '@/lib/brokerLogoSettings';
 
 const typeBadgeClass: Record<string, string> = {
   'Ação': 'bg-primary/10 text-primary',
