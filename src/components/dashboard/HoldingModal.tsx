@@ -580,6 +580,28 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
 
           <BrokerAutocomplete value={broker} onChange={setBroker} />
 
+          {brokerMismatch && type !== 'Renda Fixa' && type !== 'Imóvel' && (
+            <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-2.5 text-xs text-amber-500 dark:text-amber-400 space-y-1.5">
+              <p>
+                <strong>{ticker}</strong> não consta no catálogo curado de <strong>{broker}</strong>.
+                Confirme se você realmente possui este ativo nessa corretora antes de salvar.
+              </p>
+              {brokerMismatch.alt.length > 0 && (
+                <div className="flex items-center gap-1 flex-wrap">
+                  <span className="opacity-70">Sugestões:</span>
+                  {brokerMismatch.alt.map(b => (
+                    <button key={b} type="button" onClick={() => setBroker(b)}
+                      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-500/10 hover:bg-amber-500/20 text-[10px]">
+                      <BrokerLogo broker={b} size={12} /> {b}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+
+
           {/* Campos de Renda Fixa */}
           {type === 'Renda Fixa' && (
             <>
