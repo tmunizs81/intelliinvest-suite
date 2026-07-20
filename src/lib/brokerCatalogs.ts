@@ -51,18 +51,67 @@ export const BROKER_CATALOGS: BrokerCatalog[] = [
 ];
 
 /**
- * Retorna a corretora "dona" de um ticker quando ele existe em apenas 1 catálogo curado.
- * Se o ticker aparece em múltiplos brokers (ex: AAPL em Avenue + XTB + Webull + C6 + BTG),
- * retorna null — não temos como inferir sem mais contexto.
+ * Prioridade global de exchanges cripto quando o ticker existe em várias.
+ * Ordem: volume global (Binance) → US regulada (Coinbase) → derivativos
+ * (Bybit/OKX) → alt/BR (BingX/Bitget/KuCoin) → BR (Mercado Bitcoin/Foxbit).
  */
-export function inferBrokerFromTicker(ticker: string): string | null {
+export const CRYPTO_BROKER_PRIORITY = [
+  'Binance', 'Coinbase', 'Bybit', 'OKX', 'BingX', 'Bitget',
+  'KuCoin', 'Mercado Bitcoin', 'Foxbit',
+] as const;
+
+export interface InferOptions {
+  /** Corretoras que o usuário já possui em outros ativos — recebem preferência. */
+  preferredBrokers?: string[];
+}
+
+/**
+ * Retorna a corretora "dona" de um ticker.
+ * - 1 catálogo → retorna direto.
+ * - N catálogos → prioriza corretora já usada pelo usuário; senão aplica
+ *   `CRYPTO_BROKER_PRIORITY` para cripto ou retorna null para stocks.
+ */
+export function inferBrokerFromTicker(
+  ticker: string,
+  opts: InferOptions = {},
+): string | null {
   const upper = ticker.toUpperCase();
   const matches = BROKER_CATALOGS.filter(c => c.tickerSet.has(upper));
+  if (matches.length === 0) return null;
   if (matches.length === 1) return matches[0].broker;
-  // Cripto aparece em múltiplas exchanges — default para Binance (maior volume global)
-  if (upper.endsWith('-USD') && matches.some(m => m.kind === 'crypto')) return 'Binance';
+
+  // Preferência: corretora que o usuário já usa
+  const preferred = (opts.preferredBrokers || []).map(b => b.trim()).filter(Boolean);
+  const preferredMatch = matches.find(m => preferred.includes(m.broker));
+  if (preferredMatch) return preferredMatch.broker;
+
+  // Cripto: aplica prioridade global
+  if (upper.endsWith('-USD') || matches.every(m => m.kind === 'crypto')) {
+    for (const b of CRYPTO_BROKER_PRIORITY) {
+      if (matches.some(m => m.broker === b)) return b;
+    }
+  }
+
+  // Stocks ambíguos: sem contexto suficiente
   return null;
 }
+
+/**
+ * Verifica se o ticker pertence ao catálogo curado de uma corretora específica.
+ * Usado para validar auto-preenchimento e alertar mismatches.
+ */
+export function isTickerInBroker(ticker: string, broker: string): boolean {
+  const cat = BROKER_CATALOGS.find(c => c.broker === broker);
+  if (!cat) return false;
+  return cat.tickerSet.has(ticker.toUpperCase());
+}
+
+/** Retorna todas as corretoras que suportam o ticker (para UI de sugestão). */
+export function brokersForTicker(ticker: string): string[] {
+  const upper = ticker.toUpperCase();
+  return BROKER_CATALOGS.filter(c => c.tickerSet.has(upper)).map(c => c.broker);
+}
+
 
 export interface UnifiedSearchResult {
   symbol: string;
