@@ -236,24 +236,28 @@ export function BrokerLogo({ broker, size = 16, className = '' }: Props) {
     );
   }
 
-  const variants = getVariants(url, Math.max(32, size * 2));
+  const fallback = getBrokerLogoFallbackUrl(broker);
 
   return (
-    <picture>
-      <source srcSet={variants.avif} type="image/avif" />
-      <source srcSet={variants.webp} type="image/webp" />
-      <img
-        src={url}
-        alt={`${broker} logo`}
-        width={size}
-        height={size}
-        onLoad={() => markStatus(url, 'loaded')}
-        onError={() => { markStatus(url, 'failed'); setStatus('failed'); }}
-        loading="lazy"
-        decoding="async"
-        className={`inline-block rounded-sm object-contain shrink-0 ${className}`}
-        style={{ width: size, height: size }}
-      />
-    </picture>
+    <img
+      src={url}
+      alt={`${broker} logo`}
+      width={size}
+      height={size}
+      onLoad={() => markStatus(url, 'loaded')}
+      onError={(e) => {
+        const img = e.currentTarget;
+        if (fallback && img.src !== fallback) {
+          img.src = fallback;
+        } else {
+          markStatus(url, 'failed');
+          setStatus('failed');
+        }
+      }}
+      loading="lazy"
+      decoding="async"
+      className={`inline-block rounded-sm object-contain shrink-0 ${className}`}
+      style={{ width: size, height: size }}
+    />
   );
 }
