@@ -620,33 +620,72 @@ function EventModal({ event, tz, alertOn, affected, onToggleAlert, onCreateTicke
     { label: 'Notícias (Google)', url: `https://www.google.com/search?q=${query}&tbm=nws` },
   ];
 
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const closeBtnRef = useRef<HTMLButtonElement>(null);
+  const titleId = `eco-ev-${event.id}-title`;
+  const descId = `eco-ev-${event.id}-desc`;
+
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    closeBtnRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { e.stopPropagation(); onClose(); return; }
+      if (e.key === 'Tab' && dialogRef.current) {
+        const focusables = dialogRef.current.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), select, [tabindex]:not([tabindex="-1"])'
+        );
+        if (!focusables.length) return;
+        const first = focusables[0], last = focusables[focusables.length - 1];
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+      }
+    };
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      previouslyFocused?.focus?.();
+    };
   }, [onClose]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in p-4" onClick={onClose}>
-      <div className="bg-card border border-border rounded-xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-auto" onClick={(e) => e.stopPropagation()}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in p-4"
+      onClick={onClose}
+      role="presentation"
+    >
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        aria-describedby={descId}
+        className="bg-card border border-border rounded-xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-auto focus:outline-none"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="p-4 border-b border-border flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="flex items-center gap-2 mb-1 flex-wrap">
-              <span className="text-lg">{c?.flag || '🌐'}</span>
+              <span className="text-lg" aria-hidden="true">{c?.flag || '🌐'}</span>
               <span className="text-xs font-mono text-muted-foreground">{event.country}</span>
               {event.currency && <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{event.currency}</span>}
               <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold flex items-center gap-1 ${meta.chip}`}>
-                <span className={`h-1.5 w-1.5 rounded-full ${meta.dot}`} /> {meta.label}
+                <span className={`h-1.5 w-1.5 rounded-full ${meta.dot}`} aria-hidden="true" /> {meta.label}
               </span>
             </div>
-            <h3 className="text-base font-semibold leading-snug">{event.title}</h3>
-            <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-              <Clock className="h-3 w-3" /> {fmtDateTime(event.date, tz)}
+            <h3 id={titleId} className="text-base font-semibold leading-snug">{event.title}</h3>
+            <p id={descId} className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+              <Clock className="h-3 w-3" aria-hidden="true" /> {fmtDateTime(event.date, tz)}
               {event.period && <> · Período: <span className="font-mono">{event.period}</span></>}
             </p>
           </div>
-          <button onClick={onClose} className="shrink-0 h-8 w-8 rounded-md hover:bg-muted flex items-center justify-center">
-            <X className="h-4 w-4" />
+          <button
+            ref={closeBtnRef}
+            type="button"
+            onClick={onClose}
+            aria-label="Fechar detalhes do evento"
+            className="shrink-0 h-8 w-8 rounded-md hover:bg-muted flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          >
+            <X className="h-4 w-4" aria-hidden="true" />
           </button>
         </div>
 
