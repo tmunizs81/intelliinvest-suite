@@ -22,6 +22,13 @@ interface Props {
 
 export default function PortfolioHistoryChart({ snapshots, loading }: Props) {
   const [activePeriod, setActivePeriod] = useState(5);
+  const { holdings } = usePortfolio();
+  const brokersInPortfolio = useMemo(() => {
+    const s = new Set<string>();
+    holdings.forEach(h => { if (h.broker) s.add(h.broker); });
+    return Array.from(s);
+  }, [holdings]);
+
 
   const data = useMemo(() => {
     if (snapshots.length === 0) return [];
