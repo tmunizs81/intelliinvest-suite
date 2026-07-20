@@ -589,15 +589,17 @@ export default function EconomicCalendarPanel({ assets = [] }: { assets?: Asset[
       )}
 
       {modalEvent && (
-        <EventModal
-          event={modalEvent}
-          tz={tz}
-          alertOn={!!alerts[modalEvent.id]}
-          affected={computeAffectedHoldings(modalEvent, assets, 10)}
-          onToggleAlert={() => toggleAlert(modalEvent)}
-          onCreateTickerAlert={createTickerAlert}
-          onClose={() => setModalEvent(null)}
-        />
+        <Suspense fallback={null}>
+          <EconomicCalendarEventModal
+            event={modalEvent}
+            tz={tz}
+            alertOn={!!alerts[modalEvent.id]}
+            affected={computeAffectedHoldings(modalEvent, assets, 10)}
+            onToggleAlert={() => toggleAlert(modalEvent)}
+            onCreateTickerAlert={createTickerAlert}
+            onClose={() => setModalEvent(null)}
+          />
+        </Suspense>
       )}
     </div>
   );
