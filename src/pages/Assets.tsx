@@ -1,9 +1,9 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Plus, Upload, Download, Search, Pencil, Trash2, ArrowUpRight,
   ArrowDownRight, ChevronRight, Loader2, FileSpreadsheet, X, AlertTriangle, FileUp,
-  Wallet, DollarSign, Building2,
+  Wallet, DollarSign, Building2, ArrowUpDown,
 } from 'lucide-react';
 import { usePortfolio, type HoldingRow } from '@/hooks/usePortfolio';
 import HoldingModal from '@/components/dashboard/HoldingModal';
@@ -15,6 +15,7 @@ import BrokerageImportPanel from '@/components/dashboard/BrokerageImportPanel';
 import B3ImportPanel from '@/components/dashboard/B3ImportPanel';
 import { type Asset, formatCurrency, formatPercent } from '@/lib/mockData';
 import CustodyModal from '@/components/dashboard/CustodyModal';
+import { BrokerLogo } from '@/lib/brokerLogos';
 
 const typeBadgeClass: Record<string, string> = {
   'Ação': 'bg-primary/10 text-primary',
