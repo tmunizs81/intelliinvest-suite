@@ -301,63 +301,90 @@ export default function EconomicCalendarPanel({ assets = [] }: { assets?: Asset[
                   const time = fmtTime(ev.date, tz);
                   const alertOn = !!alerts[ev.id];
                   const affected = computeAffectedHoldings(ev, assets, 4);
+                  const topScore = affected[0]?.score ?? 0;
+                  const stripeCls = key === 'high' ? 'bg-loss' : key === 'medium' ? 'bg-yellow-500' : 'bg-gain';
+                  // Short summary: top reason + count of affected tickers, or fallback by impact
+                  const summary = affected.length
+                    ? `${affected[0].reasons[0] || 'Impacto direto'} · ${affected.length} ativo(s) da sua carteira`
+                    : key === 'high'
+                      ? 'Sem exposição direta detectada — pode mover índices globais'
+                      : key === 'medium'
+                        ? 'Sem impacto direto na sua carteira'
+                        : 'Baixa relevância para seus ativos';
                   return (
                     <button
                       key={ev.id}
                       onClick={() => setModalEvent(ev)}
-                      className={`text-left rounded-lg border p-2.5 ${meta.ring} transition-all hover:scale-[1.01] cursor-pointer`}
+                      className={`text-left rounded-lg border ${meta.ring} transition-all hover:scale-[1.01] cursor-pointer flex overflow-hidden`}
                     >
-                      <div className="flex items-start justify-between gap-2 mb-1.5">
-                        <div className="flex items-center gap-1.5 min-w-0">
-                          <span className="text-sm">{c?.flag || '🌐'}</span>
-                          <span className="text-[10px] font-mono text-muted-foreground">{ev.country}</span>
-                          <span className="text-[10px] text-muted-foreground">•</span>
-                          <span className="text-[10px] text-muted-foreground">{time}</span>
+                      {/* Visual impact stripe */}
+                      <div className={`w-1 shrink-0 ${stripeCls}`} />
+                      <div className="flex-1 p-2.5 min-w-0">
+                        <div className="flex items-start justify-between gap-2 mb-1.5">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <span className="text-sm">{c?.flag || '🌐'}</span>
+                            <span className="text-[10px] font-mono text-muted-foreground">{ev.country}</span>
+                            <span className="text-[10px] text-muted-foreground">•</span>
+                            <span className="text-[10px] text-muted-foreground">{time}</span>
+                          </div>
+                          <span
+                            role="button"
+                            tabIndex={0}
+                            onClick={(e) => { e.stopPropagation(); toggleAlert(ev); }}
+                            onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); toggleAlert(ev); } }}
+                            title={alertOn ? 'Remover alerta' : 'Criar alerta (10min antes)'}
+                            className={`h-5 w-5 rounded flex items-center justify-center transition-all cursor-pointer shrink-0 ${alertOn ? 'bg-primary/15 text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+                          >
+                            {alertOn ? <Bell className="h-3 w-3" /> : <BellOff className="h-3 w-3" />}
+                          </span>
                         </div>
-                        <span
-                          role="button"
-                          tabIndex={0}
-                          onClick={(e) => { e.stopPropagation(); toggleAlert(ev); }}
-                          onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); toggleAlert(ev); } }}
-                          title={alertOn ? 'Remover alerta' : 'Criar alerta (10min antes)'}
-                          className={`h-5 w-5 rounded flex items-center justify-center transition-all cursor-pointer shrink-0 ${alertOn ? 'bg-primary/15 text-primary' : 'text-muted-foreground hover:text-foreground'}`}
-                        >
-                          {alertOn ? <Bell className="h-3 w-3" /> : <BellOff className="h-3 w-3" />}
-                        </span>
-                      </div>
 
-                      <p className="text-xs font-semibold leading-snug mb-2 line-clamp-2">{ev.title}</p>
+                        <p className="text-xs font-semibold leading-snug mb-1.5 line-clamp-2">{ev.title}</p>
 
-                      <div className="grid grid-cols-3 gap-1.5 text-[10px]">
-                        <div className="rounded bg-muted/40 p-1">
-                          <p className="text-[8px] uppercase text-muted-foreground">Ant.</p>
-                          <p className="font-mono font-semibold truncate">{ev.previous ?? '—'}{ev.unit}</p>
+                        {/* Impact summary line — always visible */}
+                        <div className="flex items-center gap-1.5 mb-2">
+                          <Target className={`h-2.5 w-2.5 shrink-0 ${affected.length ? 'text-primary' : 'text-muted-foreground'}`} />
+                          <p className={`text-[10px] leading-tight line-clamp-1 ${affected.length ? 'text-foreground' : 'text-muted-foreground'}`}>
+                            {summary}
+                          </p>
+                          {affected.length > 0 && (
+                            <span className="ml-auto text-[9px] font-mono text-muted-foreground shrink-0">
+                              {topScore}%
+                            </span>
+                          )}
                         </div>
-                        <div className="rounded bg-muted/40 p-1">
-                          <p className="text-[8px] uppercase text-muted-foreground">Prev.</p>
-                          <p className="font-mono font-semibold truncate">{ev.forecast ?? '—'}{ev.unit}</p>
-                        </div>
-                        <div className={`rounded p-1 ${ev.actual != null ? meta.chip : 'bg-muted/40'}`}>
-                          <p className="text-[8px] uppercase opacity-75">Atual</p>
-                          <p className="font-mono font-semibold truncate">{ev.actual ?? '—'}{ev.actual != null ? ev.unit : ''}</p>
-                        </div>
-                      </div>
 
-                      {affected.length > 0 && (
-                        <div className="mt-2 pt-1.5 border-t border-border/50">
-                          <div className="flex items-center gap-1 flex-wrap">
-                            <Target className="h-2.5 w-2.5 text-muted-foreground" />
-                            {affected.slice(0, 4).map(h => (
-                              <span key={h.asset.ticker}
-                                title={h.reasons.join(' · ')}
-                                className="text-[9px] px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20 font-mono">
-                                {h.asset.ticker}
-                              </span>
-                            ))}
+                        <div className="grid grid-cols-3 gap-1.5 text-[10px]">
+                          <div className="rounded bg-muted/40 p-1">
+                            <p className="text-[8px] uppercase text-muted-foreground">Ant.</p>
+                            <p className="font-mono font-semibold truncate">{ev.previous ?? '—'}{ev.unit}</p>
+                          </div>
+                          <div className="rounded bg-muted/40 p-1">
+                            <p className="text-[8px] uppercase text-muted-foreground">Prev.</p>
+                            <p className="font-mono font-semibold truncate">{ev.forecast ?? '—'}{ev.unit}</p>
+                          </div>
+                          <div className={`rounded p-1 ${ev.actual != null ? meta.chip : 'bg-muted/40'}`}>
+                            <p className="text-[8px] uppercase opacity-75">Atual</p>
+                            <p className="font-mono font-semibold truncate">{ev.actual ?? '—'}{ev.actual != null ? ev.unit : ''}</p>
                           </div>
                         </div>
-                      )}
+
+                        {affected.length > 0 && (
+                          <div className="mt-2 pt-1.5 border-t border-border/50">
+                            <div className="flex items-center gap-1 flex-wrap">
+                              {affected.slice(0, 4).map(h => (
+                                <span key={h.asset.ticker}
+                                  title={h.reasons.join(' · ')}
+                                  className="text-[9px] px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20 font-mono">
+                                  {h.asset.ticker}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </button>
+
                   );
                 })}
               </div>
