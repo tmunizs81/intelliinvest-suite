@@ -359,6 +359,25 @@ export default function Assets() {
         </div>
       )}
 
+      {/* Active broker filter banner */}
+      {brokerFilter && (
+        <div className="mb-4 flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-xs">
+          <BrokerLogo broker={brokerFilter} size={16} />
+          <span className="text-muted-foreground">Filtrando por corretora:</span>
+          <span className="font-semibold text-foreground">{brokerFilter}</span>
+          <span className="text-muted-foreground">({filtered.length} {filtered.length === 1 ? 'ativo' : 'ativos'})</span>
+          <button
+            onClick={() => setBrokerFilter('')}
+            className="ml-auto inline-flex items-center gap-1 rounded-full border border-border bg-background px-2 py-1 text-[11px] hover:border-primary/50 hover:text-primary transition-colors"
+            aria-label="Limpar filtro de corretora"
+          >
+            <X className="h-3 w-3" /> Limpar filtro
+          </button>
+        </div>
+      )}
+
+
+
 
       {/* B3 Integration Banner */}
       <div className="mb-6 rounded-lg border border-primary/20 bg-primary/5 p-4 flex items-start gap-3">
