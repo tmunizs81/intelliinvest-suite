@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
+import { useEffect, useMemo, useState, useCallback, useRef, memo, lazy, Suspense } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import {
   CalendarClock, Loader2, RefreshCw,
-  Filter, Globe, Bell, BellOff, X, ExternalLink, Clock, Target,
+  Filter, Globe, Bell, BellOff, Clock, Target,
   ChevronDown, ChevronUp, ChevronLeft, ChevronRight,
   List, LayoutGrid,
 } from 'lucide-react';
@@ -11,6 +11,10 @@ import {
 import { toast } from '@/hooks/use-toast';
 import { type Asset } from '@/lib/mockData';
 import { computeAffectedHoldings, type AffectedHolding } from '@/lib/eventImpactMap';
+import { useIsMobile } from '@/hooks/use-mobile';
+
+const EconomicCalendarEventModal = lazy(() => import('./EconomicCalendarEventModal'));
+
 
 interface EcoEvent {
   id: string;
@@ -64,7 +68,10 @@ const LS_ALERTS = 'econcal:alerts:v1';
 const LS_VIEW = 'econcal:view:v1';
 const LS_CACHE_PREFIX = 'econcal:cache:v1:';
 const CACHE_TTL_MS = 10 * 60 * 1000; // 10 min
-const PAGE_SIZE = 8;
+const PAGE_SIZE_DESKTOP = 8;
+const PAGE_SIZE_MOBILE = 5;
+const GRID_INITIAL = 24;
+const GRID_STEP = 24;
 
 type Filters = { countries: string[]; impacts: ImpactKey[] };
 type ViewMode = 'list' | 'grid';
@@ -173,6 +180,8 @@ function detailedImpactExplanation(ev: EcoEvent): {
 }
 
 export default function EconomicCalendarPanel({ assets = [] }: { assets?: Asset[] } = {}) {
+  const isMobile = useIsMobile();
+  const PAGE_SIZE = isMobile ? PAGE_SIZE_MOBILE : PAGE_SIZE_DESKTOP;
   const [filters, setFilters] = useState<Filters>(loadFilters);
   const cacheKey = useMemo(() => [...filters.countries].sort().join(','), [filters.countries]);
   const initialCache = useMemo(() => loadCache(cacheKey), [cacheKey]);
@@ -187,15 +196,17 @@ export default function EconomicCalendarPanel({ assets = [] }: { assets?: Asset[
   const [collapsed, setCollapsed] = useState(false);
   const [view, setView] = useState<ViewMode>(loadView);
   const [page, setPage] = useState(0);
+  const [gridLimit, setGridLimit] = useState(GRID_INITIAL);
   const [modalEvent, setModalEvent] = useState<EcoEvent | null>(null);
   const alertTimers = useRef<number[]>([]);
   const inflight = useRef<string | null>(null);
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
 
   useEffect(() => { localStorage.setItem(LS_FILTERS, JSON.stringify(filters)); }, [filters]);
   useEffect(() => { localStorage.setItem(LS_TZ, tz); }, [tz]);
   useEffect(() => { localStorage.setItem(LS_VIEW, view); }, [view]);
-  useEffect(() => { setPage(0); }, [filters.impacts, filters.countries, view]);
+  useEffect(() => { setPage(0); setGridLimit(GRID_INITIAL); }, [filters.impacts, filters.countries, view]);
 
   const load = useCallback(async (force = false) => {
     // Dedup concurrent requests per cache key
@@ -256,9 +267,57 @@ export default function EconomicCalendarPanel({ assets = [] }: { assets?: Asset[
 
   const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
   const pageItems = useMemo(
-    () => view === 'list' ? sorted.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE) : sorted,
-    [sorted, page, view]
+    () => view === 'list'
+      ? sorted.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE)
+      : sorted.slice(0, gridLimit),
+    [sorted, page, view, gridLimit, PAGE_SIZE]
   );
+
+  // Precompute derived data per event once (avoids recomputation on hover/scroll)
+  const enrichedById = useMemo(() => {
+    const map = new Map<string, {
+      key: ImpactKey;
+      meta: typeof impactMeta[ImpactKey];
+      flag: string;
+      time: string;
+      affected: AffectedHolding[];
+      surprise: number | null;
+      detail: ReturnType<typeof detailedImpactExplanation>;
+      summary: string;
+    }>();
+    for (const ev of pageItems) {
+      const k = bucket(ev.importance);
+      const c = COUNTRIES.find(x => x.code === ev.country);
+      const a = Number(ev.actual), f = Number(ev.forecast);
+      const surprise = (isFinite(a) && isFinite(f) && f !== 0) ? ((a - f) / Math.abs(f)) * 100 : null;
+      const affected = computeAffectedHoldings(ev, assets, 1);
+      map.set(ev.id, {
+        key: k,
+        meta: impactMeta[k],
+        flag: c?.flag || '🌐',
+        time: fmtTime(ev.date, tz),
+        affected,
+        surprise,
+        detail: detailedImpactExplanation(ev),
+        summary: impactSummary(ev, affected.length),
+      });
+    }
+    return map;
+  }, [pageItems, tz, assets]);
+
+  // Infinite scroll sentinel for grid mode
+  useEffect(() => {
+    if (view !== 'grid') return;
+    const el = sentinelRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting) {
+        setGridLimit(g => Math.min(g + GRID_STEP, sorted.length));
+      }
+    }, { rootMargin: '400px' });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [view, sorted.length]);
 
   // Schedule browser notifications for enabled alerts (10 min before)
   useEffect(() => {
@@ -434,130 +493,44 @@ export default function EconomicCalendarPanel({ assets = [] }: { assets?: Asset[
           ) : !filtered.length ? (
             <p className="px-3 py-2 text-[10px] text-muted-foreground">Nenhum evento com os filtros atuais.</p>
           ) : view === 'grid' ? (
-            /* Dense grid — auto-fill responsive columns */
-            <div className="p-2 grid gap-1.5 grid-cols-[repeat(auto-fill,minmax(220px,1fr))]">
-              {pageItems.map(ev => {
-                const key = bucket(ev.importance);
-                const meta = impactMeta[key];
-                const c = countryOf(ev.country);
-                const time = fmtTime(ev.date, tz);
-                const alertOn = !!alerts[ev.id];
-                const affected = computeAffectedHoldings(ev, assets, 1);
-                const surprise = (() => {
-                  const a = Number(ev.actual), f = Number(ev.forecast);
-                  if (!isFinite(a) || !isFinite(f) || f === 0) return null;
-                  return ((a - f) / Math.abs(f)) * 100;
-                })();
-                const detail = detailedImpactExplanation(ev);
-                return (
-                  <button
-                    key={ev.id}
-                    type="button"
-                    onClick={() => setModalEvent(ev)}
-                    aria-label={`${meta.label}. ${time}. ${ev.title}. ${detail.aggregate}${detail.surprise ? '. ' + detail.surprise.label : ''}. Abrir detalhes.`}
-                    className={`group text-left rounded-md border ${meta.ring} flex overflow-hidden hover:scale-[1.01] transition-transform focus:outline-none focus-visible:ring-2 focus-visible:ring-primary`}
-                  >
-                    <div className={`w-1 shrink-0 ${meta.stripe}`} aria-hidden="true" />
-                    <div className="px-2 py-1.5 min-w-0 flex-1">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-xs" aria-hidden="true">{c?.flag || '🌐'}</span>
-                        <span className="text-[10px] font-mono text-muted-foreground shrink-0">{time}</span>
-                        <span className="text-[11px] font-medium truncate flex-1">{ev.title}</span>
-                        {surprise !== null && (
-                          <span className={`text-[9px] font-mono font-semibold shrink-0 ${surprise >= 0 ? 'text-gain' : 'text-loss'}`}>
-                            {surprise >= 0 ? '+' : ''}{surprise.toFixed(1)}%
-                          </span>
-                        )}
-                      </div>
-                      {/* Detailed explanation before the item */}
-                      <p className="text-[9px] text-muted-foreground/90 mt-0.5 leading-snug line-clamp-2">
-                        {detail.aggregate}
-                        {detail.surprise && <> · <span className={detail.surprise.value >= 0 ? 'text-gain' : 'text-loss'}>{detail.surprise.label}</span></>}
-                        {detail.historical && <> · {detail.historical.label}</>}
-                      </p>
-                      <div className="flex items-center gap-1.5 mt-0.5">
-                        {affected.length > 0 && <Target className="h-2.5 w-2.5 text-primary shrink-0" aria-hidden="true" />}
-                        <span className="text-[9px] text-muted-foreground truncate">{impactSummary(ev, affected.length)}</span>
-                        <span
-                          role="button"
-                          tabIndex={0}
-                          aria-pressed={alertOn}
-                          aria-label={alertOn ? `Remover alerta de ${ev.title}` : `Criar alerta 10 min antes de ${ev.title}`}
-                          onClick={(e) => { e.stopPropagation(); toggleAlert(ev); }}
-                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); toggleAlert(ev); } }}
-                          className={`ml-auto h-5 w-5 rounded flex items-center justify-center shrink-0 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary ${alertOn ? 'text-primary' : 'text-muted-foreground/50 opacity-100 sm:opacity-0 group-hover:opacity-100 group-focus-within:opacity-100'}`}
-                        >
-                          {alertOn ? <Bell className="h-2.5 w-2.5" /> : <BellOff className="h-2.5 w-2.5" />}
-                        </span>
-                      </div>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
+            /* Dense grid — auto-fill responsive columns, incremental windowing */
+            <>
+              <div className="p-2 grid gap-1.5 grid-cols-[repeat(auto-fill,minmax(220px,1fr))]">
+                {pageItems.map(ev => {
+                  const d = enrichedById.get(ev.id)!;
+                  return (
+                    <GridCard
+                      key={ev.id}
+                      ev={ev}
+                      d={d}
+                      alertOn={!!alerts[ev.id]}
+                      onOpen={setModalEvent}
+                      onToggleAlert={toggleAlert}
+                    />
+                  );
+                })}
+              </div>
+              {gridLimit < sorted.length && (
+                <div ref={sentinelRef} className="py-2 flex items-center justify-center text-[10px] text-muted-foreground">
+                  <Loader2 className="h-3 w-3 animate-spin mr-1" /> Carregando mais…
+                </div>
+              )}
+            </>
           ) : (
             /* Paginated list — one row per event, impact summary before content */
             <>
               <ul className="divide-y divide-border">
                 {pageItems.map(ev => {
-                  const key = bucket(ev.importance);
-                  const meta = impactMeta[key];
-                  const c = countryOf(ev.country);
-                  const time = fmtTime(ev.date, tz);
-                  const alertOn = !!alerts[ev.id];
-                  const affected = computeAffectedHoldings(ev, assets, 1);
-                  const surprise = (() => {
-                    const a = Number(ev.actual), f = Number(ev.forecast);
-                    if (!isFinite(a) || !isFinite(f) || f === 0) return null;
-                    return ((a - f) / Math.abs(f)) * 100;
-                  })();
-                  const detail = detailedImpactExplanation(ev);
+                  const d = enrichedById.get(ev.id)!;
                   return (
-                    <li key={ev.id}>
-                      <button
-                        type="button"
-                        onClick={() => setModalEvent(ev)}
-                        aria-label={`${meta.label}. ${time}. ${ev.title}. ${detail.aggregate}${detail.surprise ? '. ' + detail.surprise.label : ''}. Abrir detalhes.`}
-                        className="w-full text-left px-2 sm:px-3 py-2 flex items-start gap-2 hover:bg-muted/40 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
-                      >
-                        <div className={`w-1 self-stretch rounded-full shrink-0 ${meta.stripe}`} aria-hidden="true" />
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="text-xs" aria-hidden="true">{c?.flag || '🌐'}</span>
-                            <span className="text-[10px] font-mono text-muted-foreground shrink-0">{time}</span>
-                            <span className="text-[11px] sm:text-xs font-medium truncate flex-1 min-w-0">{ev.title}</span>
-                            {surprise !== null && (
-                              <span className={`text-[9px] font-mono font-semibold shrink-0 ${surprise >= 0 ? 'text-gain' : 'text-loss'}`}>
-                                {surprise >= 0 ? '+' : ''}{surprise.toFixed(1)}%
-                              </span>
-                            )}
-                          </div>
-                          {/* Detailed explanation shown before the item */}
-                          <p className="text-[9px] sm:text-[10px] text-muted-foreground/90 mt-0.5 leading-snug">
-                            {detail.aggregate}
-                            {detail.surprise && <> · <span className={detail.surprise.value >= 0 ? 'text-gain' : 'text-loss'}>{detail.surprise.label}</span></>}
-                            {detail.historical && <> · {detail.historical.label}</>}
-                          </p>
-                          <div className="flex items-center gap-1.5 mt-0.5">
-                            {affected.length > 0 && <Target className="h-2.5 w-2.5 text-primary shrink-0" aria-hidden="true" />}
-                            <span className="text-[9px] sm:text-[10px] text-muted-foreground truncate">
-                              {impactSummary(ev, affected.length)}
-                            </span>
-                          </div>
-                        </div>
-                        <span
-                          role="button"
-                          tabIndex={0}
-                          aria-pressed={alertOn}
-                          aria-label={alertOn ? `Remover alerta de ${ev.title}` : `Criar alerta 10 min antes de ${ev.title}`}
-                          onClick={(e) => { e.stopPropagation(); toggleAlert(ev); }}
-                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); toggleAlert(ev); } }}
-                          className={`h-6 w-6 rounded flex items-center justify-center shrink-0 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary ${alertOn ? 'text-primary' : 'text-muted-foreground/60'}`}
-                        >
-                          {alertOn ? <Bell className="h-3 w-3" /> : <BellOff className="h-3 w-3" />}
-                        </span>
-                      </button>
-                    </li>
+                    <ListRow
+                      key={ev.id}
+                      ev={ev}
+                      d={d}
+                      alertOn={!!alerts[ev.id]}
+                      onOpen={setModalEvent}
+                      onToggleAlert={toggleAlert}
+                    />
                   );
                 })}
               </ul>
@@ -585,224 +558,133 @@ export default function EconomicCalendarPanel({ assets = [] }: { assets?: Asset[
       )}
 
       {modalEvent && (
-        <EventModal
-          event={modalEvent}
-          tz={tz}
-          alertOn={!!alerts[modalEvent.id]}
-          affected={computeAffectedHoldings(modalEvent, assets, 10)}
-          onToggleAlert={() => toggleAlert(modalEvent)}
-          onCreateTickerAlert={createTickerAlert}
-          onClose={() => setModalEvent(null)}
-        />
+        <Suspense fallback={null}>
+          <EconomicCalendarEventModal
+            event={modalEvent}
+            tz={tz}
+            alertOn={!!alerts[modalEvent.id]}
+            affected={computeAffectedHoldings(modalEvent, assets, 10)}
+            onToggleAlert={() => toggleAlert(modalEvent)}
+            onCreateTickerAlert={createTickerAlert}
+            onClose={() => setModalEvent(null)}
+          />
+        </Suspense>
       )}
     </div>
   );
 }
 
-function EventModal({ event, tz, alertOn, affected, onToggleAlert, onCreateTickerAlert, onClose }: {
-  event: EcoEvent; tz: string; alertOn: boolean;
+type Enriched = {
+  key: ImpactKey;
+  meta: typeof impactMeta[ImpactKey];
+  flag: string;
+  time: string;
   affected: AffectedHolding[];
-  onToggleAlert: () => void;
-  onCreateTickerAlert: (ticker: string) => void;
-  onClose: () => void;
-}) {
-  const meta = impactMeta[bucket(event.importance)];
-  const c = COUNTRIES.find(x => x.code === event.country);
-  const surprise = (() => {
-    const a = Number(event.actual), f = Number(event.forecast);
-    if (!isFinite(a) || !isFinite(f) || f === 0) return null;
-    return ((a - f) / Math.abs(f)) * 100;
-  })();
-  const query = encodeURIComponent(`${event.title} ${event.country}`);
-  const links = [
-    { label: 'TradingView', url: `https://www.tradingview.com/economic-calendar/?search=${query}` },
-    { label: 'Investing.com', url: `https://www.investing.com/search/?q=${query}` },
-    { label: 'Notícias (Google)', url: `https://www.google.com/search?q=${query}&tbm=nws` },
-  ];
+  surprise: number | null;
+  detail: ReturnType<typeof detailedImpactExplanation>;
+  summary: string;
+};
 
-  const dialogRef = useRef<HTMLDivElement>(null);
-  const closeBtnRef = useRef<HTMLButtonElement>(null);
-  const titleId = `eco-ev-${event.id}-title`;
-  const descId = `eco-ev-${event.id}-desc`;
+interface RowProps {
+  ev: EcoEvent;
+  d: Enriched;
+  alertOn: boolean;
+  onOpen: (ev: EcoEvent) => void;
+  onToggleAlert: (ev: EcoEvent) => void;
+}
 
-  useEffect(() => {
-    const previouslyFocused = document.activeElement as HTMLElement | null;
-    closeBtnRef.current?.focus();
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') { e.stopPropagation(); onClose(); return; }
-      if (e.key === 'Tab' && dialogRef.current) {
-        const focusables = dialogRef.current.querySelectorAll<HTMLElement>(
-          'a[href], button:not([disabled]), select, [tabindex]:not([tabindex="-1"])'
-        );
-        if (!focusables.length) return;
-        const first = focusables[0], last = focusables[focusables.length - 1];
-        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
-        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => {
-      window.removeEventListener('keydown', onKey);
-      previouslyFocused?.focus?.();
-    };
-  }, [onClose]);
-
+const GridCard = memo(function GridCard({ ev, d, alertOn, onOpen, onToggleAlert }: RowProps) {
+  const { meta, flag, time, affected, surprise, detail, summary } = d;
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in p-4"
-      onClick={onClose}
-      role="presentation"
+    <button
+      type="button"
+      onClick={() => onOpen(ev)}
+      aria-label={`${meta.label}. ${time}. ${ev.title}. ${detail.aggregate}${detail.surprise ? '. ' + detail.surprise.label : ''}. Abrir detalhes.`}
+      className={`group text-left rounded-md border ${meta.ring} flex overflow-hidden hover:scale-[1.01] transition-transform focus:outline-none focus-visible:ring-2 focus-visible:ring-primary`}
     >
-      <div
-        ref={dialogRef}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        aria-describedby={descId}
-        className="bg-card border border-border rounded-xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-auto focus:outline-none"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="p-4 border-b border-border flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 mb-1 flex-wrap">
-              <span className="text-lg" aria-hidden="true">{c?.flag || '🌐'}</span>
-              <span className="text-xs font-mono text-muted-foreground">{event.country}</span>
-              {event.currency && <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{event.currency}</span>}
-              <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold flex items-center gap-1 ${meta.chip}`}>
-                <span className={`h-1.5 w-1.5 rounded-full ${meta.dot}`} aria-hidden="true" /> {meta.label}
-              </span>
-            </div>
-            <h3 id={titleId} className="text-base font-semibold leading-snug">{event.title}</h3>
-            <p id={descId} className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-              <Clock className="h-3 w-3" aria-hidden="true" /> {fmtDateTime(event.date, tz)}
-              {event.period && <> · Período: <span className="font-mono">{event.period}</span></>}
-            </p>
-          </div>
-          <button
-            ref={closeBtnRef}
-            type="button"
-            onClick={onClose}
-            aria-label="Fechar detalhes do evento"
-            className="shrink-0 h-8 w-8 rounded-md hover:bg-muted flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-          >
-            <X className="h-4 w-4" aria-hidden="true" />
-          </button>
-        </div>
-
-        <div className="p-4 space-y-4">
-          <div className="grid grid-cols-3 gap-2">
-            <div className="rounded-lg bg-muted/40 p-3">
-              <p className="text-[10px] uppercase text-muted-foreground">Anterior</p>
-              <p className="text-lg font-mono font-semibold">{event.previous ?? '—'}<span className="text-xs text-muted-foreground">{event.unit}</span></p>
-            </div>
-            <div className="rounded-lg bg-muted/40 p-3">
-              <p className="text-[10px] uppercase text-muted-foreground">Previsão</p>
-              <p className="text-lg font-mono font-semibold">{event.forecast ?? '—'}<span className="text-xs text-muted-foreground">{event.unit}</span></p>
-            </div>
-            <div className={`rounded-lg p-3 ${event.actual != null ? meta.chip : 'bg-muted/40'}`}>
-              <p className="text-[10px] uppercase opacity-75">Atual</p>
-              <p className="text-lg font-mono font-semibold">{event.actual ?? '—'}<span className="text-xs opacity-75">{event.actual != null ? event.unit : ''}</span></p>
-            </div>
-          </div>
-
+      <div className={`w-1 shrink-0 ${meta.stripe}`} aria-hidden="true" />
+      <div className="px-2 py-1.5 min-w-0 flex-1">
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs" aria-hidden="true">{flag}</span>
+          <span className="text-[10px] font-mono text-muted-foreground shrink-0">{time}</span>
+          <span className="text-[11px] font-medium truncate flex-1">{ev.title}</span>
           {surprise !== null && (
-            <div className={`rounded-lg p-3 border ${surprise >= 0 ? 'border-gain/40 bg-gain/5' : 'border-loss/40 bg-loss/5'}`}>
-              <p className="text-[10px] uppercase text-muted-foreground">Surpresa vs. Previsão</p>
-              <p className={`text-sm font-semibold ${surprise >= 0 ? 'text-gain' : 'text-loss'}`}>
-                {surprise >= 0 ? '+' : ''}{surprise.toFixed(2)}%
-              </p>
-            </div>
+            <span className={`text-[9px] font-mono font-semibold shrink-0 ${surprise >= 0 ? 'text-gain' : 'text-loss'}`}>
+              {surprise >= 0 ? '+' : ''}{surprise.toFixed(1)}%
+            </span>
           )}
-
-          <div className="rounded-lg border border-border p-3">
-            <p className="text-xs font-semibold mb-1">Contexto</p>
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              Indicadores de <strong>{meta.label.toLowerCase()}</strong> como este tendem a mover
-              {event.country === 'BR' ? ' o Ibovespa, o câmbio USD/BRL e a curva de juros DI.'
-                : event.country === 'US' ? ' índices globais (S&P/Nasdaq), Treasuries e o DXY.'
-                : ' os mercados regionais associados e podem repercutir globalmente.'}
-              {' '}Compare <em>Atual</em> vs <em>Previsão</em>: surpresas positivas costumam favorecer ativos de risco quando o dado é pró-crescimento; o oposto em dados inflacionários.
-            </p>
-          </div>
-
-          <div className="rounded-lg border border-border p-3">
-            <p className="text-xs font-semibold mb-2 flex items-center gap-1.5">
-              <Target className="h-3.5 w-3.5 text-primary" />
-              Impacto na sua carteira
-              <span className="text-[10px] font-normal text-muted-foreground">
-                ({affected.length ? `${affected.length} ativo(s)` : 'nenhum ativo relacionado'})
-              </span>
-            </p>
-            {affected.length === 0 ? (
-              <p className="text-[11px] text-muted-foreground">
-                Nenhum ativo da sua carteira mostra sensibilidade direta a este evento.
-              </p>
-            ) : (
-              <ul className="space-y-1.5">
-                {affected.map(h => (
-                  <li key={h.asset.ticker}
-                      className="flex items-center justify-between gap-2 p-2 rounded-md bg-muted/30 hover:bg-muted/50 transition-colors">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-mono font-semibold">{h.asset.ticker}</span>
-                        <span className="text-[10px] text-muted-foreground truncate">{h.asset.name}</span>
-                      </div>
-                      <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                        {h.reasons.slice(0, 3).map(r => (
-                          <span key={r} className="text-[9px] px-1.5 py-0.5 rounded bg-background border border-border text-muted-foreground">
-                            {r}
-                          </span>
-                        ))}
-                        <span className="text-[9px] text-muted-foreground">
-                          · {(h.asset.allocation || 0).toFixed(1)}% da carteira
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <div className="w-14 h-1.5 rounded-full bg-border overflow-hidden" title={`Impacto relativo ${h.score}`}>
-                        <div
-                          className={h.score >= 70 ? 'h-full bg-loss' : h.score >= 40 ? 'h-full bg-yellow-500' : 'h-full bg-gain'}
-                          style={{ width: `${h.score}%` }}
-                        />
-                      </div>
-                      <button
-                        onClick={() => onCreateTickerAlert(h.asset.ticker)}
-                        className="text-[10px] px-2 py-1 rounded border border-border hover:border-primary/40 hover:bg-primary/5 transition-all flex items-center gap-1"
-                        title={`Criar alerta para ${h.asset.ticker}`}
-                      >
-                        <Bell className="h-2.5 w-2.5" /> Alerta
-                      </button>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-
-
-          <div>
-            <p className="text-xs font-semibold mb-2">Links úteis</p>
-            <div className="flex flex-wrap gap-2">
-              {links.map(l => (
-                <a key={l.label} href={l.url} target="_blank" rel="noreferrer"
-                  className="text-xs px-2.5 py-1.5 rounded-md border border-border hover:border-primary/40 hover:bg-primary/5 transition-all flex items-center gap-1">
-                  <ExternalLink className="h-3 w-3" /> {l.label}
-                </a>
-              ))}
-            </div>
-          </div>
         </div>
-
-        <div className="p-4 border-t border-border flex items-center justify-between gap-2">
-          <p className="text-[10px] text-muted-foreground">
-            Alertas usam notificações do navegador · aviso 10 min antes
-          </p>
-          <button onClick={onToggleAlert}
-            className={`text-xs px-3 py-1.5 rounded-md border transition-all flex items-center gap-1.5 ${alertOn ? 'bg-primary text-primary-foreground border-primary' : 'border-border hover:border-primary/40'}`}>
-            {alertOn ? <><Bell className="h-3.5 w-3.5" /> Alerta ativo</> : <><BellOff className="h-3.5 w-3.5" /> Criar alerta</>}
-          </button>
+        <p className="text-[9px] text-muted-foreground/90 mt-0.5 leading-snug line-clamp-2">
+          {detail.aggregate}
+          {detail.surprise && <> · <span className={detail.surprise.value >= 0 ? 'text-gain' : 'text-loss'}>{detail.surprise.label}</span></>}
+          {detail.historical && <> · {detail.historical.label}</>}
+        </p>
+        <div className="flex items-center gap-1.5 mt-0.5">
+          {affected.length > 0 && <Target className="h-2.5 w-2.5 text-primary shrink-0" aria-hidden="true" />}
+          <span className="text-[9px] text-muted-foreground truncate">{summary}</span>
+          <span
+            role="button"
+            tabIndex={0}
+            aria-pressed={alertOn}
+            aria-label={alertOn ? `Remover alerta de ${ev.title}` : `Criar alerta 10 min antes de ${ev.title}`}
+            onClick={(e) => { e.stopPropagation(); onToggleAlert(ev); }}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); onToggleAlert(ev); } }}
+            className={`ml-auto h-5 w-5 rounded flex items-center justify-center shrink-0 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary ${alertOn ? 'text-primary' : 'text-muted-foreground/50 opacity-100 sm:opacity-0 group-hover:opacity-100 group-focus-within:opacity-100'}`}
+          >
+            {alertOn ? <Bell className="h-2.5 w-2.5" /> : <BellOff className="h-2.5 w-2.5" />}
+          </span>
         </div>
       </div>
-    </div>
+    </button>
   );
-}
+});
+
+const ListRow = memo(function ListRow({ ev, d, alertOn, onOpen, onToggleAlert }: RowProps) {
+  const { meta, flag, time, affected, surprise, detail, summary } = d;
+  return (
+    <li>
+      <button
+        type="button"
+        onClick={() => onOpen(ev)}
+        aria-label={`${meta.label}. ${time}. ${ev.title}. ${detail.aggregate}${detail.surprise ? '. ' + detail.surprise.label : ''}. Abrir detalhes.`}
+        className="w-full text-left px-2 sm:px-3 py-2 flex items-start gap-2 hover:bg-muted/40 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
+      >
+        <div className={`w-1 self-stretch rounded-full shrink-0 ${meta.stripe}`} aria-hidden="true" />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="text-xs" aria-hidden="true">{flag}</span>
+            <span className="text-[10px] font-mono text-muted-foreground shrink-0">{time}</span>
+            <span className="text-[11px] sm:text-xs font-medium truncate flex-1 min-w-0">{ev.title}</span>
+            {surprise !== null && (
+              <span className={`text-[9px] font-mono font-semibold shrink-0 ${surprise >= 0 ? 'text-gain' : 'text-loss'}`}>
+                {surprise >= 0 ? '+' : ''}{surprise.toFixed(1)}%
+              </span>
+            )}
+          </div>
+          <p className="text-[9px] sm:text-[10px] text-muted-foreground/90 mt-0.5 leading-snug">
+            {detail.aggregate}
+            {detail.surprise && <> · <span className={detail.surprise.value >= 0 ? 'text-gain' : 'text-loss'}>{detail.surprise.label}</span></>}
+            {detail.historical && <> · {detail.historical.label}</>}
+          </p>
+          <div className="flex items-center gap-1.5 mt-0.5">
+            {affected.length > 0 && <Target className="h-2.5 w-2.5 text-primary shrink-0" aria-hidden="true" />}
+            <span className="text-[9px] sm:text-[10px] text-muted-foreground truncate">{summary}</span>
+          </div>
+        </div>
+        <span
+          role="button"
+          tabIndex={0}
+          aria-pressed={alertOn}
+          aria-label={alertOn ? `Remover alerta de ${ev.title}` : `Criar alerta 10 min antes de ${ev.title}`}
+          onClick={(e) => { e.stopPropagation(); onToggleAlert(ev); }}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); onToggleAlert(ev); } }}
+          className={`h-6 w-6 rounded flex items-center justify-center shrink-0 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary ${alertOn ? 'text-primary' : 'text-muted-foreground/60'}`}
+        >
+          {alertOn ? <Bell className="h-3 w-3" /> : <BellOff className="h-3 w-3" />}
+        </span>
+      </button>
+    </li>
+  );
+});
+
+
