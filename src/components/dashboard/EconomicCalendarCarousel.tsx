@@ -206,7 +206,7 @@ export default function EconomicCalendarPanel({ assets = [] }: { assets?: Asset[
   useEffect(() => { localStorage.setItem(LS_FILTERS, JSON.stringify(filters)); }, [filters]);
   useEffect(() => { localStorage.setItem(LS_TZ, tz); }, [tz]);
   useEffect(() => { localStorage.setItem(LS_VIEW, view); }, [view]);
-  useEffect(() => { setPage(0); }, [filters.impacts, filters.countries, view]);
+  useEffect(() => { setPage(0); setGridLimit(GRID_INITIAL); }, [filters.impacts, filters.countries, view]);
 
   const load = useCallback(async (force = false) => {
     // Dedup concurrent requests per cache key
