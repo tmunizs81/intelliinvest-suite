@@ -88,6 +88,16 @@ export default function PortfolioHistoryChart({ snapshots, loading }: Props) {
           <p className={`text-sm font-mono ${isPositive ? 'text-gain' : 'text-loss'}`}>
             {formatCurrency(change)} ({changePct.toFixed(2)}%)
           </p>
+          {brokersInPortfolio.length > 0 && (
+            <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
+              <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Corretoras:</span>
+              {brokersInPortfolio.map(b => (
+                <span key={b} className="inline-flex items-center gap-1 text-[10px] text-muted-foreground bg-muted/50 rounded-full px-1.5 py-0.5">
+                  <BrokerLogo broker={b} size={10} />{b}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
         <div className="flex gap-1 bg-muted rounded-lg p-1">
           {periods.map((p, i) => (
