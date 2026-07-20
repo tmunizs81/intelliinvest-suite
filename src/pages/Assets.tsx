@@ -75,6 +75,13 @@ export default function Assets() {
     return Array.from(map.entries()).sort((a, b) => b[1] - a[1]);
   }, [holdings]);
 
+  // Pré-carrega logos das top-N corretoras mais usadas na carteira,
+  // reduzindo latência quando o usuário abre o filtro de corretora.
+  useEffect(() => {
+    if (!brokerFacets.length) return;
+    preloadBrokers(brokerFacets.slice(0, 8).map(([b]) => b));
+  }, [brokerFacets]);
+
   const brokerByTicker = useMemo(() => {
     const m = new Map<string, string>();
     holdings.forEach((h) => { if (h.broker) m.set(h.ticker, h.broker); });
