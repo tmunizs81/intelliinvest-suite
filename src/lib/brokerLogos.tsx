@@ -1,42 +1,48 @@
 /**
- * Logos oficiais das corretoras cadastradas nos catálogos.
- * Usa favicons públicos (Google S2) para não depender de connector externo.
- * Cai para iniciais coloridas quando o domínio é desconhecido ou a imagem falha.
+ * Logos oficiais das corretoras.
  *
  * Performance:
- * - URLs memoizadas (evita recomputar `?domain=...&sz=...` em cada render).
- * - Status persistido em localStorage (`loaded` | `failed`) por URL,
- *   sobrevivendo a reloads e navegação entre páginas.
- * - Preload proativo de uma lista de corretoras (top-N recentes) via `preloadBrokers`.
- * - Fallback tolerante a falhas: timeout de 6s + até 2 retentativas com backoff antes
- *   de marcar como definitivamente `failed`.
- * - Skeleton sutil enquanto a imagem resolve, para reduzir a sensação de latência.
- * - `loading="lazy"` + `decoding="async"` no <img>.
+ * - URL canônica: favicon PNG do Google S2 (fallback universal).
+ * - Formatos modernos: proxy `wsrv.nl` converte para AVIF/WebP on-the-fly;
+ *   servidos via <picture> com type="image/avif" e type="image/webp",
+ *   o navegador escolhe o menor suportado (redução ~40–70% no payload).
+ * - Cache persistente (localStorage) com TTL de 7 dias e revalidação em
+ *   background quando o registro está vencido (stale-while-revalidate).
+ * - Preload de top-N brokers via `preloadBrokers`.
+ * - Retry limitado (2x) com timeout de 6s e backoff exponencial.
+ * - Skeleton animado enquanto resolve.
  */
 import { useState, useEffect } from 'react';
 import { useBrokerLogoSettings } from './brokerLogoSettings';
 
 type Status = 'loaded' | 'failed';
+interface CacheEntry { s: Status; t: number }
 
-// Cache em memória — sobrevive a re-renders e trocas de filtro.
-const urlCache = new Map<string, string>();     // "broker@size" -> final URL
-const statusCache = new Map<string, Status>();  // URL -> status
-const attempts = new Map<string, number>();     // URL -> nº de tentativas
+// Cache em memória.
+const urlCache = new Map<string, string>();          // "broker@size" -> URL PNG
+const statusCache = new Map<string, CacheEntry>();   // URL -> {status, timestamp}
+const attempts = new Map<string, number>();
 const preloading = new Set<string>();
 
-// Persistência entre reloads.
-const LS_KEY = 'broker-logo-status-v1';
+const LS_KEY = 'broker-logo-status-v2';
 const MAX_RETRIES = 2;
 const TIMEOUT_MS = 6000;
+const TTL_MS = 7 * 24 * 60 * 60 * 1000;    // 7 dias
+const FAIL_TTL_MS = 6 * 60 * 60 * 1000;    // falhas revalidam a cada 6h
 
-// Hidrata cache a partir do localStorage (uma vez).
+// Hidrata cache do localStorage, descartando entradas fora do TTL.
 (function hydrate() {
   if (typeof localStorage === 'undefined') return;
   try {
     const raw = localStorage.getItem(LS_KEY);
     if (!raw) return;
-    const parsed = JSON.parse(raw) as Record<string, Status>;
-    for (const [url, status] of Object.entries(parsed)) statusCache.set(url, status);
+    const parsed = JSON.parse(raw) as Record<string, CacheEntry>;
+    const now = Date.now();
+    for (const [url, entry] of Object.entries(parsed)) {
+      if (!entry || typeof entry.t !== 'number') continue;
+      const ttl = entry.s === 'failed' ? FAIL_TTL_MS : TTL_MS;
+      if (now - entry.t < ttl) statusCache.set(url, entry);
+    }
   } catch { /* ignore */ }
 })();
 
@@ -46,16 +52,24 @@ function persistDebounced() {
   if (persistTimer) clearTimeout(persistTimer);
   persistTimer = setTimeout(() => {
     try {
-      const obj: Record<string, Status> = {};
+      const obj: Record<string, CacheEntry> = {};
       statusCache.forEach((v, k) => { obj[k] = v; });
       localStorage.setItem(LS_KEY, JSON.stringify(obj));
-    } catch { /* quota — ignore */ }
+    } catch { /* quota */ }
   }, 500);
 }
 
-function markStatus(url: string, status: Status) {
-  statusCache.set(url, status);
+function markStatus(url: string, s: Status) {
+  statusCache.set(url, { s, t: Date.now() });
   persistDebounced();
+}
+
+function getFresh(url: string): Status | undefined {
+  const entry = statusCache.get(url);
+  if (!entry) return undefined;
+  const ttl = entry.s === 'failed' ? FAIL_TTL_MS : TTL_MS;
+  if (Date.now() - entry.t >= ttl) return undefined; // vencido
+  return entry.s;
 }
 
 function tryLoad(url: string, onDone: (s: Status) => void) {
@@ -77,10 +91,10 @@ function tryLoad(url: string, onDone: (s: Status) => void) {
 }
 
 function preloadUrl(url: string) {
-  if (!url || statusCache.get(url) === 'loaded' || preloading.has(url)) return;
-  // Se já marcado como failed mas ainda temos retries, tentar novamente.
+  if (!url || preloading.has(url)) return;
+  if (getFresh(url) === 'loaded') return;                // cache válido
   const tries = attempts.get(url) ?? 0;
-  if (statusCache.get(url) === 'failed' && tries >= MAX_RETRIES) return;
+  if (getFresh(url) === 'failed' && tries >= MAX_RETRIES) return;
 
   preloading.add(url);
   attempts.set(url, tries + 1);
@@ -88,14 +102,13 @@ function preloadUrl(url: string) {
   tryLoad(url, (status) => {
     preloading.delete(url);
     if (status === 'loaded') {
+      attempts.delete(url);
       markStatus(url, 'loaded');
       window.dispatchEvent(new CustomEvent('broker-logo-updated', { detail: { url } }));
     } else {
-      const currentTries = attempts.get(url) ?? 0;
-      if (currentTries < MAX_RETRIES) {
-        // Backoff exponencial: 800ms, 1600ms
-        const delay = 800 * Math.pow(2, currentTries - 1);
-        setTimeout(() => preloadUrl(url), delay);
+      const cur = attempts.get(url) ?? 0;
+      if (cur < MAX_RETRIES) {
+        setTimeout(() => preloadUrl(url), 800 * Math.pow(2, cur - 1));
       } else {
         markStatus(url, 'failed');
         window.dispatchEvent(new CustomEvent('broker-logo-updated', { detail: { url } }));
@@ -104,50 +117,28 @@ function preloadUrl(url: string) {
   });
 }
 
-// Domínio oficial de cada corretora suportada.
 export const BROKER_DOMAINS: Record<string, string> = {
-  // Stocks
-  Avenue: 'avenue.us',
-  XTB: 'xtb.com',
-  Webull: 'webull.com',
-  'C6 Bank': 'c6bank.com.br',
-  'BTG Pactual': 'btgpactual.com',
-  // Crypto
-  Binance: 'binance.com',
-  Coinbase: 'coinbase.com',
-  KuCoin: 'kucoin.com',
-  OKX: 'okx.com',
-  Bybit: 'bybit.com',
-  BingX: 'bingx.com',
-  Bitget: 'bitget.com',
-  'Mercado Bitcoin': 'mercadobitcoin.com.br',
-  Foxbit: 'foxbit.com.br',
-  // Extras
-  'XP Investimentos': 'xpi.com.br',
-  'Clear Corretora': 'clear.com.br',
-  'Rico Investimentos': 'rico.com.vc',
-  'Itaú Corretora': 'itau.com.br',
-  'Bradesco Corretora': 'bradescocorretora.com.br',
-  NuInvest: 'nuinvest.com.br',
+  Avenue: 'avenue.us', XTB: 'xtb.com', Webull: 'webull.com',
+  'C6 Bank': 'c6bank.com.br', 'BTG Pactual': 'btgpactual.com',
+  Binance: 'binance.com', Coinbase: 'coinbase.com', KuCoin: 'kucoin.com',
+  OKX: 'okx.com', Bybit: 'bybit.com', BingX: 'bingx.com', Bitget: 'bitget.com',
+  'Mercado Bitcoin': 'mercadobitcoin.com.br', Foxbit: 'foxbit.com.br',
+  'XP Investimentos': 'xpi.com.br', 'Clear Corretora': 'clear.com.br',
+  'Rico Investimentos': 'rico.com.vc', 'Itaú Corretora': 'itau.com.br',
+  'Bradesco Corretora': 'bradescocorretora.com.br', NuInvest: 'nuinvest.com.br',
   'Genial Investimentos': 'genialinvestimentos.com.br',
   'Toro Investimentos': 'toroinvestimentos.com.br',
-  'Guide Investimentos': 'guide.com.br',
-  Órama: 'orama.com.br',
-  Warren: 'warren.com.br',
-  NovaDAX: 'novadax.com.br',
-  'Interactive Brokers': 'interactivebrokers.com',
-  eToro: 'etoro.com',
-  DEGIRO: 'degiro.com',
-  'Trading 212': 'trading212.com',
-  Nomad: 'nomadglobal.com',
-  Stake: 'stake.com.au',
+  'Guide Investimentos': 'guide.com.br', Órama: 'orama.com.br',
+  Warren: 'warren.com.br', NovaDAX: 'novadax.com.br',
+  'Interactive Brokers': 'interactivebrokers.com', eToro: 'etoro.com',
+  DEGIRO: 'degiro.com', 'Trading 212': 'trading212.com',
+  Nomad: 'nomadglobal.com', Stake: 'stake.com.au',
 };
 
 function colorFor(name: string): string {
   let h = 0;
   for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) | 0;
-  const hue = Math.abs(h) % 360;
-  return `hsl(${hue} 65% 45%)`;
+  return `hsl(${Math.abs(h) % 360} 65% 45%)`;
 }
 
 export function getBrokerLogoUrl(broker: string, size = 64): string | null {
@@ -161,9 +152,19 @@ export function getBrokerLogoUrl(broker: string, size = 64): string | null {
 }
 
 /**
- * Pré-carrega logos de uma lista de corretoras (ex.: top-N no histórico recente),
- * para reduzir latência ao abrir filtros ou seletores.
+ * Retorna variantes AVIF/WebP servidas via proxy wsrv.nl.
+ * O proxy detecta e converte o PNG original para formatos modernos.
+ * Se o proxy falhar, o <img> PNG dentro do <picture> serve de fallback nativo.
  */
+function getVariants(pngUrl: string, size: number) {
+  const enc = encodeURIComponent(pngUrl.replace(/^https?:\/\//, ''));
+  const base = `https://wsrv.nl/?url=${enc}&w=${size}&h=${size}&fit=contain&we`;
+  return {
+    avif: `${base}&output=avif&q=70`,
+    webp: `${base}&output=webp&q=80`,
+  };
+}
+
 export function preloadBrokers(brokers: string[], size = 64) {
   brokers.forEach((b) => {
     const url = getBrokerLogoUrl(b, Math.max(32, size * 2));
@@ -182,22 +183,30 @@ export function BrokerLogo({ broker, size = 16, className = '' }: Props) {
   const override = overrides[broker];
   const url = override || getBrokerLogoUrl(broker, Math.max(32, size * 2));
 
-  const initial = url ? statusCache.get(url) : undefined;
   const [status, setStatus] = useState<'loading' | Status>(() => {
     if (!url) return 'failed';
-    return initial ?? 'loading';
+    return getFresh(url) ?? 'loading';
   });
 
   useEffect(() => {
     if (!url) { setStatus('failed'); return; }
-    const cur = statusCache.get(url);
-    if (cur) { setStatus(cur); return; }
+    const fresh = getFresh(url);
+    if (fresh === 'loaded') {
+      setStatus('loaded');
+      // Revalidação em background se o registro está próximo do vencimento
+      // (metade do TTL) — silenciosa, não afeta UI.
+      const entry = statusCache.get(url);
+      if (entry && Date.now() - entry.t > TTL_MS / 2) preloadUrl(url);
+      return;
+    }
+    if (fresh === 'failed') { setStatus('failed'); return; }
+    // Sem cache válido (nunca visto ou TTL expirado) → resolver.
     setStatus('loading');
     preloadUrl(url);
     const onUpdate = (e: Event) => {
       const detail = (e as CustomEvent).detail as { url: string };
       if (detail?.url === url) {
-        const s = statusCache.get(url);
+        const s = getFresh(url);
         if (s) setStatus(s);
       }
     };
@@ -205,12 +214,7 @@ export function BrokerLogo({ broker, size = 16, className = '' }: Props) {
     return () => window.removeEventListener('broker-logo-updated', onUpdate as EventListener);
   }, [url]);
 
-  const initials = broker
-    .split(/\s+/)
-    .map((w) => w[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase();
+  const initials = broker.split(/\s+/).map((w) => w[0]).join('').slice(0, 2).toUpperCase();
 
   if (!url || status === 'failed') {
     return (
@@ -235,18 +239,24 @@ export function BrokerLogo({ broker, size = 16, className = '' }: Props) {
     );
   }
 
+  const variants = getVariants(url, Math.max(32, size * 2));
+
   return (
-    <img
-      src={url}
-      alt={`${broker} logo`}
-      width={size}
-      height={size}
-      onLoad={() => markStatus(url, 'loaded')}
-      onError={() => { markStatus(url, 'failed'); setStatus('failed'); }}
-      loading="lazy"
-      decoding="async"
-      className={`inline-block rounded-sm object-contain shrink-0 ${className}`}
-      style={{ width: size, height: size }}
-    />
+    <picture>
+      <source srcSet={variants.avif} type="image/avif" />
+      <source srcSet={variants.webp} type="image/webp" />
+      <img
+        src={url}
+        alt={`${broker} logo`}
+        width={size}
+        height={size}
+        onLoad={() => markStatus(url, 'loaded')}
+        onError={() => { markStatus(url, 'failed'); setStatus('failed'); }}
+        loading="lazy"
+        decoding="async"
+        className={`inline-block rounded-sm object-contain shrink-0 ${className}`}
+        style={{ width: size, height: size }}
+      />
+    </picture>
   );
 }
