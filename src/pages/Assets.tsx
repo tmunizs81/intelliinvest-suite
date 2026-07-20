@@ -426,7 +426,13 @@ export default function Assets() {
                         <td className="p-4">
                           <div className="flex items-center gap-2">
                             {brokerByTicker.get(asset.ticker) && (
-                              <BrokerLogo broker={brokerByTicker.get(asset.ticker)!} size={20} />
+                              <button
+                                onClick={(e) => { e.stopPropagation(); setBrokerFilter(brokerByTicker.get(asset.ticker)!); }}
+                                title={`Filtrar apenas ${brokerByTicker.get(asset.ticker)}`}
+                                className="shrink-0 rounded-sm hover:ring-2 hover:ring-primary/50 transition"
+                              >
+                                <BrokerLogo broker={brokerByTicker.get(asset.ticker)!} size={20} />
+                              </button>
                             )}
                             <div className="min-w-0">
                               <div className="flex items-center gap-1.5">
@@ -434,7 +440,7 @@ export default function Assets() {
                                 <ChevronRight className="h-3 w-3 text-muted-foreground" />
                               </div>
                               <p className="text-xs text-muted-foreground truncate">{asset.name}</p>
-                              {brokerByTicker.get(asset.ticker) && (
+                              {density === 'full' && brokerByTicker.get(asset.ticker) && (
                                 <p className="text-[10px] text-muted-foreground/70">{brokerByTicker.get(asset.ticker)}</p>
                               )}
                             </div>
