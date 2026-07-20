@@ -502,7 +502,9 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
                 ref={suggestionsRef}
                 className="absolute z-50 mt-1 w-full rounded-md border border-border bg-popover shadow-lg max-h-60 overflow-y-auto"
               >
-                {suggestions.map((s, i) => (
+                {suggestions.map((s, i) => {
+                  const inferred = inferBrokerFromTicker(s.symbol, { preferredBrokers });
+                  return (
                   <button
                     key={`${s.symbol}-${s.exchange}-${i}`}
                     type="button"
@@ -511,18 +513,27 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
                       i === selectedIndex ? 'bg-accent/50' : ''
                     }`}
                   >
+                    {inferred ? (
+                      <BrokerLogo broker={inferred} size={22} />
+                    ) : (
+                      <span className="w-[22px] h-[22px] shrink-0 rounded-sm bg-muted" aria-hidden />
+                    )}
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-mono font-semibold text-foreground">{s.symbol}</span>
                         <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${exchangeBadge(s.exchangeDisplay)}`}>
                           {s.exchangeDisplay}
                         </span>
+                        {inferred && (
+                          <span className="text-[10px] text-muted-foreground">· {inferred}</span>
+                        )}
                       </div>
                       <p className="text-xs text-muted-foreground truncate mt-0.5">{s.name}</p>
                     </div>
                     <span className="text-[10px] text-muted-foreground shrink-0">{s.type}</span>
                   </button>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
