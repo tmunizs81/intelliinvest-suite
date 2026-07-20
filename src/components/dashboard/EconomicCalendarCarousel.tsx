@@ -180,6 +180,8 @@ function detailedImpactExplanation(ev: EcoEvent): {
 }
 
 export default function EconomicCalendarPanel({ assets = [] }: { assets?: Asset[] } = {}) {
+  const isMobile = useIsMobile();
+  const PAGE_SIZE = isMobile ? PAGE_SIZE_MOBILE : PAGE_SIZE_DESKTOP;
   const [filters, setFilters] = useState<Filters>(loadFilters);
   const cacheKey = useMemo(() => [...filters.countries].sort().join(','), [filters.countries]);
   const initialCache = useMemo(() => loadCache(cacheKey), [cacheKey]);
@@ -194,9 +196,11 @@ export default function EconomicCalendarPanel({ assets = [] }: { assets?: Asset[
   const [collapsed, setCollapsed] = useState(false);
   const [view, setView] = useState<ViewMode>(loadView);
   const [page, setPage] = useState(0);
+  const [gridLimit, setGridLimit] = useState(GRID_INITIAL);
   const [modalEvent, setModalEvent] = useState<EcoEvent | null>(null);
   const alertTimers = useRef<number[]>([]);
   const inflight = useRef<string | null>(null);
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
 
   useEffect(() => { localStorage.setItem(LS_FILTERS, JSON.stringify(filters)); }, [filters]);
