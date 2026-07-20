@@ -38,7 +38,13 @@ export default function Assets() {
   const [sellingPrice, setSellingPrice] = useState(0);
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('');
-  const [brokerFilter, setBrokerFilter] = useState<string>('');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const brokerFilter = searchParams.get('broker') || '';
+  const setBrokerFilter = (b: string) => {
+    const next = new URLSearchParams(searchParams);
+    if (b) next.set('broker', b); else next.delete('broker');
+    setSearchParams(next, { replace: true });
+  };
   const [sortBy, setSortBy] = useState<'default' | 'value_desc' | 'value_asc' | 'name_asc' | 'broker_asc' | 'change_desc'>('default');
   const [importOpen, setImportOpen] = useState(false);
   const [importData, setImportData] = useState('');
