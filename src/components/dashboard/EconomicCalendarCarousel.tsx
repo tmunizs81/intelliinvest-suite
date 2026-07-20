@@ -448,17 +448,19 @@ export default function EconomicCalendarPanel({ assets = [] }: { assets?: Asset[
                   if (!isFinite(a) || !isFinite(f) || f === 0) return null;
                   return ((a - f) / Math.abs(f)) * 100;
                 })();
+                const detail = detailedImpactExplanation(ev);
                 return (
                   <button
                     key={ev.id}
+                    type="button"
                     onClick={() => setModalEvent(ev)}
-                    title={impactSummary(ev, affected.length)}
-                    className={`group text-left rounded-md border ${meta.ring} flex overflow-hidden hover:scale-[1.01] transition-transform`}
+                    aria-label={`${meta.label}. ${time}. ${ev.title}. ${detail.aggregate}${detail.surprise ? '. ' + detail.surprise.label : ''}. Abrir detalhes.`}
+                    className={`group text-left rounded-md border ${meta.ring} flex overflow-hidden hover:scale-[1.01] transition-transform focus:outline-none focus-visible:ring-2 focus-visible:ring-primary`}
                   >
-                    <div className={`w-1 shrink-0 ${meta.stripe}`} />
+                    <div className={`w-1 shrink-0 ${meta.stripe}`} aria-hidden="true" />
                     <div className="px-2 py-1.5 min-w-0 flex-1">
                       <div className="flex items-center gap-1.5">
-                        <span className="text-xs">{c?.flag || '🌐'}</span>
+                        <span className="text-xs" aria-hidden="true">{c?.flag || '🌐'}</span>
                         <span className="text-[10px] font-mono text-muted-foreground shrink-0">{time}</span>
                         <span className="text-[11px] font-medium truncate flex-1">{ev.title}</span>
                         {surprise !== null && (
@@ -467,15 +469,23 @@ export default function EconomicCalendarPanel({ assets = [] }: { assets?: Asset[
                           </span>
                         )}
                       </div>
+                      {/* Detailed explanation before the item */}
+                      <p className="text-[9px] text-muted-foreground/90 mt-0.5 leading-snug line-clamp-2">
+                        {detail.aggregate}
+                        {detail.surprise && <> · <span className={detail.surprise.value >= 0 ? 'text-gain' : 'text-loss'}>{detail.surprise.label}</span></>}
+                        {detail.historical && <> · {detail.historical.label}</>}
+                      </p>
                       <div className="flex items-center gap-1.5 mt-0.5">
-                        {affected.length > 0 && <Target className="h-2.5 w-2.5 text-primary shrink-0" />}
+                        {affected.length > 0 && <Target className="h-2.5 w-2.5 text-primary shrink-0" aria-hidden="true" />}
                         <span className="text-[9px] text-muted-foreground truncate">{impactSummary(ev, affected.length)}</span>
                         <span
                           role="button"
                           tabIndex={0}
+                          aria-pressed={alertOn}
+                          aria-label={alertOn ? `Remover alerta de ${ev.title}` : `Criar alerta 10 min antes de ${ev.title}`}
                           onClick={(e) => { e.stopPropagation(); toggleAlert(ev); }}
-                          onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); toggleAlert(ev); } }}
-                          className={`ml-auto h-4 w-4 rounded flex items-center justify-center shrink-0 cursor-pointer ${alertOn ? 'text-primary' : 'text-muted-foreground/50 opacity-0 group-hover:opacity-100'}`}
+                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); toggleAlert(ev); } }}
+                          className={`ml-auto h-5 w-5 rounded flex items-center justify-center shrink-0 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary ${alertOn ? 'text-primary' : 'text-muted-foreground/50 opacity-100 sm:opacity-0 group-hover:opacity-100 group-focus-within:opacity-100'}`}
                         >
                           {alertOn ? <Bell className="h-2.5 w-2.5" /> : <BellOff className="h-2.5 w-2.5" />}
                         </span>
