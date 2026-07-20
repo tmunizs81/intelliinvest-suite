@@ -4,28 +4,104 @@
  * Cai para iniciais coloridas quando o domínio é desconhecido ou a imagem falha.
  *
  * Performance:
- * - URLs memoizadas (evita recomputar `?domain=...&sz=...` em cada render)
- * - Status de carregamento (`loaded` | `failed`) cacheado em memória por URL,
- *   para que trocar de filtro/broker não dispare novo request nem re-flash.
- * - `loading="lazy"` + `decoding="async"` no <img> para não bloquear layout.
+ * - URLs memoizadas (evita recomputar `?domain=...&sz=...` em cada render).
+ * - Status persistido em localStorage (`loaded` | `failed`) por URL,
+ *   sobrevivendo a reloads e navegação entre páginas.
+ * - Preload proativo de uma lista de corretoras (top-N recentes) via `preloadBrokers`.
+ * - Fallback tolerante a falhas: timeout de 6s + até 2 retentativas com backoff antes
+ *   de marcar como definitivamente `failed`.
+ * - Skeleton sutil enquanto a imagem resolve, para reduzir a sensação de latência.
+ * - `loading="lazy"` + `decoding="async"` no <img>.
  */
 import { useState, useEffect } from 'react';
 import { useBrokerLogoSettings } from './brokerLogoSettings';
 
-// Cache em memória por URL — sobrevive a re-renders e trocas de filtro.
-const urlCache = new Map<string, string>();                 // key -> final URL
-const statusCache = new Map<string, 'loaded' | 'failed'>(); // URL -> status
+type Status = 'loaded' | 'failed';
+
+// Cache em memória — sobrevive a re-renders e trocas de filtro.
+const urlCache = new Map<string, string>();     // "broker@size" -> final URL
+const statusCache = new Map<string, Status>();  // URL -> status
+const attempts = new Map<string, number>();     // URL -> nº de tentativas
 const preloading = new Set<string>();
 
-function preload(url: string) {
-  if (statusCache.has(url) || preloading.has(url) || typeof Image === 'undefined') return;
-  preloading.add(url);
+// Persistência entre reloads.
+const LS_KEY = 'broker-logo-status-v1';
+const MAX_RETRIES = 2;
+const TIMEOUT_MS = 6000;
+
+// Hidrata cache a partir do localStorage (uma vez).
+(function hydrate() {
+  if (typeof localStorage === 'undefined') return;
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (!raw) return;
+    const parsed = JSON.parse(raw) as Record<string, Status>;
+    for (const [url, status] of Object.entries(parsed)) statusCache.set(url, status);
+  } catch { /* ignore */ }
+})();
+
+let persistTimer: ReturnType<typeof setTimeout> | null = null;
+function persistDebounced() {
+  if (typeof localStorage === 'undefined') return;
+  if (persistTimer) clearTimeout(persistTimer);
+  persistTimer = setTimeout(() => {
+    try {
+      const obj: Record<string, Status> = {};
+      statusCache.forEach((v, k) => { obj[k] = v; });
+      localStorage.setItem(LS_KEY, JSON.stringify(obj));
+    } catch { /* quota — ignore */ }
+  }, 500);
+}
+
+function markStatus(url: string, status: Status) {
+  statusCache.set(url, status);
+  persistDebounced();
+}
+
+function tryLoad(url: string, onDone: (s: Status) => void) {
+  if (typeof Image === 'undefined') { onDone('failed'); return; }
   const img = new Image();
   img.decoding = 'async';
   img.loading = 'lazy';
-  img.onload = () => { statusCache.set(url, 'loaded'); preloading.delete(url); };
-  img.onerror = () => { statusCache.set(url, 'failed'); preloading.delete(url); };
+  let settled = false;
+  const finish = (s: Status) => {
+    if (settled) return;
+    settled = true;
+    clearTimeout(t);
+    onDone(s);
+  };
+  const t = setTimeout(() => finish('failed'), TIMEOUT_MS);
+  img.onload = () => finish('loaded');
+  img.onerror = () => finish('failed');
   img.src = url;
+}
+
+function preloadUrl(url: string) {
+  if (!url || statusCache.get(url) === 'loaded' || preloading.has(url)) return;
+  // Se já marcado como failed mas ainda temos retries, tentar novamente.
+  const tries = attempts.get(url) ?? 0;
+  if (statusCache.get(url) === 'failed' && tries >= MAX_RETRIES) return;
+
+  preloading.add(url);
+  attempts.set(url, tries + 1);
+
+  tryLoad(url, (status) => {
+    preloading.delete(url);
+    if (status === 'loaded') {
+      markStatus(url, 'loaded');
+      window.dispatchEvent(new CustomEvent('broker-logo-updated', { detail: { url } }));
+    } else {
+      const currentTries = attempts.get(url) ?? 0;
+      if (currentTries < MAX_RETRIES) {
+        // Backoff exponencial: 800ms, 1600ms
+        const delay = 800 * Math.pow(2, currentTries - 1);
+        setTimeout(() => preloadUrl(url), delay);
+      } else {
+        markStatus(url, 'failed');
+        window.dispatchEvent(new CustomEvent('broker-logo-updated', { detail: { url } }));
+      }
+    }
+  });
 }
 
 // Domínio oficial de cada corretora suportada.
@@ -46,7 +122,7 @@ export const BROKER_DOMAINS: Record<string, string> = {
   Bitget: 'bitget.com',
   'Mercado Bitcoin': 'mercadobitcoin.com.br',
   Foxbit: 'foxbit.com.br',
-  // Extras comuns citados no BrokerAutocomplete
+  // Extras
   'XP Investimentos': 'xpi.com.br',
   'Clear Corretora': 'clear.com.br',
   'Rico Investimentos': 'rico.com.vc',
@@ -67,7 +143,6 @@ export const BROKER_DOMAINS: Record<string, string> = {
   Stake: 'stake.com.au',
 };
 
-// Cor fallback determinística (hash simples)
 function colorFor(name: string): string {
   let h = 0;
   for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) | 0;
@@ -85,6 +160,17 @@ export function getBrokerLogoUrl(broker: string, size = 64): string | null {
   return url || null;
 }
 
+/**
+ * Pré-carrega logos de uma lista de corretoras (ex.: top-N no histórico recente),
+ * para reduzir latência ao abrir filtros ou seletores.
+ */
+export function preloadBrokers(brokers: string[], size = 64) {
+  brokers.forEach((b) => {
+    const url = getBrokerLogoUrl(b, Math.max(32, size * 2));
+    if (url) preloadUrl(url);
+  });
+}
+
 interface Props {
   broker: string;
   size?: number;
@@ -96,17 +182,27 @@ export function BrokerLogo({ broker, size = 16, className = '' }: Props) {
   const override = overrides[broker];
   const url = override || getBrokerLogoUrl(broker, Math.max(32, size * 2));
 
-  // Estado inicial reflete o cache global — evita "piscar" ao alternar filtros.
-  const [failed, setFailed] = useState(() =>
-    url ? statusCache.get(url) === 'failed' : true
-  );
+  const initial = url ? statusCache.get(url) : undefined;
+  const [status, setStatus] = useState<'loading' | Status>(() => {
+    if (!url) return 'failed';
+    return initial ?? 'loading';
+  });
 
   useEffect(() => {
-    if (!url) { setFailed(true); return; }
-    const s = statusCache.get(url);
-    if (s === 'failed') setFailed(true);
-    else if (s !== 'loaded') { setFailed(false); preload(url); }
-    else setFailed(false);
+    if (!url) { setStatus('failed'); return; }
+    const cur = statusCache.get(url);
+    if (cur) { setStatus(cur); return; }
+    setStatus('loading');
+    preloadUrl(url);
+    const onUpdate = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { url: string };
+      if (detail?.url === url) {
+        const s = statusCache.get(url);
+        if (s) setStatus(s);
+      }
+    };
+    window.addEventListener('broker-logo-updated', onUpdate as EventListener);
+    return () => window.removeEventListener('broker-logo-updated', onUpdate as EventListener);
   }, [url]);
 
   const initials = broker
@@ -116,7 +212,7 @@ export function BrokerLogo({ broker, size = 16, className = '' }: Props) {
     .slice(0, 2)
     .toUpperCase();
 
-  if (!url || failed) {
+  if (!url || status === 'failed') {
     return (
       <span
         className={`inline-flex items-center justify-center rounded-sm text-[9px] font-bold text-white shrink-0 ${className}`}
@@ -128,14 +224,25 @@ export function BrokerLogo({ broker, size = 16, className = '' }: Props) {
     );
   }
 
+  if (status === 'loading') {
+    return (
+      <span
+        className={`inline-block rounded-sm bg-muted animate-pulse shrink-0 ${className}`}
+        style={{ width: size, height: size }}
+        aria-label={`${broker} (carregando)`}
+        aria-busy="true"
+      />
+    );
+  }
+
   return (
     <img
       src={url}
       alt={`${broker} logo`}
       width={size}
       height={size}
-      onLoad={() => statusCache.set(url, 'loaded')}
-      onError={() => { statusCache.set(url, 'failed'); setFailed(true); }}
+      onLoad={() => markStatus(url, 'loaded')}
+      onError={() => { markStatus(url, 'failed'); setStatus('failed'); }}
       loading="lazy"
       decoding="async"
       className={`inline-block rounded-sm object-contain shrink-0 ${className}`}
@@ -143,4 +250,3 @@ export function BrokerLogo({ broker, size = 16, className = '' }: Props) {
     />
   );
 }
-

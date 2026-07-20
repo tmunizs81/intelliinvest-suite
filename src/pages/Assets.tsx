@@ -15,7 +15,7 @@ import BrokerageImportPanel from '@/components/dashboard/BrokerageImportPanel';
 import B3ImportPanel from '@/components/dashboard/B3ImportPanel';
 import { type Asset, formatCurrency, formatPercent } from '@/lib/mockData';
 import CustodyModal from '@/components/dashboard/CustodyModal';
-import { BrokerLogo } from '@/lib/brokerLogos';
+import { BrokerLogo, preloadBrokers } from '@/lib/brokerLogos';
 import { useBrokerLogoSettings, setLogoDensity } from '@/lib/brokerLogoSettings';
 
 const typeBadgeClass: Record<string, string> = {
@@ -74,6 +74,13 @@ export default function Assets() {
     });
     return Array.from(map.entries()).sort((a, b) => b[1] - a[1]);
   }, [holdings]);
+
+  // Pré-carrega logos das top-N corretoras mais usadas na carteira,
+  // reduzindo latência quando o usuário abre o filtro de corretora.
+  useEffect(() => {
+    if (!brokerFacets.length) return;
+    preloadBrokers(brokerFacets.slice(0, 8).map(([b]) => b));
+  }, [brokerFacets]);
 
   const brokerByTicker = useMemo(() => {
     const m = new Map<string, string>();
