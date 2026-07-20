@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
+import { useEffect, useMemo, useState, useCallback, useRef, memo, lazy, Suspense } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import {
   CalendarClock, Loader2, RefreshCw,
-  Filter, Globe, Bell, BellOff, X, ExternalLink, Clock, Target,
+  Filter, Globe, Bell, BellOff, Clock, Target,
   ChevronDown, ChevronUp, ChevronLeft, ChevronRight,
   List, LayoutGrid,
 } from 'lucide-react';
@@ -11,6 +11,10 @@ import {
 import { toast } from '@/hooks/use-toast';
 import { type Asset } from '@/lib/mockData';
 import { computeAffectedHoldings, type AffectedHolding } from '@/lib/eventImpactMap';
+import { useIsMobile } from '@/hooks/use-mobile';
+
+const EconomicCalendarEventModal = lazy(() => import('./EconomicCalendarEventModal'));
+
 
 interface EcoEvent {
   id: string;
