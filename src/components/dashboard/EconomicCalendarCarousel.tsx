@@ -124,6 +124,54 @@ function impactSummary(ev: EcoEvent, affectedCount: number): string {
     : `${base} · ${ctx}`;
 }
 
+/**
+ * Rich, multi-part explanation shown before each event so the user
+ * grasps relevance quickly:
+ *  - Aggregated relevance from importance + country
+ *  - Surprise (Atual vs Previsão)
+ *  - Histórico (Anterior → Previsão): revisão de expectativa
+ */
+function detailedImpactExplanation(ev: EcoEvent): {
+  aggregate: string;
+  surprise: { value: number; label: string } | null;
+  historical: { delta: number; label: string } | null;
+} {
+  const key = bucket(ev.importance);
+  const region = ev.country === 'BR' ? 'no mercado brasileiro'
+    : ev.country === 'US' ? 'nos mercados dos EUA e derivados globais'
+    : ev.country === 'EU' ? 'na Zona do Euro'
+    : ev.country === 'CN' ? 'na China e cadeias de commodities'
+    : ev.country === 'GB' ? 'no Reino Unido'
+    : ev.country === 'JP' ? 'no Japão'
+    : 'nos mercados regionais';
+  const aggregate = key === 'high'
+    ? `Evento de alta relevância ${region}: costuma gerar movimentos rápidos em índices, câmbio e juros.`
+    : key === 'medium'
+      ? `Relevância moderada ${region}: pode ajustar expectativas sem grande volatilidade imediata.`
+      : `Baixa relevância ${region}: efeito marginal, monitorado como leitura complementar.`;
+
+  const a = Number(ev.actual), f = Number(ev.forecast), p = Number(ev.previous);
+  let surprise: { value: number; label: string } | null = null;
+  if (isFinite(a) && isFinite(f) && f !== 0) {
+    const v = ((a - f) / Math.abs(f)) * 100;
+    surprise = {
+      value: v,
+      label: v >= 0
+        ? `Atual (${ev.actual}) veio ${Math.abs(v).toFixed(1)}% acima da previsão (${ev.forecast})`
+        : `Atual (${ev.actual}) veio ${Math.abs(v).toFixed(1)}% abaixo da previsão (${ev.forecast})`,
+    };
+  }
+  let historical: { delta: number; label: string } | null = null;
+  if (isFinite(f) && isFinite(p) && p !== 0) {
+    const d = ((f - p) / Math.abs(p)) * 100;
+    historical = {
+      delta: d,
+      label: `Previsão (${ev.forecast}) vs. anterior (${ev.previous}): ${d >= 0 ? '+' : ''}${d.toFixed(1)}%`,
+    };
+  }
+  return { aggregate, surprise, historical };
+}
+
 export default function EconomicCalendarPanel({ assets = [] }: { assets?: Asset[] } = {}) {
   const [filters, setFilters] = useState<Filters>(loadFilters);
   const cacheKey = useMemo(() => [...filters.countries].sort().join(','), [filters.countries]);
