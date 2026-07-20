@@ -340,6 +340,16 @@ export default function Assets() {
               <span className="opacity-60">({count})</span>
             </button>
           ))}
+          <div className="ml-auto flex items-center gap-1 shrink-0 text-[10px] text-muted-foreground">
+            <span className="hidden sm:inline">Logos:</span>
+            <button
+              onClick={() => setLogoDensity(density === 'full' ? 'compact' : 'full')}
+              className="rounded-full border border-border px-2 py-0.5 hover:text-foreground transition-colors"
+              title="Alternar densidade das logos de corretora"
+            >
+              {density === 'full' ? 'Completo' : 'Compacto'}
+            </button>
+          </div>
         </div>
       )}
 
