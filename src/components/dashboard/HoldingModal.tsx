@@ -10,7 +10,8 @@ import AICopilotSignal from './AICopilotSignal';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
-import { BROKER_CATALOGS, searchBrokerCatalogs, inferBrokerFromTicker, type UnifiedSearchResult } from '@/lib/brokerCatalogs';
+import { BROKER_CATALOGS, searchBrokerCatalogs, inferBrokerFromTicker, isTickerInBroker, brokersForTicker, type UnifiedSearchResult } from '@/lib/brokerCatalogs';
+import { BrokerLogo } from '@/lib/brokerLogos';
 import { getRule, learnRule } from '@/lib/tickerMappingRules';
 import { detectUCITS } from '@/lib/ucitsDetector';
 
