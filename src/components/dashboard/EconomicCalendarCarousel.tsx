@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import {
   CalendarClock, Loader2, RefreshCw,
-  Filter, Globe, Bell, BellOff, Clock, Target,
+  Filter, Globe, Bell, BellOff, X, ExternalLink, Clock, Target,
   ChevronDown, ChevronUp, ChevronLeft, ChevronRight,
   List, LayoutGrid,
 } from 'lucide-react';
