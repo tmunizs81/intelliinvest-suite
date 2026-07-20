@@ -157,9 +157,24 @@ function BrokerLogoSettingsCard() {
   const { overrides, density } = useBrokerLogoSettings();
   const [broker, setBroker] = useState('');
   const [url, setUrl] = useState('');
+  const [previewState, setPreviewState] = useState<'idle' | 'loading' | 'ok' | 'error'>('idle');
 
   const knownBrokers = Object.keys(BROKER_DOMAINS).sort();
   const customBrokers = Object.keys(overrides).sort();
+
+  // Live preview validation
+  useEffect(() => {
+    const trimmed = url.trim();
+    if (!trimmed) { setPreviewState('idle'); return; }
+    if (!/^https?:\/\//i.test(trimmed)) { setPreviewState('error'); return; }
+    setPreviewState('loading');
+    const img = new Image();
+    let cancelled = false;
+    img.onload = () => { if (!cancelled) setPreviewState('ok'); };
+    img.onerror = () => { if (!cancelled) setPreviewState('error'); };
+    img.src = trimmed;
+    return () => { cancelled = true; };
+  }, [url]);
 
   const save = () => {
     if (!broker.trim()) { toast.error('Escolha uma corretora'); return; }
@@ -167,20 +182,42 @@ function BrokerLogoSettingsCard() {
       toast.error('URL inválida (use http/https)');
       return;
     }
+    if (previewState === 'error') {
+      toast.error('A imagem não pôde ser carregada. Verifique a URL.');
+      return;
+    }
     setLogoOverride(broker.trim(), url.trim());
     toast.success(`Logo de ${broker} personalizada`);
     setUrl('');
+    setPreviewState('idle');
+  };
+
+  const restoreDefaults = () => {
+    if (customBrokers.length === 0) { toast.info('Nenhuma personalização ativa'); return; }
+    if (!confirm(`Restaurar ${customBrokers.length} logo(s) ao padrão? Isso remove todas as URLs personalizadas.`)) return;
+    customBrokers.forEach((b) => setLogoOverride(b, null));
+    toast.success('Logos restauradas ao padrão');
   };
 
   return (
     <div className="rounded-lg border border-border bg-card p-5 space-y-4">
-      <div>
-        <h3 className="font-semibold flex items-center gap-2">
-          <Settings className="h-4 w-4" /> Logos de Corretoras
-        </h3>
-        <p className="text-xs text-muted-foreground mt-1">
-          Personalize as logos das corretoras exibidas em toda a plataforma. Cole uma URL pública de imagem (PNG/SVG) para substituir a padrão.
-        </p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h3 className="font-semibold flex items-center gap-2">
+            <Settings className="h-4 w-4" /> Logos de Corretoras
+          </h3>
+          <p className="text-xs text-muted-foreground mt-1">
+            Personalize as logos das corretoras exibidas em toda a plataforma. Cole uma URL pública de imagem (PNG/SVG) para substituir a padrão.
+          </p>
+        </div>
+        <button
+          onClick={restoreDefaults}
+          disabled={customBrokers.length === 0}
+          className="shrink-0 rounded-md border border-border bg-background px-3 py-1.5 text-xs hover:border-primary/50 hover:text-primary transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          title="Remove todas as URLs personalizadas e volta às logos padrão"
+        >
+          Restaurar padrões
+        </button>
       </div>
 
       {/* Densidade */}
@@ -205,7 +242,7 @@ function BrokerLogoSettingsCard() {
 
       {/* Adicionar override */}
       <div className="space-y-2">
-        <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_auto] gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_auto_auto] gap-2">
           <select
             value={broker}
             onChange={e => setBroker(e.target.value)}
@@ -218,21 +255,39 @@ function BrokerLogoSettingsCard() {
             value={url}
             onChange={e => setUrl(e.target.value)}
             placeholder="https://exemplo.com/logo.png"
-            className="rounded-md border border-input bg-background px-3 py-2 text-sm font-mono"
+            className={`rounded-md border bg-background px-3 py-2 text-sm font-mono ${
+              previewState === 'error' ? 'border-loss' : previewState === 'ok' ? 'border-profit' : 'border-input'
+            }`}
           />
+          {/* Preview thumbnail */}
+          <div className="flex items-center justify-center h-9 w-9 rounded-md border border-border bg-muted/30 overflow-hidden">
+            {previewState === 'ok' && (
+              <img src={url.trim()} alt="preview" className="h-full w-full object-contain" />
+            )}
+            {previewState === 'loading' && <span className="text-[9px] text-muted-foreground animate-pulse">…</span>}
+            {previewState === 'error' && <X className="h-4 w-4 text-loss" />}
+            {previewState === 'idle' && <span className="text-[9px] text-muted-foreground">?</span>}
+          </div>
           <button
             onClick={save}
-            className="rounded-md bg-primary text-primary-foreground px-3 py-2 text-sm hover:opacity-90"
+            disabled={previewState === 'error' || previewState === 'loading' || !url.trim() || !broker}
+            className="rounded-md bg-primary text-primary-foreground px-3 py-2 text-sm hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
           >
             Salvar
           </button>
         </div>
+        {previewState === 'error' && (
+          <p className="text-[11px] text-loss">A imagem não pôde ser carregada. Verifique se a URL é pública e acessível. O fallback padrão continuará ativo.</p>
+        )}
+        {previewState === 'ok' && (
+          <p className="text-[11px] text-profit">Imagem válida — pronta para salvar.</p>
+        )}
       </div>
 
       {/* Lista de overrides ativos */}
       {customBrokers.length > 0 && (
         <div className="space-y-1.5 pt-2 border-t border-border">
-          <p className="text-xs font-medium text-muted-foreground">Personalizações ativas</p>
+          <p className="text-xs font-medium text-muted-foreground">Personalizações ativas ({customBrokers.length})</p>
           {customBrokers.map(b => (
             <div key={b} className="flex items-center gap-2 rounded bg-muted/20 px-2 py-1.5">
               <BrokerLogo broker={b} size={20} />

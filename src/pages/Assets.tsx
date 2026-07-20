@@ -1,5 +1,5 @@
-import { useState, useRef, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useRef, useMemo, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Plus, Upload, Download, Search, Pencil, Trash2, ArrowUpRight,
   ArrowDownRight, ChevronRight, Loader2, FileSpreadsheet, X, AlertTriangle, FileUp,
@@ -38,7 +38,13 @@ export default function Assets() {
   const [sellingPrice, setSellingPrice] = useState(0);
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('');
-  const [brokerFilter, setBrokerFilter] = useState<string>('');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const brokerFilter = searchParams.get('broker') || '';
+  const setBrokerFilter = (b: string) => {
+    const next = new URLSearchParams(searchParams);
+    if (b) next.set('broker', b); else next.delete('broker');
+    setSearchParams(next, { replace: true });
+  };
   const [sortBy, setSortBy] = useState<'default' | 'value_desc' | 'value_asc' | 'name_asc' | 'broker_asc' | 'change_desc'>('default');
   const [importOpen, setImportOpen] = useState(false);
   const [importData, setImportData] = useState('');
@@ -352,6 +358,25 @@ export default function Assets() {
           </div>
         </div>
       )}
+
+      {/* Active broker filter banner */}
+      {brokerFilter && (
+        <div className="mb-4 flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-xs">
+          <BrokerLogo broker={brokerFilter} size={16} />
+          <span className="text-muted-foreground">Filtrando por corretora:</span>
+          <span className="font-semibold text-foreground">{brokerFilter}</span>
+          <span className="text-muted-foreground">({filtered.length} {filtered.length === 1 ? 'ativo' : 'ativos'})</span>
+          <button
+            onClick={() => setBrokerFilter('')}
+            className="ml-auto inline-flex items-center gap-1 rounded-full border border-border bg-background px-2 py-1 text-[11px] hover:border-primary/50 hover:text-primary transition-colors"
+            aria-label="Limpar filtro de corretora"
+          >
+            <X className="h-3 w-3" /> Limpar filtro
+          </button>
+        </div>
+      )}
+
+
 
 
       {/* B3 Integration Banner */}
