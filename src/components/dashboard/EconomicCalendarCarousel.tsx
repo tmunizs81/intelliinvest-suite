@@ -482,12 +482,9 @@ export default function EconomicCalendarPanel({ assets = [] }: { assets?: Asset[
       )}
 
       {!collapsed && (
-        <div className="border-t border-border">
+        <div className="border-t border-border" aria-busy={loading}>
           {loading && !filtered.length ? (
-            <div className="flex items-center gap-2 px-3 py-2">
-              <Loader2 className="h-3 w-3 animate-spin text-primary" />
-              <span className="text-[10px] text-muted-foreground">Carregando...</span>
-            </div>
+            view === 'grid' ? <GridSkeleton isMobile={isMobile} /> : <ListSkeleton isMobile={isMobile} />
           ) : error && !filtered.length ? (
             <p className="px-3 py-2 text-[10px] text-loss">⚠️ {error}</p>
           ) : !filtered.length ? (
@@ -509,10 +506,17 @@ export default function EconomicCalendarPanel({ assets = [] }: { assets?: Asset[
                     />
                   );
                 })}
+                {gridLimit < sorted.length && (
+                  <>
+                    {Array.from({ length: Math.min(GRID_STEP / 4, 6) }).map((_, i) => (
+                      <GridCardSkeleton key={`gs-${i}`} />
+                    ))}
+                  </>
+                )}
               </div>
               {gridLimit < sorted.length && (
-                <div ref={sentinelRef} className="py-2 flex items-center justify-center text-[10px] text-muted-foreground">
-                  <Loader2 className="h-3 w-3 animate-spin mr-1" /> Carregando mais…
+                <div ref={sentinelRef} role="status" aria-live="polite" className="py-2 flex items-center justify-center text-[10px] text-muted-foreground">
+                  <Loader2 className="h-3 w-3 animate-spin mr-1" /> Carregando mais eventos…
                 </div>
               )}
             </>
