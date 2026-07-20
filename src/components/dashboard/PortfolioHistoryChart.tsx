@@ -3,6 +3,8 @@ import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianG
 import { formatCurrency } from '@/lib/mockData';
 import { type SnapshotRow } from '@/hooks/usePortfolioSnapshots';
 import { TrendingUp, TrendingDown, Database, Loader2 } from 'lucide-react';
+import { usePortfolio } from '@/hooks/usePortfolio';
+import { BrokerLogo } from '@/lib/brokerLogos';
 
 const periods = [
   { label: '7D', days: 7 },
