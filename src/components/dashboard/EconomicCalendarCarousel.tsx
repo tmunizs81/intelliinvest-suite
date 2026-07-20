@@ -267,9 +267,57 @@ export default function EconomicCalendarPanel({ assets = [] }: { assets?: Asset[
 
   const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
   const pageItems = useMemo(
-    () => view === 'list' ? sorted.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE) : sorted,
-    [sorted, page, view]
+    () => view === 'list'
+      ? sorted.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE)
+      : sorted.slice(0, gridLimit),
+    [sorted, page, view, gridLimit, PAGE_SIZE]
   );
+
+  // Precompute derived data per event once (avoids recomputation on hover/scroll)
+  const enrichedById = useMemo(() => {
+    const map = new Map<string, {
+      key: ImpactKey;
+      meta: typeof impactMeta[ImpactKey];
+      flag: string;
+      time: string;
+      affected: AffectedHolding[];
+      surprise: number | null;
+      detail: ReturnType<typeof detailedImpactExplanation>;
+      summary: string;
+    }>();
+    for (const ev of pageItems) {
+      const k = bucket(ev.importance);
+      const c = COUNTRIES.find(x => x.code === ev.country);
+      const a = Number(ev.actual), f = Number(ev.forecast);
+      const surprise = (isFinite(a) && isFinite(f) && f !== 0) ? ((a - f) / Math.abs(f)) * 100 : null;
+      const affected = computeAffectedHoldings(ev, assets, 1);
+      map.set(ev.id, {
+        key: k,
+        meta: impactMeta[k],
+        flag: c?.flag || '🌐',
+        time: fmtTime(ev.date, tz),
+        affected,
+        surprise,
+        detail: detailedImpactExplanation(ev),
+        summary: impactSummary(ev, affected.length),
+      });
+    }
+    return map;
+  }, [pageItems, tz, assets]);
+
+  // Infinite scroll sentinel for grid mode
+  useEffect(() => {
+    if (view !== 'grid') return;
+    const el = sentinelRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting) {
+        setGridLimit(g => Math.min(g + GRID_STEP, sorted.length));
+      }
+    }, { rootMargin: '400px' });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [view, sorted.length]);
 
   // Schedule browser notifications for enabled alerts (10 min before)
   useEffect(() => {
