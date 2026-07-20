@@ -76,9 +76,13 @@ function colorFor(name: string): string {
 }
 
 export function getBrokerLogoUrl(broker: string, size = 64): string | null {
+  const cacheKey = `${broker}@${size}`;
+  const cached = urlCache.get(cacheKey);
+  if (cached !== undefined) return cached || null;
   const domain = BROKER_DOMAINS[broker];
-  if (!domain) return null;
-  return `https://www.google.com/s2/favicons?domain=${domain}&sz=${size}`;
+  const url = domain ? `https://www.google.com/s2/favicons?domain=${domain}&sz=${size}` : '';
+  urlCache.set(cacheKey, url);
+  return url || null;
 }
 
 interface Props {
@@ -88,10 +92,23 @@ interface Props {
 }
 
 export function BrokerLogo({ broker, size = 16, className = '' }: Props) {
-  const [failed, setFailed] = useState(false);
   const { overrides } = useBrokerLogoSettings();
   const override = overrides[broker];
   const url = override || getBrokerLogoUrl(broker, Math.max(32, size * 2));
+
+  // Estado inicial reflete o cache global — evita "piscar" ao alternar filtros.
+  const [failed, setFailed] = useState(() =>
+    url ? statusCache.get(url) === 'failed' : true
+  );
+
+  useEffect(() => {
+    if (!url) { setFailed(true); return; }
+    const s = statusCache.get(url);
+    if (s === 'failed') setFailed(true);
+    else if (s !== 'loaded') { setFailed(false); preload(url); }
+    else setFailed(false);
+  }, [url]);
+
   const initials = broker
     .split(/\s+/)
     .map((w) => w[0])
@@ -117,10 +134,13 @@ export function BrokerLogo({ broker, size = 16, className = '' }: Props) {
       alt={`${broker} logo`}
       width={size}
       height={size}
-      onError={() => setFailed(true)}
+      onLoad={() => statusCache.set(url, 'loaded')}
+      onError={() => { statusCache.set(url, 'failed'); setFailed(true); }}
       loading="lazy"
+      decoding="async"
       className={`inline-block rounded-sm object-contain shrink-0 ${className}`}
       style={{ width: size, height: size }}
     />
   );
 }
+
