@@ -562,7 +562,7 @@ export default function EconomicCalendarPanel({ assets = [] }: { assets?: Asset[
       )}
 
       {modalEvent && (
-        <Suspense fallback={null}>
+        <Suspense fallback={<ModalSkeleton onClose={() => setModalEvent(null)} />}>
           <EconomicCalendarEventModal
             event={modalEvent}
             tz={tz}
@@ -574,6 +574,93 @@ export default function EconomicCalendarPanel({ assets = [] }: { assets?: Asset[
           />
         </Suspense>
       )}
+    </div>
+  );
+}
+
+/* ---------------- Skeletons ---------------- */
+
+function GridCardSkeleton() {
+  return (
+    <div className="rounded-md border border-border/60 bg-muted/20 flex overflow-hidden animate-pulse" aria-hidden="true">
+      <div className="w-1 shrink-0 bg-muted" />
+      <div className="px-2 py-1.5 flex-1 space-y-1.5">
+        <div className="flex items-center gap-1.5">
+          <div className="h-3 w-3 rounded-full bg-muted" />
+          <div className="h-2 w-8 rounded bg-muted" />
+          <div className="h-2 flex-1 rounded bg-muted" />
+        </div>
+        <div className="h-2 w-11/12 rounded bg-muted/70" />
+        <div className="h-2 w-8/12 rounded bg-muted/70" />
+      </div>
+    </div>
+  );
+}
+
+function GridSkeleton({ isMobile }: { isMobile: boolean }) {
+  const n = isMobile ? 6 : 12;
+  return (
+    <div className="p-2 grid gap-1.5 grid-cols-[repeat(auto-fill,minmax(220px,1fr))]" role="status" aria-label="Carregando eventos">
+      {Array.from({ length: n }).map((_, i) => <GridCardSkeleton key={i} />)}
+    </div>
+  );
+}
+
+function ListSkeleton({ isMobile }: { isMobile: boolean }) {
+  const n = isMobile ? 5 : 8;
+  return (
+    <ul className="divide-y divide-border" role="status" aria-label="Carregando eventos">
+      {Array.from({ length: n }).map((_, i) => (
+        <li key={i} className="px-2 sm:px-3 py-2 flex items-start gap-2 animate-pulse" aria-hidden="true">
+          <div className="w-1 self-stretch rounded-full bg-muted" />
+          <div className="flex-1 space-y-1.5">
+            <div className="flex items-center gap-1.5">
+              <div className="h-3 w-3 rounded-full bg-muted" />
+              <div className="h-2 w-10 rounded bg-muted" />
+              <div className="h-2 flex-1 rounded bg-muted" />
+            </div>
+            <div className="h-2 w-10/12 rounded bg-muted/70" />
+            <div className="h-2 w-6/12 rounded bg-muted/70" />
+          </div>
+          <div className="h-5 w-5 rounded bg-muted" />
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function ModalSkeleton({ onClose }: { onClose: () => void }) {
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Carregando detalhes do evento"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-fade-in"
+      onClick={onClose}
+    >
+      <div
+        className="w-[92vw] max-w-md rounded-lg border border-border bg-card p-4 shadow-xl animate-pulse"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center gap-2 mb-3">
+          <div className="h-4 w-4 rounded-full bg-muted" />
+          <div className="h-3 w-40 rounded bg-muted" />
+          <div className="ml-auto flex items-center gap-1 text-[10px] text-muted-foreground">
+            <Loader2 className="h-3 w-3 animate-spin" /> carregando…
+          </div>
+        </div>
+        <div className="space-y-2">
+          <div className="h-3 w-full rounded bg-muted/70" />
+          <div className="h-3 w-11/12 rounded bg-muted/70" />
+          <div className="h-3 w-9/12 rounded bg-muted/70" />
+          <div className="grid grid-cols-3 gap-2 pt-2">
+            <div className="h-10 rounded bg-muted/70" />
+            <div className="h-10 rounded bg-muted/70" />
+            <div className="h-10 rounded bg-muted/70" />
+          </div>
+          <div className="h-16 rounded bg-muted/60 mt-2" />
+        </div>
+      </div>
     </div>
   );
 }
