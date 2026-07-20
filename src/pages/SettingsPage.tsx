@@ -145,6 +145,110 @@ function GeneralTab() {
 
       {/* Activate License */}
       {!license && <ActivateLicenseCard />}
+
+      <BrokerLogoSettingsCard />
+    </div>
+  );
+}
+
+function BrokerLogoSettingsCard() {
+  const { overrides, density } = useBrokerLogoSettings();
+  const [broker, setBroker] = useState('');
+  const [url, setUrl] = useState('');
+
+  const knownBrokers = Object.keys(BROKER_DOMAINS).sort();
+  const customBrokers = Object.keys(overrides).sort();
+
+  const save = () => {
+    if (!broker.trim()) { toast.error('Escolha uma corretora'); return; }
+    if (!url.trim() || !/^https?:\/\//i.test(url.trim())) {
+      toast.error('URL inválida (use http/https)');
+      return;
+    }
+    setLogoOverride(broker.trim(), url.trim());
+    toast.success(`Logo de ${broker} personalizada`);
+    setUrl('');
+  };
+
+  return (
+    <div className="rounded-lg border border-border bg-card p-5 space-y-4">
+      <div>
+        <h3 className="font-semibold flex items-center gap-2">
+          <Settings className="h-4 w-4" /> Logos de Corretoras
+        </h3>
+        <p className="text-xs text-muted-foreground mt-1">
+          Personalize as logos das corretoras exibidas em toda a plataforma. Cole uma URL pública de imagem (PNG/SVG) para substituir a padrão.
+        </p>
+      </div>
+
+      {/* Densidade */}
+      <div className="rounded-lg bg-muted/30 p-3 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+        <div className="flex-1">
+          <p className="text-xs font-medium">Densidade nas listas</p>
+          <p className="text-[11px] text-muted-foreground">
+            "Completo" mostra logo + nome da corretora abaixo do ticker. "Compacto" mantém apenas o ícone.
+          </p>
+        </div>
+        <div className="flex gap-1 bg-background border border-border rounded-md p-0.5">
+          <button
+            onClick={() => setLogoDensity('full')}
+            className={`px-3 py-1 text-xs rounded ${density === 'full' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'}`}
+          >Completo</button>
+          <button
+            onClick={() => setLogoDensity('compact')}
+            className={`px-3 py-1 text-xs rounded ${density === 'compact' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground'}`}
+          >Compacto</button>
+        </div>
+      </div>
+
+      {/* Adicionar override */}
+      <div className="space-y-2">
+        <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_auto] gap-2">
+          <select
+            value={broker}
+            onChange={e => setBroker(e.target.value)}
+            className="rounded-md border border-input bg-background px-2 py-2 text-sm"
+          >
+            <option value="">Selecione a corretora…</option>
+            {knownBrokers.map(b => <option key={b} value={b}>{b}</option>)}
+          </select>
+          <input
+            value={url}
+            onChange={e => setUrl(e.target.value)}
+            placeholder="https://exemplo.com/logo.png"
+            className="rounded-md border border-input bg-background px-3 py-2 text-sm font-mono"
+          />
+          <button
+            onClick={save}
+            className="rounded-md bg-primary text-primary-foreground px-3 py-2 text-sm hover:opacity-90"
+          >
+            Salvar
+          </button>
+        </div>
+      </div>
+
+      {/* Lista de overrides ativos */}
+      {customBrokers.length > 0 && (
+        <div className="space-y-1.5 pt-2 border-t border-border">
+          <p className="text-xs font-medium text-muted-foreground">Personalizações ativas</p>
+          {customBrokers.map(b => (
+            <div key={b} className="flex items-center gap-2 rounded bg-muted/20 px-2 py-1.5">
+              <BrokerLogo broker={b} size={20} />
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-medium">{b}</p>
+                <p className="text-[10px] text-muted-foreground truncate font-mono">{overrides[b]}</p>
+              </div>
+              <button
+                onClick={() => { setLogoOverride(b, null); toast.success('Removido'); }}
+                className="text-muted-foreground hover:text-loss"
+                title="Remover personalização"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
