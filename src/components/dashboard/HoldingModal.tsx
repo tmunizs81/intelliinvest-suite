@@ -94,6 +94,23 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
   const [ucitsAck, setUcitsAck] = useState(false);
   const ucitsHint = useMemo(() => detectUCITS(ticker, name), [ticker, name]);
 
+  // Corretoras que o usuário já usa — dão preferência ao auto-preencher tickers ambíguos
+  const preferredBrokers = useMemo(() => {
+    const set = new Set<string>();
+    assets.forEach((a: any) => { if (a?.broker) set.add(a.broker); });
+    return Array.from(set);
+  }, [assets]);
+
+  // Aviso de mismatch: broker escolhido mas ticker fora do catálogo curado dele
+  const brokerMismatch = useMemo(() => {
+    if (!ticker || !broker) return null;
+    const cat = BROKER_CATALOGS.find(c => c.broker === broker);
+    if (!cat) return null; // corretora livre (não é catálogo curado) — não valida
+    if (isTickerInBroker(ticker, broker)) return null;
+    const alt = brokersForTicker(ticker);
+    return { alt };
+  }, [ticker, broker]);
+
   useEffect(() => {
     if (open) {
       setTicker(editData?.ticker || '');
