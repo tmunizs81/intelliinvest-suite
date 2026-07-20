@@ -574,3 +574,117 @@ export default function EconomicCalendarPanel({ assets = [] }: { assets?: Asset[
   );
 }
 
+type Enriched = {
+  key: ImpactKey;
+  meta: typeof impactMeta[ImpactKey];
+  flag: string;
+  time: string;
+  affected: AffectedHolding[];
+  surprise: number | null;
+  detail: ReturnType<typeof detailedImpactExplanation>;
+  summary: string;
+};
+
+interface RowProps {
+  ev: EcoEvent;
+  d: Enriched;
+  alertOn: boolean;
+  onOpen: (ev: EcoEvent) => void;
+  onToggleAlert: (ev: EcoEvent) => void;
+}
+
+const GridCard = memo(function GridCard({ ev, d, alertOn, onOpen, onToggleAlert }: RowProps) {
+  const { meta, flag, time, affected, surprise, detail, summary } = d;
+  return (
+    <button
+      type="button"
+      onClick={() => onOpen(ev)}
+      aria-label={`${meta.label}. ${time}. ${ev.title}. ${detail.aggregate}${detail.surprise ? '. ' + detail.surprise.label : ''}. Abrir detalhes.`}
+      className={`group text-left rounded-md border ${meta.ring} flex overflow-hidden hover:scale-[1.01] transition-transform focus:outline-none focus-visible:ring-2 focus-visible:ring-primary`}
+    >
+      <div className={`w-1 shrink-0 ${meta.stripe}`} aria-hidden="true" />
+      <div className="px-2 py-1.5 min-w-0 flex-1">
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs" aria-hidden="true">{flag}</span>
+          <span className="text-[10px] font-mono text-muted-foreground shrink-0">{time}</span>
+          <span className="text-[11px] font-medium truncate flex-1">{ev.title}</span>
+          {surprise !== null && (
+            <span className={`text-[9px] font-mono font-semibold shrink-0 ${surprise >= 0 ? 'text-gain' : 'text-loss'}`}>
+              {surprise >= 0 ? '+' : ''}{surprise.toFixed(1)}%
+            </span>
+          )}
+        </div>
+        <p className="text-[9px] text-muted-foreground/90 mt-0.5 leading-snug line-clamp-2">
+          {detail.aggregate}
+          {detail.surprise && <> · <span className={detail.surprise.value >= 0 ? 'text-gain' : 'text-loss'}>{detail.surprise.label}</span></>}
+          {detail.historical && <> · {detail.historical.label}</>}
+        </p>
+        <div className="flex items-center gap-1.5 mt-0.5">
+          {affected.length > 0 && <Target className="h-2.5 w-2.5 text-primary shrink-0" aria-hidden="true" />}
+          <span className="text-[9px] text-muted-foreground truncate">{summary}</span>
+          <span
+            role="button"
+            tabIndex={0}
+            aria-pressed={alertOn}
+            aria-label={alertOn ? `Remover alerta de ${ev.title}` : `Criar alerta 10 min antes de ${ev.title}`}
+            onClick={(e) => { e.stopPropagation(); onToggleAlert(ev); }}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); onToggleAlert(ev); } }}
+            className={`ml-auto h-5 w-5 rounded flex items-center justify-center shrink-0 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary ${alertOn ? 'text-primary' : 'text-muted-foreground/50 opacity-100 sm:opacity-0 group-hover:opacity-100 group-focus-within:opacity-100'}`}
+          >
+            {alertOn ? <Bell className="h-2.5 w-2.5" /> : <BellOff className="h-2.5 w-2.5" />}
+          </span>
+        </div>
+      </div>
+    </button>
+  );
+});
+
+const ListRow = memo(function ListRow({ ev, d, alertOn, onOpen, onToggleAlert }: RowProps) {
+  const { meta, flag, time, affected, surprise, detail, summary } = d;
+  return (
+    <li>
+      <button
+        type="button"
+        onClick={() => onOpen(ev)}
+        aria-label={`${meta.label}. ${time}. ${ev.title}. ${detail.aggregate}${detail.surprise ? '. ' + detail.surprise.label : ''}. Abrir detalhes.`}
+        className="w-full text-left px-2 sm:px-3 py-2 flex items-start gap-2 hover:bg-muted/40 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
+      >
+        <div className={`w-1 self-stretch rounded-full shrink-0 ${meta.stripe}`} aria-hidden="true" />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="text-xs" aria-hidden="true">{flag}</span>
+            <span className="text-[10px] font-mono text-muted-foreground shrink-0">{time}</span>
+            <span className="text-[11px] sm:text-xs font-medium truncate flex-1 min-w-0">{ev.title}</span>
+            {surprise !== null && (
+              <span className={`text-[9px] font-mono font-semibold shrink-0 ${surprise >= 0 ? 'text-gain' : 'text-loss'}`}>
+                {surprise >= 0 ? '+' : ''}{surprise.toFixed(1)}%
+              </span>
+            )}
+          </div>
+          <p className="text-[9px] sm:text-[10px] text-muted-foreground/90 mt-0.5 leading-snug">
+            {detail.aggregate}
+            {detail.surprise && <> · <span className={detail.surprise.value >= 0 ? 'text-gain' : 'text-loss'}>{detail.surprise.label}</span></>}
+            {detail.historical && <> · {detail.historical.label}</>}
+          </p>
+          <div className="flex items-center gap-1.5 mt-0.5">
+            {affected.length > 0 && <Target className="h-2.5 w-2.5 text-primary shrink-0" aria-hidden="true" />}
+            <span className="text-[9px] sm:text-[10px] text-muted-foreground truncate">{summary}</span>
+          </div>
+        </div>
+        <span
+          role="button"
+          tabIndex={0}
+          aria-pressed={alertOn}
+          aria-label={alertOn ? `Remover alerta de ${ev.title}` : `Criar alerta 10 min antes de ${ev.title}`}
+          onClick={(e) => { e.stopPropagation(); onToggleAlert(ev); }}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); onToggleAlert(ev); } }}
+          className={`h-6 w-6 rounded flex items-center justify-center shrink-0 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary ${alertOn ? 'text-primary' : 'text-muted-foreground/60'}`}
+        >
+          {alertOn ? <Bell className="h-3 w-3" /> : <BellOff className="h-3 w-3" />}
+        </span>
+      </button>
+    </li>
+  );
+});
+
+
