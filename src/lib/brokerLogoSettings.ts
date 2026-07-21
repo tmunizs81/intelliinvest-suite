@@ -82,29 +82,47 @@ export async function setLogoOverride(broker: string, url: string | null, meta?:
   const map = getLogoOverrides();
   const metaMap = getLogoMeta();
   const b = broker.trim();
-  if (!url) {
+
+  // Cache-bust: para URLs remotas, força query com versão hash/timestamp.
+  let finalUrl: string | null = null;
+  if (url) {
+    const trimmed = url.trim();
+    const version = meta?.version ?? Date.now().toString(36);
+    if (/^https?:\/\//i.test(trimmed)) {
+      const sep = trimmed.includes('?') ? '&' : '?';
+      finalUrl = `${trimmed}${sep}v=${version}`;
+    } else {
+      // data: URLs já são conteúdo-endereçáveis; não precisa querystring.
+      finalUrl = trimmed;
+    }
+  }
+
+  if (!finalUrl) {
     delete map[b];
     delete metaMap[b];
   } else {
-    map[b] = url.trim();
+    map[b] = finalUrl;
     metaMap[b] = { ...(meta || {}), updated_at: new Date().toISOString() };
   }
   writeOverrides(map);
   writeMeta(metaMap);
+
+  // Invalida qualquer cache anterior desta corretora (memória + LS + tag do <img>).
+  purgeBrokerLogoCache(b);
   window.dispatchEvent(new Event(EVENT));
 
   // Sync backend (best-effort — não bloqueia UI)
   try {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    if (!url) {
+    if (!finalUrl) {
       await supabase.from('broker_logo_overrides').delete()
         .eq('user_id', user.id).eq('broker', b);
     } else {
       await supabase.from('broker_logo_overrides').upsert({
         user_id: user.id,
         broker: b,
-        url: url.trim(),
+        url: finalUrl,
         format: meta?.format ?? null,
         width: meta?.width ?? null,
         height: meta?.height ?? null,
