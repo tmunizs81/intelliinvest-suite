@@ -142,16 +142,17 @@ function colorFor(name: string): string {
 }
 
 /**
- * URL primária: Clearbit Logo API (logos oficiais em alta qualidade, PNG transparente).
- * Fallback: DuckDuckGo icons (favicon de alta resolução, mais confiável que S2 do Google
- * para muitas corretoras). Se ambos falharem, renderiza iniciais coloridas.
+ * URL primária: Google S2 favicon (altamente confiável, sem CORS, sem rate-limit).
+ * Fallback: DuckDuckGo icons (favicon .ico de alta resolução).
+ * (Clearbit Logo API foi descontinuada em Dez/2025 — não usar.)
  */
 export function getBrokerLogoUrl(broker: string, size = 64): string | null {
   const cacheKey = `${broker}@${size}`;
   const cached = urlCache.get(cacheKey);
   if (cached !== undefined) return cached || null;
   const domain = BROKER_DOMAINS[broker];
-  const url = domain ? `https://logo.clearbit.com/${domain}?size=${size}` : '';
+  const sz = size >= 128 ? 128 : size >= 64 ? 64 : 32;
+  const url = domain ? `https://www.google.com/s2/favicons?domain=${domain}&sz=${sz}` : '';
   urlCache.set(cacheKey, url);
   return url || null;
 }
