@@ -311,8 +311,8 @@ export function BrokerLogo({ broker, size = 16, className = '' }: Props) {
       return;
     }
     // Sem cache válido (nunca visto ou TTL expirado) → resolver.
+    // Registra o listener antes do preload para evitar race condition com cache do navegador.
     setStatus('loading');
-    preloadUrl(url);
     const onUpdate = (e: Event) => {
       const detail = (e as CustomEvent).detail as { url: string };
       if (detail?.url === url) {
@@ -321,6 +321,7 @@ export function BrokerLogo({ broker, size = 16, className = '' }: Props) {
       }
     };
     window.addEventListener('broker-logo-updated', onUpdate as EventListener);
+    preloadUrl(url);
     return () => window.removeEventListener('broker-logo-updated', onUpdate as EventListener);
   }, [url, sourceIndex, sources.length]);
 
