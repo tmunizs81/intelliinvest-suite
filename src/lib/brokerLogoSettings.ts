@@ -1,19 +1,33 @@
 /**
- * Preferências locais para exibição de logos de corretoras.
- * - overrides: URL customizada por corretora (substitui favicon padrão)
- * - density: 'full' mostra logo + nome do broker abaixo do ticker;
- *            'compact' mostra apenas o ícone.
+ * Preferências de exibição de logos de corretoras.
  *
- * Persistido em localStorage. Emite `broker-logo-settings-changed`
- * (window event) para hooks reagirem sem re-render manual.
+ * - overrides: URL/data URL customizada por corretora (substitui favicon padrão)
+ * - meta: metadados de cada override (formato, dims, tamanho, updated_at)
+ * - density: 'full' mostra logo + nome do broker; 'compact' apenas ícone.
+ *
+ * Persistência híbrida:
+ *  - localStorage (imediato, funciona offline)
+ *  - Supabase (tabela broker_logo_overrides, sync entre dispositivos)
+ *
+ * Emite `broker-logo-settings-changed` para hooks reagirem.
  */
 import { useEffect, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 const OVERRIDES_KEY = 'broker-logo-overrides.v1';
+const META_KEY = 'broker-logo-meta.v1';
 const DENSITY_KEY = 'broker-logo-density.v1';
 const EVENT = 'broker-logo-settings-changed';
 
 export type LogoDensity = 'full' | 'compact';
+
+export interface LogoMeta {
+  format?: string;
+  width?: number;
+  height?: number;
+  size_bytes?: number;
+  updated_at?: string;
+}
 
 function safeParse<T>(raw: string | null, fallback: T): T {
   if (!raw) return fallback;
@@ -25,12 +39,86 @@ export function getLogoOverrides(): Record<string, string> {
   return safeParse(localStorage.getItem(OVERRIDES_KEY), {} as Record<string, string>);
 }
 
-export function setLogoOverride(broker: string, url: string | null) {
-  const map = getLogoOverrides();
-  if (!url) delete map[broker];
-  else map[broker] = url.trim();
+export function getLogoMeta(): Record<string, LogoMeta> {
+  if (typeof window === 'undefined') return {};
+  return safeParse(localStorage.getItem(META_KEY), {} as Record<string, LogoMeta>);
+}
+
+function writeOverrides(map: Record<string, string>) {
   localStorage.setItem(OVERRIDES_KEY, JSON.stringify(map));
+}
+function writeMeta(map: Record<string, LogoMeta>) {
+  localStorage.setItem(META_KEY, JSON.stringify(map));
+}
+
+/** Grava override local + backend. Passa null para remover. */
+export async function setLogoOverride(broker: string, url: string | null, meta?: LogoMeta) {
+  const map = getLogoOverrides();
+  const metaMap = getLogoMeta();
+  const b = broker.trim();
+  if (!url) {
+    delete map[b];
+    delete metaMap[b];
+  } else {
+    map[b] = url.trim();
+    metaMap[b] = { ...(meta || {}), updated_at: new Date().toISOString() };
+  }
+  writeOverrides(map);
+  writeMeta(metaMap);
   window.dispatchEvent(new Event(EVENT));
+
+  // Sync backend (best-effort — não bloqueia UI)
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    if (!url) {
+      await supabase.from('broker_logo_overrides').delete()
+        .eq('user_id', user.id).eq('broker', b);
+    } else {
+      await supabase.from('broker_logo_overrides').upsert({
+        user_id: user.id,
+        broker: b,
+        url: url.trim(),
+        format: meta?.format ?? null,
+        width: meta?.width ?? null,
+        height: meta?.height ?? null,
+        size_bytes: meta?.size_bytes ?? null,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'user_id,broker' });
+    }
+  } catch (e) {
+    console.warn('[broker-logo] backend sync failed', e);
+  }
+}
+
+/** Carrega overrides do backend e mescla com localStorage. */
+export async function syncOverridesFromBackend(): Promise<void> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { data, error } = await supabase
+      .from('broker_logo_overrides')
+      .select('broker,url,format,width,height,size_bytes,updated_at')
+      .eq('user_id', user.id);
+    if (error || !data) return;
+    const map: Record<string, string> = {};
+    const metaMap: Record<string, LogoMeta> = {};
+    for (const row of data) {
+      map[row.broker] = row.url;
+      metaMap[row.broker] = {
+        format: row.format ?? undefined,
+        width: row.width ?? undefined,
+        height: row.height ?? undefined,
+        size_bytes: row.size_bytes ?? undefined,
+        updated_at: row.updated_at ?? undefined,
+      };
+    }
+    writeOverrides(map);
+    writeMeta(metaMap);
+    window.dispatchEvent(new Event(EVENT));
+  } catch (e) {
+    console.warn('[broker-logo] initial sync failed', e);
+  }
 }
 
 export function getLogoDensity(): LogoDensity {
@@ -47,15 +135,19 @@ export function setLogoDensity(d: LogoDensity) {
 export function useBrokerLogoSettings() {
   const [state, setState] = useState(() => ({
     overrides: getLogoOverrides(),
+    meta: getLogoMeta(),
     density: getLogoDensity(),
   }));
   useEffect(() => {
     const handler = () => setState({
       overrides: getLogoOverrides(),
+      meta: getLogoMeta(),
       density: getLogoDensity(),
     });
     window.addEventListener(EVENT, handler);
     window.addEventListener('storage', handler);
+    // Sync inicial do backend
+    syncOverridesFromBackend();
     return () => {
       window.removeEventListener(EVENT, handler);
       window.removeEventListener('storage', handler);
