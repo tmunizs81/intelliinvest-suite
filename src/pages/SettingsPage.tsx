@@ -12,7 +12,7 @@ import { useRole } from '@/hooks/useRole';
 import { formatCurrency } from '@/lib/mockData';
 import { toast } from 'sonner';
 import { BrokerLogo, BROKER_DOMAINS } from '@/lib/brokerLogos';
-import { useBrokerLogoSettings, setLogoOverride, setLogoDensity } from '@/lib/brokerLogoSettings';
+import { useBrokerLogoSettings, setLogoOverride, setLogoDensity, type LogoMeta } from '@/lib/brokerLogoSettings';
 
 type SettingsTab = 'general' | 'users' | 'keys' | 'license' | 'family' | 'telegram' | 'backup' | 'audit';
 
@@ -153,94 +153,191 @@ function GeneralTab() {
   );
 }
 
+// ─── Validação estrita de imagens ───
+const MAGIC: Record<string, (b: Uint8Array) => boolean> = {
+  'image/png':  b => b[0]===0x89 && b[1]===0x50 && b[2]===0x4E && b[3]===0x47,
+  'image/jpeg': b => b[0]===0xFF && b[1]===0xD8 && b[2]===0xFF,
+  'image/gif':  b => b[0]===0x47 && b[1]===0x49 && b[2]===0x46,
+  'image/webp': b => b[0]===0x52 && b[1]===0x49 && b[2]===0x46 && b[3]===0x46
+                  && b[8]===0x57 && b[9]===0x45 && b[10]===0x42 && b[11]===0x50,
+};
+
+async function detectFormat(file: File): Promise<string | null> {
+  const buf = new Uint8Array(await file.slice(0, 16).arrayBuffer());
+  for (const [mime, check] of Object.entries(MAGIC)) {
+    if (check(buf)) return mime;
+  }
+  // SVG: parse XML
+  if (file.type === 'image/svg+xml' || file.name.toLowerCase().endsWith('.svg')) {
+    const txt = await file.text();
+    if (/<svg[\s>]/i.test(txt)) return 'image/svg+xml';
+  }
+  return null;
+}
+
+interface PreviewInfo {
+  dataUrl: string;
+  format: string;
+  width: number;
+  height: number;
+  size_bytes: number;
+}
+
 function BrokerLogoSettingsCard() {
-  const { overrides, density } = useBrokerLogoSettings();
+  const { overrides, meta, density } = useBrokerLogoSettings();
   const [broker, setBroker] = useState('');
   const [url, setUrl] = useState('');
   const [previewState, setPreviewState] = useState<'idle' | 'loading' | 'ok' | 'error'>('idle');
+  const [preview, setPreview] = useState<PreviewInfo | null>(null);
   const [uploading, setUploading] = useState(false);
 
   const knownBrokers = Object.keys(BROKER_DOMAINS).sort();
   const customBrokers = Object.keys(overrides).sort();
 
-  // Live preview validation
+  // Live preview validation para URLs digitadas
   useEffect(() => {
     const trimmed = url.trim();
-    if (!trimmed) { setPreviewState('idle'); return; }
-    if (trimmed.startsWith('data:image/')) { setPreviewState('ok'); return; }
-    if (!/^https?:\/\//i.test(trimmed)) { setPreviewState('error'); return; }
+    if (!trimmed) { setPreviewState('idle'); setPreview(null); return; }
+    // Se já veio de upload, o preview já foi montado
+    if (preview && preview.dataUrl === trimmed) return;
+
+    if (!trimmed.startsWith('data:image/') && !/^https?:\/\//i.test(trimmed)) {
+      setPreviewState('error'); setPreview(null); return;
+    }
     setPreviewState('loading');
     const img = new Image();
     let cancelled = false;
-    img.onload = () => { if (!cancelled) setPreviewState('ok'); };
-    img.onerror = () => { if (!cancelled) setPreviewState('error'); };
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      if (cancelled) return;
+      if (!img.naturalWidth || !img.naturalHeight) { setPreviewState('error'); return; }
+      const ratio = Math.max(img.naturalWidth, img.naturalHeight) /
+                    Math.min(img.naturalWidth, img.naturalHeight);
+      if (ratio > 4) { setPreviewState('error'); return; }
+      setPreview({
+        dataUrl: trimmed,
+        format: trimmed.startsWith('data:') ? trimmed.slice(5, trimmed.indexOf(';')) : 'remote',
+        width: img.naturalWidth,
+        height: img.naturalHeight,
+        size_bytes: trimmed.startsWith('data:') ? Math.round((trimmed.length - trimmed.indexOf(',') - 1) * 3 / 4) : 0,
+      });
+      setPreviewState('ok');
+    };
+    img.onerror = () => { if (!cancelled) { setPreviewState('error'); setPreview(null); } };
     img.src = trimmed;
     return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [url]);
 
-  // Compress + convert uploaded file to a data URL (max 128px, PNG/WebP)
+  // Upload: valida magic bytes + integridade + proporção, redimensiona, gera preview.
   const handleFile = async (file: File) => {
-    if (!file.type.startsWith('image/')) { toast.error('Envie um arquivo de imagem'); return; }
     if (file.size > 2 * 1024 * 1024) { toast.error('Arquivo maior que 2MB'); return; }
+    if (file.size < 32) { toast.error('Arquivo muito pequeno — possivelmente corrompido'); return; }
+
     setUploading(true);
     try {
-      const dataUrl = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
+      const realFormat = await detectFormat(file);
+      if (!realFormat) {
+        toast.error('Formato inválido ou arquivo corrompido (aceito: PNG, JPG, WebP, GIF, SVG)');
+        setUploading(false); return;
+      }
+
+      const rawDataUrl = await new Promise<string>((resolve, reject) => {
+        const r = new FileReader();
+        r.onload = () => resolve(r.result as string);
+        r.onerror = () => reject(new Error('read'));
+        r.readAsDataURL(file);
       });
-      // SVG: usar direto (vetorial)
-      if (file.type === 'image/svg+xml') {
-        setUrl(dataUrl);
-        setUploading(false);
+
+      // SVG: usa direto (vetorial), sem canvas
+      if (realFormat === 'image/svg+xml') {
+        const info: PreviewInfo = {
+          dataUrl: rawDataUrl, format: realFormat,
+          width: 128, height: 128, size_bytes: file.size,
+        };
+        setPreview(info); setUrl(rawDataUrl); setPreviewState('ok'); setUploading(false);
         return;
       }
-      // Redimensionar via canvas
+
+      // Raster: decodifica para validar integridade + dims + ratio, depois redimensiona
       const img = new Image();
       img.onload = () => {
+        if (!img.naturalWidth || !img.naturalHeight) {
+          toast.error('Imagem corrompida — não foi possível decodificar');
+          setUploading(false); return;
+        }
+        const ratio = Math.max(img.naturalWidth, img.naturalHeight) /
+                      Math.min(img.naturalWidth, img.naturalHeight);
+        if (ratio > 4) {
+          toast.error(`Proporção inválida (${ratio.toFixed(1)}:1). Use imagens até 4:1.`);
+          setUploading(false); return;
+        }
         const MAX = 128;
         const scale = Math.min(1, MAX / Math.max(img.width, img.height));
         const w = Math.round(img.width * scale);
         const h = Math.round(img.height * scale);
         const canvas = document.createElement('canvas');
         canvas.width = w; canvas.height = h;
-        const ctx = canvas.getContext('2d')!;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) { toast.error('Canvas indisponível'); setUploading(false); return; }
         ctx.drawImage(img, 0, 0, w, h);
-        const out = canvas.toDataURL('image/webp', 0.9);
-        setUrl(out.length < dataUrl.length ? out : canvas.toDataURL('image/png'));
-        setUploading(false);
+        const webp = canvas.toDataURL('image/webp', 0.9);
+        const png = canvas.toDataURL('image/png');
+        const out = webp.length < png.length ? webp : png;
+        const outFormat = webp.length < png.length ? 'image/webp' : 'image/png';
+        const info: PreviewInfo = {
+          dataUrl: out, format: outFormat,
+          width: w, height: h,
+          size_bytes: Math.round((out.length - out.indexOf(',') - 1) * 3 / 4),
+        };
+        setPreview(info); setUrl(out); setPreviewState('ok'); setUploading(false);
       };
-      img.onerror = () => { toast.error('Não foi possível ler a imagem'); setUploading(false); };
-      img.src = dataUrl;
+      img.onerror = () => { toast.error('Imagem corrompida ou ilegível'); setUploading(false); };
+      img.src = rawDataUrl;
     } catch {
-      toast.error('Falha no upload');
-      setUploading(false);
+      toast.error('Falha no upload'); setUploading(false);
     }
   };
 
-  const save = () => {
+  const save = async () => {
     if (!broker.trim()) { toast.error('Escolha uma corretora'); return; }
     const v = url.trim();
     if (!v || (!/^https?:\/\//i.test(v) && !v.startsWith('data:image/'))) {
-      toast.error('Informe uma URL (http/https) ou faça upload de uma imagem');
-      return;
+      toast.error('Informe uma URL ou envie um arquivo'); return;
     }
-    if (previewState === 'error') {
-      toast.error('A imagem não pôde ser carregada. Verifique a URL.');
-      return;
-    }
-    setLogoOverride(broker.trim(), v);
-    toast.success(`Logo de ${broker} personalizada`);
-    setUrl('');
-    setPreviewState('idle');
+    if (previewState !== 'ok') { toast.error('Aguarde a validação da imagem'); return; }
+    const metaPayload: LogoMeta | undefined = preview ? {
+      format: preview.format,
+      width: preview.width,
+      height: preview.height,
+      size_bytes: preview.size_bytes,
+    } : undefined;
+    await setLogoOverride(broker.trim(), v, metaPayload);
+    toast.success(`Logo de ${broker} personalizada e sincronizada`);
+    setUrl(''); setPreview(null); setPreviewState('idle');
   };
 
-  const restoreDefaults = () => {
+  const resetOne = async (b: string) => {
+    await setLogoOverride(b, null);
+    toast.success(`Logo de ${b} restaurada ao padrão automático`);
+  };
+
+  const restoreDefaults = async () => {
     if (customBrokers.length === 0) { toast.info('Nenhuma personalização ativa'); return; }
-    if (!confirm(`Restaurar ${customBrokers.length} logo(s) ao padrão? Isso remove todas as URLs personalizadas.`)) return;
-    customBrokers.forEach((b) => setLogoOverride(b, null));
+    if (!confirm(`Restaurar ${customBrokers.length} logo(s) ao padrão? Isso remove todas as personalizações.`)) return;
+    await Promise.all(customBrokers.map(b => setLogoOverride(b, null)));
     toast.success('Logos restauradas ao padrão');
+  };
+
+  const fmtSize = (b?: number) => {
+    if (!b) return '—';
+    if (b < 1024) return `${b} B`;
+    if (b < 1024 * 1024) return `${(b / 1024).toFixed(1)} KB`;
+    return `${(b / 1024 / 1024).toFixed(2)} MB`;
+  };
+  const fmtDate = (iso?: string) => {
+    if (!iso) return '—';
+    try { return new Date(iso).toLocaleString('pt-BR'); } catch { return iso; }
   };
 
   return (
@@ -251,16 +348,16 @@ function BrokerLogoSettingsCard() {
             <Settings className="h-4 w-4" /> Logos de Corretoras
           </h3>
           <p className="text-xs text-muted-foreground mt-1">
-            Personalize as logos das corretoras exibidas em toda a plataforma. Cole uma URL pública de imagem (PNG/SVG) para substituir a padrão.
+            Personalize as logos exibidas em toda a plataforma. As personalizações são sincronizadas na sua conta.
           </p>
         </div>
         <button
           onClick={restoreDefaults}
           disabled={customBrokers.length === 0}
           className="shrink-0 rounded-md border border-border bg-background px-3 py-1.5 text-xs hover:border-primary/50 hover:text-primary transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-          title="Remove todas as URLs personalizadas e volta às logos padrão"
+          title="Remove todas as personalizações"
         >
-          Restaurar padrões
+          Restaurar todas
         </button>
       </div>
 
@@ -269,7 +366,7 @@ function BrokerLogoSettingsCard() {
         <div className="flex-1">
           <p className="text-xs font-medium">Densidade nas listas</p>
           <p className="text-[11px] text-muted-foreground">
-            "Completo" mostra logo + nome da corretora abaixo do ticker. "Compacto" mantém apenas o ícone.
+            "Completo" mostra logo + nome da corretora. "Compacto" mantém apenas o ícone.
           </p>
         </div>
         <div className="flex gap-1 bg-background border border-border rounded-md p-0.5">
@@ -285,8 +382,8 @@ function BrokerLogoSettingsCard() {
       </div>
 
       {/* Adicionar override */}
-      <div className="space-y-2">
-        <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_auto_auto] gap-2">
+      <div className="space-y-3">
+        <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_auto] gap-2">
           <select
             value={broker}
             onChange={e => setBroker(e.target.value)}
@@ -297,44 +394,63 @@ function BrokerLogoSettingsCard() {
           </select>
           <input
             value={url}
-            onChange={e => setUrl(e.target.value)}
+            onChange={e => { setUrl(e.target.value); setPreview(null); }}
             placeholder="https://exemplo.com/logo.png"
             className={`rounded-md border bg-background px-3 py-2 text-sm font-mono ${
               previewState === 'error' ? 'border-loss' : previewState === 'ok' ? 'border-profit' : 'border-input'
             }`}
           />
-          {/* Preview thumbnail */}
-          <div className="flex items-center justify-center h-9 w-9 rounded-md border border-border bg-muted/30 overflow-hidden">
-            {previewState === 'ok' && (
-              <img src={url.trim()} alt="preview" className="h-full w-full object-contain" />
-            )}
-            {previewState === 'loading' && <span className="text-[9px] text-muted-foreground animate-pulse">…</span>}
-            {previewState === 'error' && <X className="h-4 w-4 text-loss" />}
-            {previewState === 'idle' && <span className="text-[9px] text-muted-foreground">?</span>}
-          </div>
           <button
             onClick={save}
-            disabled={previewState === 'error' || previewState === 'loading' || !url.trim() || !broker}
-            className="rounded-md bg-primary text-primary-foreground px-3 py-2 text-sm hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
+            disabled={previewState !== 'ok' || !broker}
+            className="rounded-md bg-primary text-primary-foreground px-4 py-2 text-sm hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
           >
             Salvar
           </button>
         </div>
-        {previewState === 'error' && (
-          <p className="text-[11px] text-loss">A imagem não pôde ser carregada. Verifique se a URL é pública e acessível. O fallback padrão continuará ativo.</p>
-        )}
-        {previewState === 'ok' && (
-          <p className="text-[11px] text-profit">Imagem válida — pronta para salvar.</p>
-        )}
+
+        {/* Preview card com dims/tamanho/formato */}
+        <div className="rounded-lg border border-border bg-muted/20 p-3 flex items-center gap-4">
+          <div className="flex items-center justify-center h-20 w-20 rounded-md border border-border bg-background overflow-hidden shrink-0">
+            {previewState === 'ok' && preview && (
+              <img src={preview.dataUrl} alt="preview" className="max-h-full max-w-full object-contain" />
+            )}
+            {previewState === 'ok' && !preview && url && (
+              <img src={url.trim()} alt="preview" className="max-h-full max-w-full object-contain" />
+            )}
+            {previewState === 'loading' && <span className="text-xs text-muted-foreground animate-pulse">…</span>}
+            {previewState === 'error' && <X className="h-6 w-6 text-loss" />}
+            {previewState === 'idle' && <span className="text-xs text-muted-foreground">sem imagem</span>}
+          </div>
+          <div className="flex-1 min-w-0 text-xs space-y-1">
+            {previewState === 'ok' && preview ? (
+              <>
+                <div className="flex flex-wrap gap-x-4 gap-y-0.5">
+                  <span><span className="text-muted-foreground">Formato:</span> <strong>{preview.format}</strong></span>
+                  <span><span className="text-muted-foreground">Tamanho:</span> <strong>{preview.width}×{preview.height}px</strong></span>
+                  <span><span className="text-muted-foreground">Peso:</span> <strong>{fmtSize(preview.size_bytes)}</strong></span>
+                  <span><span className="text-muted-foreground">Proporção:</span> <strong>{(preview.width / preview.height).toFixed(2)}:1</strong></span>
+                </div>
+                <p className="text-profit text-[11px]">Imagem válida — pronta para salvar.</p>
+              </>
+            ) : previewState === 'error' ? (
+              <p className="text-loss">A imagem não pôde ser carregada, é inválida ou tem proporção &gt; 4:1.</p>
+            ) : previewState === 'loading' ? (
+              <p className="text-muted-foreground">Validando imagem…</p>
+            ) : (
+              <p className="text-muted-foreground">Cole uma URL ou envie um arquivo para ver a prévia.</p>
+            )}
+          </div>
+        </div>
 
         {/* Upload manual */}
-        <div className="flex items-center gap-2 pt-1">
+        <div className="flex items-center gap-2">
           <label className="inline-flex items-center gap-1.5 rounded-md border border-dashed border-border bg-muted/20 px-3 py-1.5 text-xs cursor-pointer hover:border-primary/50 hover:text-primary transition-colors">
             <Upload className="h-3.5 w-3.5" />
-            {uploading ? 'Processando…' : 'Enviar arquivo (PNG, SVG, JPG, WebP)'}
+            {uploading ? 'Processando…' : 'Enviar arquivo'}
             <input
               type="file"
-              accept="image/png,image/svg+xml,image/jpeg,image/webp"
+              accept="image/png,image/svg+xml,image/jpeg,image/webp,image/gif"
               className="hidden"
               onChange={(e) => {
                 const f = e.target.files?.[0];
@@ -343,35 +459,48 @@ function BrokerLogoSettingsCard() {
               }}
             />
           </label>
-          <span className="text-[10px] text-muted-foreground">até 2MB — redimensionado para 128px</span>
+          <span className="text-[10px] text-muted-foreground">
+            PNG/JPG/WebP/GIF/SVG · até 2MB · proporção máx. 4:1 · redimensionado para 128px
+          </span>
         </div>
       </div>
 
       {/* Lista de overrides ativos */}
       {customBrokers.length > 0 && (
         <div className="space-y-1.5 pt-2 border-t border-border">
-          <p className="text-xs font-medium text-muted-foreground">Personalizações ativas ({customBrokers.length})</p>
-          {customBrokers.map(b => (
-            <div key={b} className="flex items-center gap-2 rounded bg-muted/20 px-2 py-1.5">
-              <BrokerLogo broker={b} size={20} />
-              <div className="min-w-0 flex-1">
-                <p className="text-xs font-medium">{b}</p>
-                <p className="text-[10px] text-muted-foreground truncate font-mono">{overrides[b]}</p>
+          <p className="text-xs font-medium text-muted-foreground">
+            Personalizações ativas ({customBrokers.length})
+          </p>
+          {customBrokers.map(b => {
+            const m: LogoMeta = meta[b] || {};
+            return (
+              <div key={b} className="flex items-center gap-2 rounded bg-muted/20 px-2 py-1.5">
+                <BrokerLogo broker={b} size={28} />
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-medium">{b}</p>
+                  <p className="text-[10px] text-muted-foreground truncate">
+                    {m.format ? `${m.format}` : 'personalizada'}
+                    {m.width && m.height ? ` · ${m.width}×${m.height}px` : ''}
+                    {m.size_bytes ? ` · ${fmtSize(m.size_bytes)}` : ''}
+                    {' · atualizada em '}{fmtDate(m.updated_at)}
+                  </p>
+                </div>
+                <button
+                  onClick={() => resetOne(b)}
+                  className="text-[11px] px-2 py-1 rounded border border-border text-muted-foreground hover:text-loss hover:border-loss/50 transition-colors"
+                  title="Remover personalização e voltar ao logo automático"
+                >
+                  Resetar
+                </button>
               </div>
-              <button
-                onClick={() => { setLogoOverride(b, null); toast.success('Removido'); }}
-                className="text-muted-foreground hover:text-loss"
-                title="Remover personalização"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
   );
 }
+
 
 function ActivateLicenseCard() {
   const { user } = useAuth();

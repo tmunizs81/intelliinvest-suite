@@ -294,6 +294,45 @@ export type Database = {
         }
         Relationships: []
       }
+      broker_logo_overrides: {
+        Row: {
+          broker: string
+          created_at: string
+          format: string | null
+          height: number | null
+          id: string
+          size_bytes: number | null
+          updated_at: string
+          url: string
+          user_id: string
+          width: number | null
+        }
+        Insert: {
+          broker: string
+          created_at?: string
+          format?: string | null
+          height?: number | null
+          id?: string
+          size_bytes?: number | null
+          updated_at?: string
+          url: string
+          user_id: string
+          width?: number | null
+        }
+        Update: {
+          broker?: string
+          created_at?: string
+          format?: string | null
+          height?: number | null
+          id?: string
+          size_bytes?: number | null
+          updated_at?: string
+          url?: string
+          user_id?: string
+          width?: number | null
+        }
+        Relationships: []
+      }
       cash_balance: {
         Row: {
           balance: number
