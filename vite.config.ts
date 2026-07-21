@@ -7,11 +7,13 @@ import { VitePWA } from "vite-plugin-pwa";
 // https://vitejs.dev/config/
 const BUILD_VERSION = process.env.VITE_APP_VERSION || new Date().toISOString().slice(0, 16).replace(/[-:T]/g, "").replace(/(\d{8})(\d{4})/, "$1.$2");
 const BUILD_DATE = new Date().toISOString();
+const LOGO_DEV_PUBLIC_KEY = process.env.VITE_LOVABLE_CONNECTOR_LOGO_DEV_API_KEY || process.env.LOGO_DEV_API_KEY || "";
 
 export default defineConfig(({ mode }) => ({
   define: {
     __APP_VERSION__: JSON.stringify(BUILD_VERSION),
     __BUILD_DATE__: JSON.stringify(BUILD_DATE),
+    "import.meta.env.VITE_LOVABLE_CONNECTOR_LOGO_DEV_API_KEY": JSON.stringify(LOGO_DEV_PUBLIC_KEY),
   },
   server: {
     host: "::",
