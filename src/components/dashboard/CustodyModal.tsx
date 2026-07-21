@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { X, Building2, TrendingUp, Package } from 'lucide-react';
+import { X, Building2, TrendingUp } from 'lucide-react';
 import { formatCurrency, formatPercent } from '@/lib/mockData';
 import type { HoldingRow } from '@/hooks/usePortfolio';
 import type { Asset } from '@/lib/mockData';
