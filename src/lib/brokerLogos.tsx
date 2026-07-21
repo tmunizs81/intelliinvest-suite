@@ -87,6 +87,38 @@ function tryLoad(url: string, onDone: (s: Status) => void) {
   img.src = url;
 }
 
+/**
+ * Purga entradas de cache (memória + localStorage) para uma corretora.
+ * Chamada quando o usuário sobrescreve/reseta a logo — garante que a
+ * próxima renderização use a nova URL sem servir bytes obsoletos.
+ */
+export function purgeBrokerLogoCache(broker: string) {
+  const prefix = `${broker}@`;
+  for (const key of Array.from(urlCache.keys())) {
+    if (key.startsWith(prefix)) {
+      const url = urlCache.get(key);
+      urlCache.delete(key);
+      if (url) { statusCache.delete(url); attempts.delete(url); }
+    }
+  }
+  try {
+    if (typeof localStorage !== 'undefined') {
+      const raw = localStorage.getItem(LS_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw) as Record<string, CacheEntry>;
+        // Sem chave por broker no LS — reescrevemos apenas com o que sobrou em memória.
+        const obj: Record<string, CacheEntry> = {};
+        statusCache.forEach((v, k) => { obj[k] = v; });
+        localStorage.setItem(LS_KEY, JSON.stringify(obj));
+        void parsed;
+      }
+    }
+  } catch { /* ignore */ }
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('broker-logo-updated', { detail: { url: `purge:${broker}` } }));
+  }
+}
+
 function preloadUrl(url: string) {
   if (!url || preloading.has(url)) return;
   if (getFresh(url) === 'loaded') return;                // cache válido
