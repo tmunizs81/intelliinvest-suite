@@ -2,10 +2,8 @@
  * Logos oficiais das corretoras.
  *
  * Performance:
- * - URL canônica: favicon PNG do Google S2 (fallback universal).
- * - Formatos modernos: proxy `wsrv.nl` converte para AVIF/WebP on-the-fly;
- *   servidos via <picture> com type="image/avif" e type="image/webp",
- *   o navegador escolhe o menor suportado (redução ~40–70% no payload).
+ * - URL canônica: Logo.dev via publishable key do conector (logo oficial).
+ * - Fallbacks automáticos: Google S2 → DuckDuckGo → iniciais.
  * - Cache persistente (localStorage) com TTL de 7 dias e revalidação em
  *   background quando o registro está vencido (stale-while-revalidate).
  * - Preload de top-N brokers via `preloadBrokers`.
@@ -24,7 +22,9 @@ const statusCache = new Map<string, CacheEntry>();   // URL -> {status, timestam
 const attempts = new Map<string, number>();
 const preloading = new Set<string>();
 
-const LS_KEY = 'broker-logo-status-v3';
+const LOGO_DEV_KEY = import.meta.env.VITE_LOVABLE_CONNECTOR_LOGO_DEV_API_KEY as string | undefined;
+
+const LS_KEY = 'broker-logo-status-v4';
 const MAX_RETRIES = 2;
 const TIMEOUT_MS = 6000;
 const TTL_MS = 7 * 24 * 60 * 60 * 1000;    // 7 dias
@@ -133,7 +133,129 @@ export const BROKER_DOMAINS: Record<string, string> = {
   'Interactive Brokers': 'interactivebrokers.com', eToro: 'etoro.com',
   DEGIRO: 'degiro.com', 'Trading 212': 'trading212.com',
   Nomad: 'nomadglobal.com', Stake: 'stake.com.au',
+  Inter: 'bancointer.com.br', 'Banco Inter': 'bancointer.com.br',
+  Nubank: 'nubank.com.br', 'Nu Invest': 'nubank.com.br',
+  Santander: 'santander.com.br', 'Santander Corretora': 'santander.com.br',
+  Safra: 'safra.com.br', 'Banco Safra': 'safra.com.br',
+  Itaú: 'itau.com.br', Itau: 'itau.com.br', Bradesco: 'bradesco.com.br',
+  Ágora: 'agorainvestimentos.com.br', Agora: 'agorainvestimentos.com.br',
+  Modalmais: 'modalmais.com.br', Modal: 'modalmais.com.br',
+  'CM Capital': 'cmcapital.com.br', 'Terra Investimentos': 'terrainvestimentos.com.br',
+  'Mirae Asset': 'miraeasset.com.br', MyCAP: 'mycap.com.br',
+  'Banco do Brasil': 'bb.com.br', 'BB Investimentos': 'bb.com.br',
+  Caixa: 'caixa.gov.br', 'Caixa Econômica': 'caixa.gov.br',
+  'Daycoval': 'daycoval.com.br', 'Banco Daycoval': 'daycoval.com.br',
+  'Órama DTVM': 'orama.com.br', Planner: 'planner.com.br',
+  'Ativa Investimentos': 'ativainvestimentos.com.br',
+  Easynvest: 'easynvest.com.br',
 };
+
+const BROKER_ALIASES: Record<string, string> = {
+  xp: 'XP Investimentos',
+  xpinvestimentos: 'XP Investimentos',
+  clear: 'Clear Corretora',
+  clearcorretora: 'Clear Corretora',
+  rico: 'Rico Investimentos',
+  ricoinvestimentos: 'Rico Investimentos',
+  btg: 'BTG Pactual',
+  btgpactual: 'BTG Pactual',
+  c6: 'C6 Bank',
+  c6bank: 'C6 Bank',
+  nuinvest: 'Nu Invest',
+  nubank: 'Nubank',
+  inter: 'Banco Inter',
+  bancointer: 'Banco Inter',
+  itau: 'Itaú',
+  itaucorretora: 'Itaú Corretora',
+  bradesco: 'Bradesco',
+  bradescocorretora: 'Bradesco Corretora',
+  agora: 'Ágora',
+  agorainvestimentos: 'Ágora',
+  modal: 'Modalmais',
+  modalmais: 'Modalmais',
+  genial: 'Genial Investimentos',
+  toroinvestimentos: 'Toro Investimentos',
+  toro: 'Toro Investimentos',
+  guide: 'Guide Investimentos',
+  warren: 'Warren',
+  orama: 'Órama',
+  avenue: 'Avenue',
+  avenuesecurities: 'Avenue',
+  binance: 'Binance',
+  coinbase: 'Coinbase',
+  kucoin: 'KuCoin',
+  bybit: 'Bybit',
+  bitget: 'Bitget',
+  bingx: 'BingX',
+  okx: 'OKX',
+  mercadobitcoin: 'Mercado Bitcoin',
+  foxbit: 'Foxbit',
+  xpctvm: 'XP Investimentos',
+  xpinvestimentosctvm: 'XP Investimentos',
+  clearctvm: 'Clear Corretora',
+  ricoctvm: 'Rico Investimentos',
+  btgpactualdigital: 'BTG Pactual',
+  btgpactualctvm: 'BTG Pactual',
+  interdtvm: 'Banco Inter',
+  c6ctvm: 'C6 Bank',
+  genialctvm: 'Genial Investimentos',
+  bancodobrasil: 'Banco do Brasil',
+  bbinvestimentos: 'BB Investimentos',
+  caixa: 'Caixa',
+  caixaeconomica: 'Caixa Econômica',
+  daycoval: 'Daycoval',
+  bancodaycoval: 'Banco Daycoval',
+  planner: 'Planner',
+  ativa: 'Ativa Investimentos',
+  ativainvestimentos: 'Ativa Investimentos',
+  easynvest: 'Easynvest',
+};
+
+function normalizeBrokerName(name: string): string {
+  return name
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9]/g, '')
+    .toLowerCase();
+}
+
+function resolveBrokerDomain(broker: string): string | null {
+  const trimmed = broker.trim();
+  if (!trimmed) return null;
+  const normalized = normalizeBrokerName(trimmed);
+
+  if (BROKER_DOMAINS[trimmed]) return BROKER_DOMAINS[trimmed];
+
+  const canonical = BROKER_ALIASES[normalized];
+  if (canonical && BROKER_DOMAINS[canonical]) return BROKER_DOMAINS[canonical];
+
+  const exactKey = Object.keys(BROKER_DOMAINS).find(
+    key => normalizeBrokerName(key) === normalized,
+  );
+  if (exactKey) return BROKER_DOMAINS[exactKey];
+
+  // Nomes importados de notas vêm verbosos: "XP Investimentos CCTVM S.A.",
+  // "Inter DTVM", "BTG Pactual Digital". Faz match por substring normalizada.
+  const aliasHit = Object.entries(BROKER_ALIASES).find(([alias]) => {
+    if (alias.length < 3) return false;
+    return normalized.includes(alias) || alias.includes(normalized);
+  });
+  if (aliasHit) {
+    const mapped = BROKER_DOMAINS[aliasHit[1]];
+    if (mapped) return mapped;
+  }
+
+  const domainHit = Object.keys(BROKER_DOMAINS).find((key) => {
+    const nk = normalizeBrokerName(key);
+    return nk.length >= 3 && (normalized.includes(nk) || nk.includes(normalized));
+  });
+  if (domainHit) return BROKER_DOMAINS[domainHit];
+
+  // Permite cadastro livre: se o usuário salvou "corretora.com.br", usa como domínio.
+  if (/^[a-z0-9.-]+\.[a-z]{2,}$/i.test(trimmed) && !trimmed.includes(' ')) return trimmed.toLowerCase();
+
+  return null;
+}
 
 function colorFor(name: string): string {
   let h = 0;
@@ -142,25 +264,45 @@ function colorFor(name: string): string {
 }
 
 /**
- * URL primária: Google S2 favicon (altamente confiável, sem CORS, sem rate-limit).
- * Fallback: DuckDuckGo icons (favicon .ico de alta resolução).
- * (Clearbit Logo API foi descontinuada em Dez/2025 — não usar.)
+ * URL primária: Logo.dev quando o conector está disponível.
+ * Fallback público: Google S2 favicon.
+ * Último fallback de imagem: DuckDuckGo icons.
  */
 export function getBrokerLogoUrl(broker: string, size = 64): string | null {
   const cacheKey = `${broker}@${size}`;
   const cached = urlCache.get(cacheKey);
   if (cached !== undefined) return cached || null;
-  const domain = BROKER_DOMAINS[broker];
+  const domain = resolveBrokerDomain(broker);
   const sz = size >= 128 ? 128 : size >= 64 ? 64 : 32;
-  const url = domain ? `https://www.google.com/s2/favicons?domain=${domain}&sz=${sz}` : '';
+  const url = domain && LOGO_DEV_KEY
+    ? `https://img.logo.dev/${domain}?token=${encodeURIComponent(LOGO_DEV_KEY)}&size=${sz}&format=png&fallback=404`
+    : domain ? `https://www.google.com/s2/favicons?domain=${domain}&sz=${sz}` : '';
   urlCache.set(cacheKey, url);
   return url || null;
 }
 
+function getBrokerGoogleLogoUrl(broker: string, size = 64): string | null {
+  const domain = resolveBrokerDomain(broker);
+  if (!domain) return null;
+  const sz = size >= 128 ? 128 : size >= 64 ? 64 : 32;
+  return `https://www.google.com/s2/favicons?domain=${domain}&sz=${sz}`;
+}
+
 export function getBrokerLogoFallbackUrl(broker: string): string | null {
-  const domain = BROKER_DOMAINS[broker];
+  const domain = resolveBrokerDomain(broker);
   if (!domain) return null;
   return `https://icons.duckduckgo.com/ip3/${domain}.ico`;
+}
+
+function getLogoSources(broker: string, size: number, override?: string): string[] {
+  const sources = [
+    override,
+    getBrokerLogoUrl(broker, size),
+    getBrokerGoogleLogoUrl(broker, size),
+    getBrokerLogoFallbackUrl(broker),
+  ].filter((v): v is string => Boolean(v));
+
+  return Array.from(new Set(sources));
 }
 
 export function preloadBrokers(brokers: string[], size = 64) {
@@ -179,12 +321,18 @@ interface Props {
 export function BrokerLogo({ broker, size = 16, className = '' }: Props) {
   const { overrides } = useBrokerLogoSettings();
   const override = overrides[broker];
-  const url = override || getBrokerLogoUrl(broker, Math.max(32, size * 2));
+  const sources = getLogoSources(broker, Math.max(32, size * 2), override);
+  const [sourceIndex, setSourceIndex] = useState(0);
+  const url = sources[sourceIndex] || null;
 
   const [status, setStatus] = useState<'loading' | Status>(() => {
     if (!url) return 'failed';
     return getFresh(url) ?? 'loading';
   });
+
+  useEffect(() => {
+    setSourceIndex(0);
+  }, [broker, override, size]);
 
   useEffect(() => {
     if (!url) { setStatus('failed'); return; }
@@ -197,20 +345,32 @@ export function BrokerLogo({ broker, size = 16, className = '' }: Props) {
       if (entry && Date.now() - entry.t > TTL_MS / 2) preloadUrl(url);
       return;
     }
-    if (fresh === 'failed') { setStatus('failed'); return; }
+    if (fresh === 'failed') {
+      if (sourceIndex < sources.length - 1) {
+        setSourceIndex((i) => i + 1);
+      } else {
+        setStatus('failed');
+      }
+      return;
+    }
     // Sem cache válido (nunca visto ou TTL expirado) → resolver.
+    // Registra o listener antes do preload para evitar race condition com cache do navegador.
     setStatus('loading');
-    preloadUrl(url);
     const onUpdate = (e: Event) => {
       const detail = (e as CustomEvent).detail as { url: string };
       if (detail?.url === url) {
         const s = getFresh(url);
+        if (s === 'failed' && sourceIndex < sources.length - 1) {
+          setSourceIndex((i) => i + 1);
+          return;
+        }
         if (s) setStatus(s);
       }
     };
     window.addEventListener('broker-logo-updated', onUpdate as EventListener);
+    preloadUrl(url);
     return () => window.removeEventListener('broker-logo-updated', onUpdate as EventListener);
-  }, [url]);
+  }, [url, sourceIndex, sources.length]);
 
   const initials = broker.split(/\s+/).map((w) => w[0]).join('').slice(0, 2).toUpperCase();
 
@@ -237,8 +397,6 @@ export function BrokerLogo({ broker, size = 16, className = '' }: Props) {
     );
   }
 
-  const fallback = getBrokerLogoFallbackUrl(broker);
-
   return (
     <img
       src={url}
@@ -246,12 +404,12 @@ export function BrokerLogo({ broker, size = 16, className = '' }: Props) {
       width={size}
       height={size}
       onLoad={() => markStatus(url, 'loaded')}
-      onError={(e) => {
-        const img = e.currentTarget;
-        if (fallback && img.src !== fallback) {
-          img.src = fallback;
+      onError={() => {
+        markStatus(url, 'failed');
+        if (sourceIndex < sources.length - 1) {
+          setStatus('loading');
+          setSourceIndex((i) => i + 1);
         } else {
-          markStatus(url, 'failed');
           setStatus('failed');
         }
       }}

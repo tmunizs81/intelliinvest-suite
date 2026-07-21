@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, Loader2, Sparkles, CheckCircle2, AlertCircle, Trash2, RefreshCw, Pencil, Landmark } from 'lucide-react';
+import { X, Loader2, Sparkles, CheckCircle2, AlertCircle, Trash2, RefreshCw, Pencil } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { usePortfolio } from '@/hooks/usePortfolio';
 import { classifyAssetType } from '@/lib/assetClassification';
@@ -9,6 +9,7 @@ import { WEBULL_ASSETS } from '@/lib/webullAssets';
 import { C6_ASSETS } from '@/lib/c6Assets';
 import { BTG_ASSETS } from '@/lib/btgAssets';
 import { inferBrokerFromTicker } from '@/lib/brokerCatalogs';
+import { BrokerLogo } from '@/lib/brokerLogos';
 
 interface Props {
   open: boolean;
@@ -207,7 +208,7 @@ export default function BulkImportYahoo({ open, onClose }: Props) {
                         }
                         title={`${b.assets.length} ativos ${b.label}`}
                       >
-                        <Landmark className="h-3 w-3" />
+                        <BrokerLogo broker={b.label} size={14} />
                         {b.label} ({b.assets.length})
                       </button>
                     ))}
