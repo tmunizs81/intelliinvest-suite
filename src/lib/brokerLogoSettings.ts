@@ -13,6 +13,7 @@
  */
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { purgeBrokerLogoCache } from './brokerLogos';
 
 const OVERRIDES_KEY = 'broker-logo-overrides.v1';
 const META_KEY = 'broker-logo-meta.v1';
@@ -26,7 +27,32 @@ export interface LogoMeta {
   width?: number;
   height?: number;
   size_bytes?: number;
+  version?: string;
   updated_at?: string;
+}
+
+/**
+ * Otimiza server-side (decode + resize + re-encode) e devolve URL versionada.
+ * Fallback silencioso para o data URL original em caso de erro.
+ */
+export async function optimizeLogoOnBackend(dataUrl: string): Promise<{
+  dataUrl: string; format: string; width: number; height: number; size_bytes: number; version: string;
+}> {
+  try {
+    const { data, error } = await supabase.functions.invoke('optimize-broker-logo', { body: { dataUrl } });
+    if (error || !data?.dataUrl) throw error ?? new Error('no data');
+    return data;
+  } catch (e) {
+    console.warn('[broker-logo] optimize fallback', e);
+    const version = Date.now().toString(36);
+    return {
+      dataUrl,
+      format: dataUrl.slice(5, dataUrl.indexOf(';')) || 'image/png',
+      width: 128, height: 128,
+      size_bytes: Math.round((dataUrl.length - dataUrl.indexOf(',') - 1) * 3 / 4),
+      version,
+    };
+  }
 }
 
 function safeParse<T>(raw: string | null, fallback: T): T {
@@ -56,29 +82,47 @@ export async function setLogoOverride(broker: string, url: string | null, meta?:
   const map = getLogoOverrides();
   const metaMap = getLogoMeta();
   const b = broker.trim();
-  if (!url) {
+
+  // Cache-bust: para URLs remotas, força query com versão hash/timestamp.
+  let finalUrl: string | null = null;
+  if (url) {
+    const trimmed = url.trim();
+    const version = meta?.version ?? Date.now().toString(36);
+    if (/^https?:\/\//i.test(trimmed)) {
+      const sep = trimmed.includes('?') ? '&' : '?';
+      finalUrl = `${trimmed}${sep}v=${version}`;
+    } else {
+      // data: URLs já são conteúdo-endereçáveis; não precisa querystring.
+      finalUrl = trimmed;
+    }
+  }
+
+  if (!finalUrl) {
     delete map[b];
     delete metaMap[b];
   } else {
-    map[b] = url.trim();
+    map[b] = finalUrl;
     metaMap[b] = { ...(meta || {}), updated_at: new Date().toISOString() };
   }
   writeOverrides(map);
   writeMeta(metaMap);
+
+  // Invalida qualquer cache anterior desta corretora (memória + LS + tag do <img>).
+  purgeBrokerLogoCache(b);
   window.dispatchEvent(new Event(EVENT));
 
   // Sync backend (best-effort — não bloqueia UI)
   try {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    if (!url) {
+    if (!finalUrl) {
       await supabase.from('broker_logo_overrides').delete()
         .eq('user_id', user.id).eq('broker', b);
     } else {
       await supabase.from('broker_logo_overrides').upsert({
         user_id: user.id,
         broker: b,
-        url: url.trim(),
+        url: finalUrl,
         format: meta?.format ?? null,
         width: meta?.width ?? null,
         height: meta?.height ?? null,
