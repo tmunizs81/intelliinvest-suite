@@ -24,7 +24,7 @@ const statusCache = new Map<string, CacheEntry>();   // URL -> {status, timestam
 const attempts = new Map<string, number>();
 const preloading = new Set<string>();
 
-const LS_KEY = 'broker-logo-status-v2';
+const LS_KEY = 'broker-logo-status-v3';
 const MAX_RETRIES = 2;
 const TIMEOUT_MS = 6000;
 const TTL_MS = 7 * 24 * 60 * 60 * 1000;    // 7 dias
@@ -142,16 +142,17 @@ function colorFor(name: string): string {
 }
 
 /**
- * URL primária: Clearbit Logo API (logos oficiais em alta qualidade, PNG transparente).
- * Fallback: DuckDuckGo icons (favicon de alta resolução, mais confiável que S2 do Google
- * para muitas corretoras). Se ambos falharem, renderiza iniciais coloridas.
+ * URL primária: Google S2 favicon (altamente confiável, sem CORS, sem rate-limit).
+ * Fallback: DuckDuckGo icons (favicon .ico de alta resolução).
+ * (Clearbit Logo API foi descontinuada em Dez/2025 — não usar.)
  */
 export function getBrokerLogoUrl(broker: string, size = 64): string | null {
   const cacheKey = `${broker}@${size}`;
   const cached = urlCache.get(cacheKey);
   if (cached !== undefined) return cached || null;
   const domain = BROKER_DOMAINS[broker];
-  const url = domain ? `https://logo.clearbit.com/${domain}?size=${size}` : '';
+  const sz = size >= 128 ? 128 : size >= 64 ? 64 : 32;
+  const url = domain ? `https://www.google.com/s2/favicons?domain=${domain}&sz=${sz}` : '';
   urlCache.set(cacheKey, url);
   return url || null;
 }
