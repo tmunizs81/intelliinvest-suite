@@ -1,14 +1,11 @@
 /**
- * Logos oficiais das corretoras.
+ * Logos de corretoras com entrega determinística.
  *
- * Performance:
- * - URL canônica: Logo.dev via publishable key do conector (logo oficial).
- * - Fallbacks automáticos: Google S2 → DuckDuckGo → iniciais.
- * - Cache persistente (localStorage) com TTL de 7 dias e revalidação em
- *   background quando o registro está vencido (stale-while-revalidate).
- * - Preload de top-N brokers via `preloadBrokers`.
- * - Retry limitado (2x) com timeout de 6s e backoff exponencial.
- * - Skeleton animado enquanto resolve.
+ * Estratégia DevOps:
+ * - Corretoras críticas usam SVG local em data URI: não depende de CDN,
+ *   favicon, CORS, ad-blocker, variáveis de ambiente ou cache externo.
+ * - Logo.dev/Google/DuckDuckGo ficam apenas para corretoras desconhecidas.
+ * - Cache persistente só vale para fontes remotas; logo local renderiza na hora.
  */
 import { useState, useEffect } from 'react';
 import { useBrokerLogoSettings } from './brokerLogoSettings';
@@ -24,7 +21,7 @@ const preloading = new Set<string>();
 
 const LOGO_DEV_KEY = import.meta.env.VITE_LOVABLE_CONNECTOR_LOGO_DEV_API_KEY as string | undefined;
 
-const LS_KEY = 'broker-logo-status-v4';
+const LS_KEY = 'broker-logo-status-v5';
 const MAX_RETRIES = 2;
 const TIMEOUT_MS = 6000;
 const TTL_MS = 7 * 24 * 60 * 60 * 1000;    // 7 dias
@@ -148,6 +145,7 @@ export const BROKER_DOMAINS: Record<string, string> = {
   'Órama DTVM': 'orama.com.br', Planner: 'planner.com.br',
   'Ativa Investimentos': 'ativainvestimentos.com.br',
   Easynvest: 'easynvest.com.br',
+  'T2-HOLDINGS': 't2holdings.com.br',
 };
 
 const BROKER_ALIASES: Record<string, string> = {
@@ -161,6 +159,9 @@ const BROKER_ALIASES: Record<string, string> = {
   btgpactual: 'BTG Pactual',
   c6: 'C6 Bank',
   c6bank: 'C6 Bank',
+  bancoc6: 'C6 Bank',
+  bancoc6sa: 'C6 Bank',
+  c6sa: 'C6 Bank',
   nuinvest: 'Nu Invest',
   nubank: 'Nubank',
   inter: 'Banco Inter',
@@ -191,7 +192,9 @@ const BROKER_ALIASES: Record<string, string> = {
   mercadobitcoin: 'Mercado Bitcoin',
   foxbit: 'Foxbit',
   xpctvm: 'XP Investimentos',
+  xpinc: 'XP Investimentos',
   xpinvestimentosctvm: 'XP Investimentos',
+  xpctvmsa: 'XP Investimentos',
   clearctvm: 'Clear Corretora',
   ricoctvm: 'Rico Investimentos',
   btgpactualdigital: 'BTG Pactual',
@@ -209,6 +212,56 @@ const BROKER_ALIASES: Record<string, string> = {
   ativa: 'Ativa Investimentos',
   ativainvestimentos: 'Ativa Investimentos',
   easynvest: 'Easynvest',
+  t2: 'T2-HOLDINGS',
+  t2holdings: 'T2-HOLDINGS',
+};
+
+const LOCAL_LOGO_BY_CANONICAL: Record<string, { bg: string; fg: string; text: string; sub?: string; ring?: string }> = {
+  'BTG Pactual': { bg: '#071D49', fg: '#FFFFFF', text: 'btg', sub: 'pactual', ring: '#15B87A' },
+  XTB: { bg: '#D71920', fg: '#FFFFFF', text: 'XTB' },
+  Webull: { bg: '#0F55FF', fg: '#FFFFFF', text: 'WB' },
+  'C6 Bank': { bg: '#111827', fg: '#FFFFFF', text: 'C6', sub: 'bank', ring: '#C6A35B' },
+  'Banco Inter': { bg: '#FF7A00', fg: '#FFFFFF', text: 'inter' },
+  'XP Investimentos': { bg: '#111111', fg: '#FFFFFF', text: 'XP', ring: '#D6A33A' },
+  Coinbase: { bg: '#0052FF', fg: '#FFFFFF', text: 'C' },
+  Avenue: { bg: '#111827', fg: '#FFFFFF', text: 'AV', ring: '#48D597' },
+  Binance: { bg: '#F0B90B', fg: '#111111', text: 'BNB' },
+  OKX: { bg: '#111111', fg: '#FFFFFF', text: 'OKX' },
+  Bybit: { bg: '#F7A600', fg: '#111111', text: 'BY' },
+  Bitget: { bg: '#00F0FF', fg: '#0B1220', text: 'BG' },
+  BingX: { bg: '#0B69FF', fg: '#FFFFFF', text: 'BX' },
+  KuCoin: { bg: '#23AF91', fg: '#FFFFFF', text: 'KC' },
+  'Mercado Bitcoin': { bg: '#F7931A', fg: '#111111', text: 'MB' },
+  Foxbit: { bg: '#FF6B00', fg: '#FFFFFF', text: 'FB' },
+  'Clear Corretora': { bg: '#F15A24', fg: '#FFFFFF', text: 'clear' },
+  'Rico Investimentos': { bg: '#00A859', fg: '#FFFFFF', text: 'rico' },
+  'Itaú Corretora': { bg: '#EC7000', fg: '#FFFFFF', text: 'itaú' },
+  Itaú: { bg: '#EC7000', fg: '#FFFFFF', text: 'itaú' },
+  Bradesco: { bg: '#C8102E', fg: '#FFFFFF', text: 'bra' },
+  'Bradesco Corretora': { bg: '#C8102E', fg: '#FFFFFF', text: 'bra' },
+  Nubank: { bg: '#820AD1', fg: '#FFFFFF', text: 'nu' },
+  'Nu Invest': { bg: '#820AD1', fg: '#FFFFFF', text: 'nu' },
+  Santander: { bg: '#EC0000', fg: '#FFFFFF', text: 'SAN' },
+  'Santander Corretora': { bg: '#EC0000', fg: '#FFFFFF', text: 'SAN' },
+  Safra: { bg: '#0F2F57', fg: '#FFFFFF', text: 'safra' },
+  'Banco Safra': { bg: '#0F2F57', fg: '#FFFFFF', text: 'safra' },
+  Ágora: { bg: '#FFB000', fg: '#111111', text: 'ág' },
+  Modalmais: { bg: '#0B1F3A', fg: '#FFFFFF', text: 'modal' },
+  'Genial Investimentos': { bg: '#08A8E8', fg: '#FFFFFF', text: 'genial' },
+  'Toro Investimentos': { bg: '#00A651', fg: '#FFFFFF', text: 'toro' },
+  'Guide Investimentos': { bg: '#2B5BDB', fg: '#FFFFFF', text: 'guide' },
+  Warren: { bg: '#E83E5A', fg: '#FFFFFF', text: 'W' },
+  Órama: { bg: '#00AEEF', fg: '#FFFFFF', text: 'órama' },
+  'Banco do Brasil': { bg: '#FDE100', fg: '#0038A8', text: 'BB' },
+  'BB Investimentos': { bg: '#FDE100', fg: '#0038A8', text: 'BB' },
+  Caixa: { bg: '#005CA9', fg: '#FFFFFF', text: 'caixa', ring: '#F39200' },
+  'Interactive Brokers': { bg: '#101820', fg: '#FFFFFF', text: 'IBKR', ring: '#C8102E' },
+  eToro: { bg: '#67D300', fg: '#111111', text: 'etoro' },
+  DEGIRO: { bg: '#0098D8', fg: '#FFFFFF', text: 'degiro' },
+  'Trading 212': { bg: '#0B63F6', fg: '#FFFFFF', text: '212' },
+  Nomad: { bg: '#111827', fg: '#FFFFFF', text: 'nomad' },
+  Stake: { bg: '#111827', fg: '#FFFFFF', text: 'stake' },
+  'T2-HOLDINGS': { bg: '#C97A16', fg: '#FFFFFF', text: 'T2' },
 };
 
 function normalizeBrokerName(name: string): string {
@@ -217,6 +270,34 @@ function normalizeBrokerName(name: string): string {
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/[^a-zA-Z0-9]/g, '')
     .toLowerCase();
+}
+
+function resolveBrokerCanonicalName(broker: string): string | null {
+  const trimmed = broker.trim();
+  if (!trimmed) return null;
+  const normalized = normalizeBrokerName(trimmed);
+
+  if (BROKER_DOMAINS[trimmed] || LOCAL_LOGO_BY_CANONICAL[trimmed]) return trimmed;
+
+  const canonical = BROKER_ALIASES[normalized];
+  if (canonical) return canonical;
+
+  const exactKey = Object.keys({ ...BROKER_DOMAINS, ...LOCAL_LOGO_BY_CANONICAL }).find(
+    key => normalizeBrokerName(key) === normalized,
+  );
+  if (exactKey) return exactKey;
+
+  const aliasHit = Object.entries(BROKER_ALIASES).find(([alias]) => {
+    if (alias.length < 3) return false;
+    return normalized.includes(alias) || alias.includes(normalized);
+  });
+  if (aliasHit) return aliasHit[1];
+
+  const knownHit = Object.keys({ ...BROKER_DOMAINS, ...LOCAL_LOGO_BY_CANONICAL }).find((key) => {
+    const nk = normalizeBrokerName(key);
+    return nk.length >= 3 && (normalized.includes(nk) || nk.includes(normalized));
+  });
+  return knownHit || null;
 }
 
 function resolveBrokerDomain(broker: string): string | null {
@@ -255,6 +336,27 @@ function resolveBrokerDomain(broker: string): string | null {
   if (/^[a-z0-9.-]+\.[a-z]{2,}$/i.test(trimmed) && !trimmed.includes(' ')) return trimmed.toLowerCase();
 
   return null;
+}
+
+function makeLocalLogoDataUri(brand: { bg: string; fg: string; text: string; sub?: string; ring?: string }): string {
+  const text = brand.text.length <= 2 ? brand.text : brand.text.toLowerCase();
+  const mainSize = text.length <= 2 ? 38 : text.length <= 4 ? 25 : 18;
+  const y = brand.sub ? 42 : 34;
+  const sub = brand.sub
+    ? `<text x="32" y="54" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="8" font-weight="700" fill="${brand.fg}" opacity="0.82">${brand.sub}</text>`
+    : '';
+  const ring = brand.ring
+    ? `<path d="M8 49 C18 61 45 61 56 44" fill="none" stroke="${brand.ring}" stroke-width="5" stroke-linecap="round" opacity="0.95"/>`
+    : '';
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img"><rect width="64" height="64" rx="14" fill="${brand.bg}"/>${ring}<text x="32" y="${y}" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="${mainSize}" font-weight="900" fill="${brand.fg}" letter-spacing="0">${text}</text>${sub}</svg>`;
+  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+}
+
+function getLocalBrokerLogoUrl(broker: string): string | null {
+  const canonical = resolveBrokerCanonicalName(broker);
+  if (!canonical) return null;
+  const brand = LOCAL_LOGO_BY_CANONICAL[canonical];
+  return brand ? makeLocalLogoDataUri(brand) : null;
 }
 
 function colorFor(name: string): string {
@@ -297,6 +399,7 @@ export function getBrokerLogoFallbackUrl(broker: string): string | null {
 function getLogoSources(broker: string, size: number, override?: string): string[] {
   const sources = [
     override,
+    getLocalBrokerLogoUrl(broker),
     getBrokerLogoUrl(broker, size),
     getBrokerGoogleLogoUrl(broker, size),
     getBrokerLogoFallbackUrl(broker),
@@ -307,6 +410,7 @@ function getLogoSources(broker: string, size: number, override?: string): string
 
 export function preloadBrokers(brokers: string[], size = 64) {
   brokers.forEach((b) => {
+    if (getLocalBrokerLogoUrl(b)) return;
     const url = getBrokerLogoUrl(b, Math.max(32, size * 2));
     if (url) preloadUrl(url);
   });
@@ -324,9 +428,11 @@ export function BrokerLogo({ broker, size = 16, className = '' }: Props) {
   const sources = getLogoSources(broker, Math.max(32, size * 2), override);
   const [sourceIndex, setSourceIndex] = useState(0);
   const url = sources[sourceIndex] || null;
+  const isLocal = Boolean(url?.startsWith('data:image/svg+xml'));
 
   const [status, setStatus] = useState<'loading' | Status>(() => {
     if (!url) return 'failed';
+    if (url.startsWith('data:image/svg+xml')) return 'loaded';
     return getFresh(url) ?? 'loading';
   });
 
@@ -336,6 +442,7 @@ export function BrokerLogo({ broker, size = 16, className = '' }: Props) {
 
   useEffect(() => {
     if (!url) { setStatus('failed'); return; }
+    if (url.startsWith('data:image/svg+xml')) { setStatus('loaded'); return; }
     const fresh = getFresh(url);
     if (fresh === 'loaded') {
       setStatus('loaded');
@@ -377,6 +484,8 @@ export function BrokerLogo({ broker, size = 16, className = '' }: Props) {
   if (!url || status === 'failed') {
     return (
       <span
+        data-broker-logo={broker}
+        data-broker-logo-source="fallback-initials"
         className={`inline-flex items-center justify-center rounded-sm text-[9px] font-bold text-white shrink-0 ${className}`}
         style={{ width: size, height: size, background: colorFor(broker) }}
         aria-label={broker}
@@ -389,6 +498,8 @@ export function BrokerLogo({ broker, size = 16, className = '' }: Props) {
   if (status === 'loading') {
     return (
       <span
+        data-broker-logo={broker}
+        data-broker-logo-source="remote-loading"
         className={`inline-block rounded-sm bg-muted animate-pulse shrink-0 ${className}`}
         style={{ width: size, height: size }}
         aria-label={`${broker} (carregando)`}
@@ -399,6 +510,8 @@ export function BrokerLogo({ broker, size = 16, className = '' }: Props) {
 
   return (
     <img
+      data-broker-logo={broker}
+      data-broker-logo-source={isLocal ? 'local-svg' : 'remote'}
       src={url}
       alt={`${broker} logo`}
       width={size}
