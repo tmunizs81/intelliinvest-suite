@@ -3,6 +3,7 @@ import { X, Building2, TrendingUp, Package } from 'lucide-react';
 import { formatCurrency, formatPercent } from '@/lib/mockData';
 import type { HoldingRow } from '@/hooks/usePortfolio';
 import type { Asset } from '@/lib/mockData';
+import { BrokerLogo } from '@/lib/brokerLogos';
 
 interface Props {
   open: boolean;
@@ -79,7 +80,11 @@ export default function CustodyModal({ open, onClose, holdings, assets }: Props)
                 <div className="p-4 border-b border-border/50 bg-muted/30">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <Building2 className="h-4 w-4 text-primary" />
+                      {broker === 'Sem corretora' ? (
+                        <Building2 className="h-4 w-4 text-primary" />
+                      ) : (
+                        <BrokerLogo broker={broker} size={18} />
+                      )}
                       <span className="font-semibold">{broker}</span>
                       <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
                         {group.holdings.length} ativo{group.holdings.length !== 1 ? 's' : ''}
@@ -127,7 +132,7 @@ export default function CustodyModal({ open, onClose, holdings, assets }: Props)
                       return (
                         <div key={h.id} className="flex items-center justify-between px-4 py-2.5 hover:bg-accent/30 transition-colors">
                           <div className="flex items-center gap-3">
-                            <Package className="h-3.5 w-3.5 text-muted-foreground" />
+                            <BrokerLogo broker={broker} size={16} />
                             <div>
                               <div className="flex items-center gap-2">
                                 <span className="font-mono font-semibold text-sm">{h.ticker}</span>
