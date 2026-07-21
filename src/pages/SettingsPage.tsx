@@ -158,6 +158,7 @@ function BrokerLogoSettingsCard() {
   const [broker, setBroker] = useState('');
   const [url, setUrl] = useState('');
   const [previewState, setPreviewState] = useState<'idle' | 'loading' | 'ok' | 'error'>('idle');
+  const [uploading, setUploading] = useState(false);
 
   const knownBrokers = Object.keys(BROKER_DOMAINS).sort();
   const customBrokers = Object.keys(overrides).sort();
@@ -166,6 +167,7 @@ function BrokerLogoSettingsCard() {
   useEffect(() => {
     const trimmed = url.trim();
     if (!trimmed) { setPreviewState('idle'); return; }
+    if (trimmed.startsWith('data:image/')) { setPreviewState('ok'); return; }
     if (!/^https?:\/\//i.test(trimmed)) { setPreviewState('error'); return; }
     setPreviewState('loading');
     const img = new Image();
@@ -176,17 +178,59 @@ function BrokerLogoSettingsCard() {
     return () => { cancelled = true; };
   }, [url]);
 
+  // Compress + convert uploaded file to a data URL (max 128px, PNG/WebP)
+  const handleFile = async (file: File) => {
+    if (!file.type.startsWith('image/')) { toast.error('Envie um arquivo de imagem'); return; }
+    if (file.size > 2 * 1024 * 1024) { toast.error('Arquivo maior que 2MB'); return; }
+    setUploading(true);
+    try {
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      // SVG: usar direto (vetorial)
+      if (file.type === 'image/svg+xml') {
+        setUrl(dataUrl);
+        setUploading(false);
+        return;
+      }
+      // Redimensionar via canvas
+      const img = new Image();
+      img.onload = () => {
+        const MAX = 128;
+        const scale = Math.min(1, MAX / Math.max(img.width, img.height));
+        const w = Math.round(img.width * scale);
+        const h = Math.round(img.height * scale);
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        const ctx = canvas.getContext('2d')!;
+        ctx.drawImage(img, 0, 0, w, h);
+        const out = canvas.toDataURL('image/webp', 0.9);
+        setUrl(out.length < dataUrl.length ? out : canvas.toDataURL('image/png'));
+        setUploading(false);
+      };
+      img.onerror = () => { toast.error('Não foi possível ler a imagem'); setUploading(false); };
+      img.src = dataUrl;
+    } catch {
+      toast.error('Falha no upload');
+      setUploading(false);
+    }
+  };
+
   const save = () => {
     if (!broker.trim()) { toast.error('Escolha uma corretora'); return; }
-    if (!url.trim() || !/^https?:\/\//i.test(url.trim())) {
-      toast.error('URL inválida (use http/https)');
+    const v = url.trim();
+    if (!v || (!/^https?:\/\//i.test(v) && !v.startsWith('data:image/'))) {
+      toast.error('Informe uma URL (http/https) ou faça upload de uma imagem');
       return;
     }
     if (previewState === 'error') {
       toast.error('A imagem não pôde ser carregada. Verifique a URL.');
       return;
     }
-    setLogoOverride(broker.trim(), url.trim());
+    setLogoOverride(broker.trim(), v);
     toast.success(`Logo de ${broker} personalizada`);
     setUrl('');
     setPreviewState('idle');
