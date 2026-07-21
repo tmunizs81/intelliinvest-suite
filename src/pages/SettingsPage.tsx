@@ -326,6 +326,25 @@ function BrokerLogoSettingsCard() {
         {previewState === 'ok' && (
           <p className="text-[11px] text-profit">Imagem válida — pronta para salvar.</p>
         )}
+
+        {/* Upload manual */}
+        <div className="flex items-center gap-2 pt-1">
+          <label className="inline-flex items-center gap-1.5 rounded-md border border-dashed border-border bg-muted/20 px-3 py-1.5 text-xs cursor-pointer hover:border-primary/50 hover:text-primary transition-colors">
+            <Upload className="h-3.5 w-3.5" />
+            {uploading ? 'Processando…' : 'Enviar arquivo (PNG, SVG, JPG, WebP)'}
+            <input
+              type="file"
+              accept="image/png,image/svg+xml,image/jpeg,image/webp"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) handleFile(f);
+                e.target.value = '';
+              }}
+            />
+          </label>
+          <span className="text-[10px] text-muted-foreground">até 2MB — redimensionado para 128px</span>
+        </div>
       </div>
 
       {/* Lista de overrides ativos */}
