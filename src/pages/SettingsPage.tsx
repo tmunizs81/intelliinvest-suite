@@ -12,7 +12,7 @@ import { useRole } from '@/hooks/useRole';
 import { formatCurrency } from '@/lib/mockData';
 import { toast } from 'sonner';
 import { BrokerLogo, BROKER_DOMAINS } from '@/lib/brokerLogos';
-import { useBrokerLogoSettings, setLogoOverride, setLogoDensity, type LogoMeta } from '@/lib/brokerLogoSettings';
+import { useBrokerLogoSettings, setLogoOverride, setLogoDensity, optimizeLogoOnBackend, type LogoMeta } from '@/lib/brokerLogoSettings';
 
 type SettingsTab = 'general' | 'users' | 'keys' | 'license' | 'family' | 'telegram' | 'backup' | 'audit';
 
@@ -306,14 +306,30 @@ function BrokerLogoSettingsCard() {
       toast.error('Informe uma URL ou envie um arquivo'); return;
     }
     if (previewState !== 'ok') { toast.error('Aguarde a validação da imagem'); return; }
-    const metaPayload: LogoMeta | undefined = preview ? {
-      format: preview.format,
-      width: preview.width,
-      height: preview.height,
-      size_bytes: preview.size_bytes,
+
+    let finalUrl = v;
+    let metaPayload: LogoMeta | undefined = preview ? {
+      format: preview.format, width: preview.width, height: preview.height, size_bytes: preview.size_bytes,
     } : undefined;
-    await setLogoOverride(broker.trim(), v, metaPayload);
-    toast.success(`Logo de ${broker} personalizada e sincronizada`);
+
+    // Otimização server-side para uploads (data URL): re-decode + resize + versiona.
+    if (v.startsWith('data:image/')) {
+      setUploading(true);
+      try {
+        const opt = await optimizeLogoOnBackend(v);
+        finalUrl = opt.dataUrl;
+        metaPayload = {
+          format: opt.format, width: opt.width, height: opt.height,
+          size_bytes: opt.size_bytes, version: opt.version,
+        };
+      } finally { setUploading(false); }
+    } else {
+      // URL remota: apenas gera versão para cache-busting.
+      metaPayload = { ...(metaPayload ?? {}), version: Date.now().toString(36) };
+    }
+
+    await setLogoOverride(broker.trim(), finalUrl, metaPayload);
+    toast.success(`Logo de ${broker} otimizada e sincronizada`);
     setUrl(''); setPreview(null); setPreviewState('idle');
   };
 
