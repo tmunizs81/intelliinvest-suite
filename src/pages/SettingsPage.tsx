@@ -12,7 +12,7 @@ import { useRole } from '@/hooks/useRole';
 import { formatCurrency } from '@/lib/mockData';
 import { toast } from 'sonner';
 import { BrokerLogo, BROKER_DOMAINS } from '@/lib/brokerLogos';
-import { useBrokerLogoSettings, setLogoOverride, setLogoDensity } from '@/lib/brokerLogoSettings';
+import { useBrokerLogoSettings, setLogoOverride, setLogoDensity, type LogoMeta } from '@/lib/brokerLogoSettings';
 
 type SettingsTab = 'general' | 'users' | 'keys' | 'license' | 'family' | 'telegram' | 'backup' | 'audit';
 
