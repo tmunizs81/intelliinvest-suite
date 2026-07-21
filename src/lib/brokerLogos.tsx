@@ -317,6 +317,10 @@ export function BrokerLogo({ broker, size = 16, className = '' }: Props) {
       const detail = (e as CustomEvent).detail as { url: string };
       if (detail?.url === url) {
         const s = getFresh(url);
+        if (s === 'failed' && sourceIndex < sources.length - 1) {
+          setSourceIndex((i) => i + 1);
+          return;
+        }
         if (s) setStatus(s);
       }
     };
