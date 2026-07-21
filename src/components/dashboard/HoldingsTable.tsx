@@ -4,6 +4,7 @@ import { ArrowUpRight, ArrowDownRight, Loader2, Plus, Pencil, Trash2, ChevronRig
 import { type Asset, formatCurrency, formatPercent } from '@/lib/mockData';
 import type { HoldingRow } from '@/hooks/usePortfolio';
 import { motion } from 'framer-motion';
+import { BrokerLogo } from '@/lib/brokerLogos';
 
 const typeBadgeClass: Record<string, string> = {
   'Ação': 'bg-primary/10 text-primary',
@@ -40,6 +41,7 @@ const TableRow = memo(({ asset, holdingRow, onEdit, onDelete, deletingId, naviga
   const profitPct = cost > 0 ? (profit / cost) * 100 : 0;
   const isPositive = asset.change24h >= 0;
   const isProfitable = profit >= 0;
+  const broker = holdingRow?.broker?.trim();
 
   return (
     <tr
@@ -47,11 +49,17 @@ const TableRow = memo(({ asset, holdingRow, onEdit, onDelete, deletingId, naviga
       onClick={() => navigate(`/asset/${asset.ticker}`)}
     >
       <td className="p-4">
-        <div className="flex items-center gap-1.5">
-          <span className="font-semibold font-mono">{asset.ticker}</span>
-          <ChevronRight className="h-3 w-3 text-muted-foreground" />
+        <div className="flex items-center gap-2">
+          {broker && <BrokerLogo broker={broker} size={22} />}
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5">
+              <span className="font-semibold font-mono">{asset.ticker}</span>
+              <ChevronRight className="h-3 w-3 text-muted-foreground" />
+            </div>
+            <p className="text-xs text-muted-foreground truncate">{asset.name}</p>
+            {broker && <p className="text-[10px] text-muted-foreground/70 truncate">{broker}</p>}
+          </div>
         </div>
-        <p className="text-xs text-muted-foreground">{asset.name}</p>
       </td>
       <td className="p-4">
         <span className={`text-xs px-2 py-1 rounded-full font-medium ${typeBadgeClass[asset.type] || ''}`}>
