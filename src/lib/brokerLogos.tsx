@@ -24,7 +24,7 @@ const statusCache = new Map<string, CacheEntry>();   // URL -> {status, timestam
 const attempts = new Map<string, number>();
 const preloading = new Set<string>();
 
-const LS_KEY = 'broker-logo-status-v2';
+const LS_KEY = 'broker-logo-status-v3';
 const MAX_RETRIES = 2;
 const TIMEOUT_MS = 6000;
 const TTL_MS = 7 * 24 * 60 * 60 * 1000;    // 7 dias
