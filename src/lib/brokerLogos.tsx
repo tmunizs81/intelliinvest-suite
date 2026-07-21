@@ -142,6 +142,12 @@ export const BROKER_DOMAINS: Record<string, string> = {
   Modalmais: 'modalmais.com.br', Modal: 'modalmais.com.br',
   'CM Capital': 'cmcapital.com.br', 'Terra Investimentos': 'terrainvestimentos.com.br',
   'Mirae Asset': 'miraeasset.com.br', MyCAP: 'mycap.com.br',
+  'Banco do Brasil': 'bb.com.br', 'BB Investimentos': 'bb.com.br',
+  Caixa: 'caixa.gov.br', 'Caixa Econômica': 'caixa.gov.br',
+  'Daycoval': 'daycoval.com.br', 'Banco Daycoval': 'daycoval.com.br',
+  'Órama DTVM': 'orama.com.br', Planner: 'planner.com.br',
+  'Ativa Investimentos': 'ativainvestimentos.com.br',
+  Easynvest: 'easynvest.com.br',
 };
 
 const BROKER_ALIASES: Record<string, string> = {
@@ -184,6 +190,25 @@ const BROKER_ALIASES: Record<string, string> = {
   okx: 'OKX',
   mercadobitcoin: 'Mercado Bitcoin',
   foxbit: 'Foxbit',
+  xpctvm: 'XP Investimentos',
+  xpinvestimentosctvm: 'XP Investimentos',
+  clearctvm: 'Clear Corretora',
+  ricoctvm: 'Rico Investimentos',
+  btgpactualdigital: 'BTG Pactual',
+  btgpactualctvm: 'BTG Pactual',
+  interdtvm: 'Banco Inter',
+  c6ctvm: 'C6 Bank',
+  genialctvm: 'Genial Investimentos',
+  bancodobrasil: 'Banco do Brasil',
+  bbinvestimentos: 'BB Investimentos',
+  caixa: 'Caixa',
+  caixaeconomica: 'Caixa Econômica',
+  daycoval: 'Daycoval',
+  bancodaycoval: 'Banco Daycoval',
+  planner: 'Planner',
+  ativa: 'Ativa Investimentos',
+  ativainvestimentos: 'Ativa Investimentos',
+  easynvest: 'Easynvest',
 };
 
 function normalizeBrokerName(name: string): string {
@@ -197,16 +222,34 @@ function normalizeBrokerName(name: string): string {
 function resolveBrokerDomain(broker: string): string | null {
   const trimmed = broker.trim();
   if (!trimmed) return null;
+  const normalized = normalizeBrokerName(trimmed);
 
   if (BROKER_DOMAINS[trimmed]) return BROKER_DOMAINS[trimmed];
 
-  const canonical = BROKER_ALIASES[normalizeBrokerName(trimmed)];
+  const canonical = BROKER_ALIASES[normalized];
   if (canonical && BROKER_DOMAINS[canonical]) return BROKER_DOMAINS[canonical];
 
   const exactKey = Object.keys(BROKER_DOMAINS).find(
-    key => normalizeBrokerName(key) === normalizeBrokerName(trimmed),
+    key => normalizeBrokerName(key) === normalized,
   );
   if (exactKey) return BROKER_DOMAINS[exactKey];
+
+  // Nomes importados de notas vêm verbosos: "XP Investimentos CCTVM S.A.",
+  // "Inter DTVM", "BTG Pactual Digital". Faz match por substring normalizada.
+  const aliasHit = Object.entries(BROKER_ALIASES).find(([alias]) => {
+    if (alias.length < 3) return false;
+    return normalized.includes(alias) || alias.includes(normalized);
+  });
+  if (aliasHit) {
+    const mapped = BROKER_DOMAINS[aliasHit[1]];
+    if (mapped) return mapped;
+  }
+
+  const domainHit = Object.keys(BROKER_DOMAINS).find((key) => {
+    const nk = normalizeBrokerName(key);
+    return nk.length >= 3 && (normalized.includes(nk) || nk.includes(normalized));
+  });
+  if (domainHit) return BROKER_DOMAINS[domainHit];
 
   // Permite cadastro livre: se o usuário salvou "corretora.com.br", usa como domínio.
   if (/^[a-z0-9.-]+\.[a-z]{2,}$/i.test(trimmed) && !trimmed.includes(' ')) return trimmed.toLowerCase();
