@@ -95,6 +95,15 @@ export function usePortfolio() {
       setLoading(false);
       return;
     }
+      // Fetch FX to convert non-BRL purchase prices to BRL cost basis.
+      const fx = await fetchFxRatesBRL();
+      const toBRL = (price: number, cur: string | null | undefined) => {
+        const c = (cur || 'BRL').toUpperCase();
+        if (c === 'USD') return price * fx.USD;
+        if (c === 'EUR') return price * fx.EUR;
+        return price;
+      };
+
 
     try {
       setError(null);
