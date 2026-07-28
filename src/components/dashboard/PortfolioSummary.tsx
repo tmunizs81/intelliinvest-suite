@@ -1,7 +1,8 @@
 import { TrendingUp, TrendingDown, Wallet, BarChart3, Clock, Timer } from 'lucide-react';
-import { type Asset, formatCurrency, formatPercent } from '@/lib/mockData';
+import { type Asset, formatPercent } from '@/lib/mockData';
 import { useState, useEffect, useMemo, memo } from 'react';
 import { motion } from 'framer-motion';
+import { useDisplayCurrency, CurrencyToggle } from '@/hooks/useDisplayCurrency';
 
 interface Props {
   assets: Asset[];
