@@ -20,6 +20,26 @@ export interface HoldingRow {
   avg_price: number;
   sector: string | null;
   broker: string | null;
+  purchase_currency?: string | null;
+}
+
+/** Fetch USD/BRL and EUR/BRL from AwesomeAPI with a 1h persistent cache. */
+async function fetchFxRatesBRL(): Promise<{ USD: number; EUR: number }> {
+  const cacheKey = 'fx:usd_eur_brl';
+  const cached = await getCached<{ USD: number; EUR: number }>(cacheKey);
+  if (cached) return cached;
+  try {
+    const r = await fetch('https://economia.awesomeapi.com.br/json/last/USD-BRL,EUR-BRL');
+    const j = await r.json();
+    const rates = {
+      USD: parseFloat(j?.USDBRL?.bid) || 5.5,
+      EUR: parseFloat(j?.EURBRL?.bid) || 6.0,
+    };
+    await setCache(cacheKey, rates, 60 * 60 * 1000);
+    return rates;
+  } catch {
+    return { USD: 5.5, EUR: 6.0 };
+  }
 }
 
 export interface CashBalanceRow {
@@ -75,9 +95,18 @@ export function usePortfolio() {
       setLoading(false);
       return;
     }
-
     try {
       setError(null);
+
+      // Fetch FX (USD/BRL, EUR/BRL) to convert non-BRL purchase prices into a BRL cost basis.
+      const fx = await fetchFxRatesBRL();
+      const toBRL = (price: number, cur: string | null | undefined) => {
+        const c = (cur || 'BRL').toUpperCase();
+        if (c === 'USD') return price * fx.USD;
+        if (c === 'EUR') return price * fx.EUR;
+        return price;
+      };
+
 
       // Separate fixed income, real estate, and market assets
       const fixedIncomeHoldings = h.filter(item => item.type === 'Renda Fixa');
@@ -133,17 +162,22 @@ export function usePortfolio() {
         const exchangeRate = quote?.exchangeRate || 1;
         const value = currentPriceBRL * item.quantity;
         totalValue += value;
+        // Convert the stored purchase price into BRL so cost/gain math stays consistent
+        // regardless of the currency the user typed on the form.
+        const purchaseCurrency = (item.purchase_currency || 'BRL').toUpperCase();
+        const avgPriceBRL = toBRL(item.avg_price, purchaseCurrency);
         return {
           ticker: item.ticker,
           name: item.name,
           type: classifyAssetType(item.ticker, item.type) as Asset['type'],
           quantity: item.quantity,
-          avgPrice: item.avg_price,
+          avgPrice: avgPriceBRL,
           currentPrice: currentPriceBRL,
           change24h: quote?.change24h || 0,
           allocation: 0,
           sector: item.sector || undefined,
           source: quote?.source || undefined,
+
           currency,
           currentPriceBRL,
           exchangeRate,
@@ -326,6 +360,7 @@ export function usePortfolio() {
         avg_price: holding.avg_price,
         sector: holding.sector,
         broker: holding.broker || null,
+        purchase_currency: (holding.purchase_currency || 'BRL').toUpperCase(),
         ...((holding as any).yield_rate && { yield_rate: (holding as any).yield_rate }),
         ...((holding as any).indexer_type && { indexer_type: (holding as any).indexer_type }),
         ...((holding as any).maturity_date && { maturity_date: (holding as any).maturity_date }),
@@ -374,6 +409,7 @@ export function usePortfolio() {
         ...(updates.avg_price !== undefined && { avg_price: updates.avg_price }),
         ...(updates.sector !== undefined && { sector: updates.sector }),
         ...(updates.broker !== undefined && { broker: updates.broker }),
+        ...(updates.purchase_currency !== undefined && { purchase_currency: (updates.purchase_currency || 'BRL').toUpperCase() }),
         ...((updates as any).yield_rate !== undefined && { yield_rate: (updates as any).yield_rate }),
         ...((updates as any).indexer_type !== undefined && { indexer_type: (updates as any).indexer_type }),
         ...((updates as any).maturity_date !== undefined && { maturity_date: (updates as any).maturity_date }),

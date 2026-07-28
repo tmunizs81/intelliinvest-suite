@@ -1,0 +1,2 @@
+ALTER TABLE public.holdings ADD COLUMN IF NOT EXISTS purchase_currency TEXT NOT NULL DEFAULT 'BRL';
+ALTER TABLE public.holdings ADD CONSTRAINT holdings_purchase_currency_chk CHECK (purchase_currency IN ('BRL','USD','EUR','GBP'));

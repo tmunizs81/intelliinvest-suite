@@ -1,7 +1,8 @@
 import { TrendingUp, TrendingDown, Wallet, BarChart3, Clock, Timer } from 'lucide-react';
-import { type Asset, formatCurrency, formatPercent } from '@/lib/mockData';
+import { type Asset, formatPercent } from '@/lib/mockData';
 import { useState, useEffect, useMemo, memo } from 'react';
 import { motion } from 'framer-motion';
+import { useDisplayCurrency, CurrencyToggle } from '@/hooks/useDisplayCurrency';
 
 interface Props {
   assets: Asset[];
@@ -65,6 +66,7 @@ const CountdownTimer = memo(({ nextUpdate }: { nextUpdate: Date | null }) => {
 CountdownTimer.displayName = 'CountdownTimer';
 
 export default memo(function PortfolioSummary({ assets, lastUpdate, nextUpdate }: Props) {
+  const { format, currency } = useDisplayCurrency();
   const { total, cost, gain, gainPct, daily, dailyPct } = useMemo(() => {
     const total = assets.reduce((s, a) => s + a.currentPrice * a.quantity, 0);
     const cost = assets.reduce((s, a) => s + a.avgPrice * a.quantity, 0);
@@ -79,57 +81,66 @@ export default memo(function PortfolioSummary({ assets, lastUpdate, nextUpdate }
   }, [assets]);
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
-      <motion.div
-        initial={{ opacity: 0, scale: 0.96 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.3 }}
-        className="col-span-2 sm:col-span-1 rounded-lg border border-border bg-card p-3 sm:p-5 glow-primary"
-      >
-        <div className="flex items-center justify-between mb-1 sm:mb-3">
-          <span className="text-xs sm:text-sm text-muted-foreground">Patrimônio Total</span>
-          <Wallet className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary" />
-        </div>
-        <p className="text-xl sm:text-3xl font-bold font-mono tracking-tight">{formatCurrency(total)}</p>
-        <p className={`text-xs sm:text-sm font-mono mt-0.5 sm:mt-1 ${gain >= 0 ? 'text-gain' : 'text-loss'}`}>
-          {formatCurrency(gain)} ({formatPercent(gainPct)})
-        </p>
-      </motion.div>
+    <div className="space-y-2 sm:space-y-3">
+      <div className="flex items-center justify-between">
+        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+          Exibindo em <strong className="text-foreground">{currency}</strong>
+        </span>
+        <CurrencyToggle />
+      </div>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.96 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.3 }}
+          className="col-span-2 sm:col-span-1 rounded-lg border border-border bg-card p-3 sm:p-5 glow-primary"
+        >
+          <div className="flex items-center justify-between mb-1 sm:mb-3">
+            <span className="text-xs sm:text-sm text-muted-foreground">Patrimônio Total</span>
+            <Wallet className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary" />
+          </div>
+          <p className="text-xl sm:text-3xl font-bold font-mono tracking-tight">{format(total)}</p>
+          <p className={`text-xs sm:text-sm font-mono mt-0.5 sm:mt-1 ${gain >= 0 ? 'text-gain' : 'text-loss'}`}>
+            {format(gain)} ({formatPercent(gainPct)})
+          </p>
+        </motion.div>
 
-      <StatCard
-        label="Variação Hoje"
-        value={formatCurrency(daily)}
-        subValue={formatPercent(dailyPct)}
-        icon={daily >= 0 ? TrendingUp : TrendingDown}
-        positive={daily >= 0}
-      />
+        <StatCard
+          label="Variação Hoje"
+          value={format(daily)}
+          subValue={formatPercent(dailyPct)}
+          icon={daily >= 0 ? TrendingUp : TrendingDown}
+          positive={daily >= 0}
+        />
 
-      <StatCard
-        label="Lucro Total"
-        value={formatCurrency(gain)}
-        subValue={formatPercent(gainPct)}
-        icon={BarChart3}
-        positive={gain >= 0}
-      />
+        <StatCard
+          label="Lucro Total"
+          value={format(gain)}
+          subValue={formatPercent(gainPct)}
+          icon={BarChart3}
+          positive={gain >= 0}
+        />
 
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.25, delay: 0.1 }}
-        className="rounded-lg border border-border bg-card p-3 sm:p-5"
-      >
-        <div className="flex items-center justify-between mb-1 sm:mb-3">
-          <span className="text-xs sm:text-sm text-muted-foreground">Última Atualização</span>
-          <Clock className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground" />
-        </div>
-        <p className="text-lg sm:text-2xl font-bold font-mono tracking-tight">
-          {lastUpdate ? lastUpdate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '--:--'}
-        </p>
-        <div className="flex items-center gap-2 mt-0.5 sm:mt-1">
-          <p className="text-xs sm:text-sm font-mono text-muted-foreground">Auto 5 min</p>
-          <CountdownTimer nextUpdate={nextUpdate || null} />
-        </div>
-      </motion.div>
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.25, delay: 0.1 }}
+          className="rounded-lg border border-border bg-card p-3 sm:p-5"
+        >
+          <div className="flex items-center justify-between mb-1 sm:mb-3">
+            <span className="text-xs sm:text-sm text-muted-foreground">Última Atualização</span>
+            <Clock className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground" />
+          </div>
+          <p className="text-lg sm:text-2xl font-bold font-mono tracking-tight">
+            {lastUpdate ? lastUpdate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '--:--'}
+          </p>
+          <div className="flex items-center gap-2 mt-0.5 sm:mt-1">
+            <p className="text-xs sm:text-sm font-mono text-muted-foreground">Auto 5 min</p>
+            <CountdownTimer nextUpdate={nextUpdate || null} />
+          </div>
+        </motion.div>
+      </div>
     </div>
   );
 });
+

@@ -74,6 +74,7 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
   const [propertyPurpose, setPropertyPurpose] = useState<string>('holding');
   const [rentalValue, setRentalValue] = useState('');
   const [maturityDate, setMaturityDate] = useState<Date | undefined>(undefined);
+  const [purchaseCurrency, setPurchaseCurrency] = useState<'BRL' | 'USD' | 'EUR'>('BRL');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -129,6 +130,8 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
       setPropertyPurpose((editData as any)?.property_purpose || 'holding');
       setRentalValue((editData as any)?.rental_value?.toString() || '');
       setMaturityDate(editData?.maturity_date ? new Date(editData.maturity_date) : undefined);
+      const pc = ((editData as any)?.purchase_currency || 'BRL').toUpperCase();
+      setPurchaseCurrency((['BRL', 'USD', 'EUR'].includes(pc) ? pc : 'BRL') as 'BRL' | 'USD' | 'EUR');
       setError('');
       setSuggestions([]);
       setShowSuggestions(false);
@@ -290,6 +293,7 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
         maturity_date: isFixedIncome && maturityDate ? format(maturityDate, 'yyyy-MM-dd') : null,
         property_purpose: isProperty ? propertyPurpose : null,
         rental_value: isProperty && propertyPurpose === 'aluguel' ? parseFloat(rentalValue) || null : null,
+        purchase_currency: (isFixedIncome || isProperty) ? 'BRL' : purchaseCurrency,
       };
 
       if (!data.ticker || !data.name || isNaN(data.quantity) || isNaN(data.avg_price)) {
@@ -748,25 +752,59 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
               />
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-muted-foreground">Quantidade *</label>
-                <input
-                  type="number" step="any" min="0.00001" value={quantity} onChange={e => setQuantity(e.target.value)} required
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                  placeholder="100"
-                />
+            <>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">Quantidade *</label>
+                  <input
+                    type="number" step="any" min="0.00001" value={quantity} onChange={e => setQuantity(e.target.value)} required
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                    placeholder="100"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">
+                    Preço Médio * <span className="text-[10px] text-muted-foreground/70">({purchaseCurrency})</span>
+                  </label>
+                  <input
+                    type="number" step="0.0001" min="0" value={avgPrice} onChange={e => setAvgPrice(e.target.value)} required
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                    placeholder={purchaseCurrency === 'BRL' ? '28,50' : purchaseCurrency === 'USD' ? '51.60' : '48,20'}
+                  />
+                </div>
               </div>
+
               <div className="space-y-1">
-                <label className="text-xs font-medium text-muted-foreground">Preço Médio *</label>
-                <input
-                  type="number" step="0.01" min="0" value={avgPrice} onChange={e => setAvgPrice(e.target.value)} required
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                  placeholder="28.50"
-                />
+                <label className="text-xs font-medium text-muted-foreground">Moeda de compra *</label>
+                <div className="inline-flex w-full rounded-md border border-input bg-background p-0.5">
+                  {(['BRL', 'USD', 'EUR'] as const).map((c) => {
+                    const active = purchaseCurrency === c;
+                    const sym = c === 'BRL' ? 'R$' : c === 'USD' ? 'US$' : '€';
+                    return (
+                      <button
+                        key={c}
+                        type="button"
+                        onClick={() => setPurchaseCurrency(c)}
+                        aria-pressed={active}
+                        className={`flex-1 inline-flex items-center justify-center gap-1.5 rounded-[6px] px-2 py-1.5 text-xs font-semibold transition-all ${
+                          active
+                            ? 'bg-primary text-primary-foreground shadow-sm'
+                            : 'text-muted-foreground hover:text-foreground'
+                        }`}
+                      >
+                        <span className="font-mono">{sym}</span>
+                        {c}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="text-[10px] text-muted-foreground/80">
+                  Selecione a moeda em que você <strong>comprou</strong> este ativo. Usada para calcular o custo em reais na cotação atual.
+                </p>
               </div>
-            </div>
+            </>
           )}
+
 
           {/* AI Copilot Signal */}
           {ticker && quantity && avgPrice && !editData && (
