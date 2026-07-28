@@ -74,6 +74,7 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
   const [propertyPurpose, setPropertyPurpose] = useState<string>('holding');
   const [rentalValue, setRentalValue] = useState('');
   const [maturityDate, setMaturityDate] = useState<Date | undefined>(undefined);
+  const [purchaseCurrency, setPurchaseCurrency] = useState<'BRL' | 'USD' | 'EUR'>('BRL');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
