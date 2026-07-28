@@ -54,8 +54,19 @@ export function useSnapshotFailures() {
     }
   }, [load]);
 
+  const dismissAll = useCallback(async () => {
+    if (!user) return;
+    // Mark all pending/abandoned rows for today (and older) as resolved.
+    await (supabase as any)
+      .from("snapshot_refresh_failures")
+      .update({ status: "resolved", resolved_at: new Date().toISOString() })
+      .eq("user_id", user.id)
+      .in("status", ["pending", "abandoned"]);
+    await load();
+  }, [user, load]);
+
   const pending = failures.filter((f) => f.status === "pending");
   const abandoned = failures.filter((f) => f.status === "abandoned");
 
-  return { failures, pending, abandoned, reconciling, reconcileNow, reload: load };
+  return { failures, pending, abandoned, reconciling, reconcileNow, dismissAll, reload: load };
 }

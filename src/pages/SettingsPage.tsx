@@ -15,10 +15,11 @@ import { BrokerLogo, BROKER_DOMAINS } from '@/lib/brokerLogos';
 import { useBrokerLogoSettings, setLogoOverride, setLogoDensity, optimizeLogoOnBackend, type LogoMeta } from '@/lib/brokerLogoSettings';
 import { AlertRulesPanel } from '@/components/settings/AlertRulesPanel';
 import { NotificationsPanel } from '@/components/settings/NotificationsPanel';
+import { SimulationPanel } from '@/components/settings/SimulationPanel';
 import { UserEditModal } from '@/components/settings/UserEditModal';
-import { Pencil } from 'lucide-react';
+import { Pencil, PlayCircle } from 'lucide-react';
 
-type SettingsTab = 'general' | 'users' | 'keys' | 'license' | 'family' | 'telegram' | 'rules' | 'notifications' | 'backup' | 'audit';
+type SettingsTab = 'general' | 'users' | 'keys' | 'license' | 'family' | 'telegram' | 'rules' | 'simulation' | 'notifications' | 'backup' | 'audit';
 
 // ─── Serial Key Generator ───
 function generateSerialKey(): string {
@@ -57,6 +58,7 @@ export default function SettingsPage() {
     { key: 'family' as const, label: 'Família', icon: Users, adminOnly: false },
     { key: 'telegram' as const, label: 'Telegram', icon: Bell, adminOnly: false },
     { key: 'rules' as const, label: 'Alertas', icon: AlertTriangle, adminOnly: false },
+    { key: 'simulation' as const, label: 'Simulação', icon: PlayCircle, adminOnly: false },
     { key: 'notifications' as const, label: 'Notificações', icon: ClipboardList, adminOnly: false },
     { key: 'backup' as const, label: 'Backup', icon: Database, adminOnly: false },
     { key: 'audit' as const, label: 'Atividades', icon: ClipboardList, adminOnly: false },
@@ -96,6 +98,7 @@ export default function SettingsPage() {
       {tab === 'family' && <FamilyTab />}
       {tab === 'telegram' && <TelegramTab />}
       {tab === 'rules' && <AlertRulesPanel />}
+      {tab === 'simulation' && <SimulationPanel />}
       {tab === 'notifications' && <NotificationsPanel />}
       {tab === 'backup' && <BackupTab />}
       {tab === 'audit' && <AuditLogPanel />}
@@ -1699,11 +1702,16 @@ function TelegramTab() {
     if (!chatId) { toast.error('Chat ID não configurado'); return; }
     setTesting(true);
     try {
-      const { error } = await supabase.functions.invoke('telegram-test', { body: { chatId } });
+      const { error } = await supabase.functions.invoke('telegram-send', {
+        body: {
+          html: `✅ <b>Teste de envio</b>\nSeu chat_id <code>${chatId}</code> está corretamente vinculado ao SimplyNvest.\n\n🕒 ${new Date().toLocaleString('pt-BR')}`,
+          kind: 'test',
+        },
+      });
       if (error) throw error;
-      toast.success('Mensagem de teste enviada!');
-    } catch {
-      toast.error('Falha ao enviar.');
+      toast.success(`Mensagem enviada para o chat ${chatId}`);
+    } catch (e: any) {
+      toast.error(`Falha ao enviar: ${e?.message ?? 'erro desconhecido'}`);
     } finally {
       setTesting(false);
     }
@@ -1799,6 +1807,22 @@ function TelegramTab() {
         {/* If linked, show controls */}
         {isLinked && (
           <>
+            {/* Test send — highlighted */}
+            <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-foreground">Testar envio</p>
+                <p className="text-xs text-muted-foreground">Envia uma mensagem imediata para o chat <code className="font-mono">{chatId}</code> para confirmar o vínculo.</p>
+              </div>
+              <button
+                onClick={testConnection}
+                disabled={testing}
+                className="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium flex items-center gap-2 disabled:opacity-50 shrink-0"
+              >
+                {testing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                Testar envio
+              </button>
+            </div>
+
             <div className="flex items-center gap-3">
               <label className="text-sm font-medium">Notificações ativas</label>
               <button
