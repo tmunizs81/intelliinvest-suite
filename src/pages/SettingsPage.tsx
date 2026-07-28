@@ -887,6 +887,7 @@ function UsersTab() {
   const [newRole, setNewRole] = useState<'admin' | 'user'>('user');
   const [newChatId, setNewChatId] = useState('');
   const [creating, setCreating] = useState(false);
+  const [editingUser, setEditingUser] = useState<any | null>(null);
 
   const loadUsers = useCallback(async () => {
     setLoading(true);
