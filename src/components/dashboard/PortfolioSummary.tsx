@@ -91,7 +91,6 @@ export default memo(function PortfolioSummary({ assets, lastUpdate, nextUpdate }
           </span>
           <FxBadge />
         </div>
-        <CurrencyToggle />
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
