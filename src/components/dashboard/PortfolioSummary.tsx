@@ -66,7 +66,10 @@ const CountdownTimer = memo(({ nextUpdate }: { nextUpdate: Date | null }) => {
 CountdownTimer.displayName = 'CountdownTimer';
 
 export default memo(function PortfolioSummary({ assets, lastUpdate, nextUpdate }: Props) {
-  const { format, currency } = useDisplayCurrency();
+  const { format, currency, fxUpdatedAt, fx } = useDisplayCurrency();
+  const fxLabel = currency === 'BRL' || !fxUpdatedAt
+    ? null
+    : `1 ${currency} = R$ ${(currency === 'USD' ? fx.USD_BRL : fx.EUR_BRL).toFixed(4)} · ${new Date(fxUpdatedAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
   const { total, cost, gain, gainPct, daily, dailyPct } = useMemo(() => {
     const total = assets.reduce((s, a) => s + a.currentPrice * a.quantity, 0);
     const cost = assets.reduce((s, a) => s + a.avgPrice * a.quantity, 0);
