@@ -20,6 +20,26 @@ export interface HoldingRow {
   avg_price: number;
   sector: string | null;
   broker: string | null;
+  purchase_currency?: string | null;
+}
+
+/** Fetch USD/BRL and EUR/BRL from AwesomeAPI with a 1h persistent cache. */
+async function fetchFxRatesBRL(): Promise<{ USD: number; EUR: number }> {
+  const cacheKey = 'fx:usd_eur_brl';
+  const cached = await getCached<{ USD: number; EUR: number }>(cacheKey);
+  if (cached) return cached;
+  try {
+    const r = await fetch('https://economia.awesomeapi.com.br/json/last/USD-BRL,EUR-BRL');
+    const j = await r.json();
+    const rates = {
+      USD: parseFloat(j?.USDBRL?.bid) || 5.5,
+      EUR: parseFloat(j?.EURBRL?.bid) || 6.0,
+    };
+    await setCache(cacheKey, rates, 60 * 60 * 1000);
+    return rates;
+  } catch {
+    return { USD: 5.5, EUR: 6.0 };
+  }
 }
 
 export interface CashBalanceRow {
