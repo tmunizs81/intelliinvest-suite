@@ -20,6 +20,8 @@ interface Ctx {
   /** Format a BRL value into the currently selected display currency string. */
   format: (brl: number) => string;
   symbol: string;
+  /** Timestamp (ms since epoch) of the FX rates currently in use. */
+  fxUpdatedAt: number | null;
 }
 
 const DEFAULT_FX: FxRates = { USD_BRL: 5.5, EUR_BRL: 6.0 };
@@ -55,6 +57,15 @@ export function DisplayCurrencyProvider({ children }: { children: React.ReactNod
     } catch { /* noop */ }
     return DEFAULT_FX;
   });
+  const [fxUpdatedAt, setFxUpdatedAt] = useState<number | null>(() => {
+    if (typeof window === 'undefined') return null;
+    try {
+      const raw = localStorage.getItem(FX_CACHE_KEY);
+      if (!raw) return null;
+      const { ts } = JSON.parse(raw);
+      return typeof ts === 'number' ? ts : null;
+    } catch { return null; }
+  });
 
   const setCurrency = useCallback((c: DisplayCurrency) => {
     setCurrencyState(c);
@@ -68,19 +79,23 @@ export function DisplayCurrencyProvider({ children }: { children: React.ReactNod
 
   useEffect(() => {
     let cancelled = false;
+    const persist = (rates: FxRates, ts: number) => {
+      try { localStorage.setItem(FX_CACHE_KEY, JSON.stringify({ rates, ts })); } catch { /* noop */ }
+    };
     (async () => {
       const rates = await fetchFx();
       if (cancelled) return;
-      setFx(rates);
-      try { localStorage.setItem(FX_CACHE_KEY, JSON.stringify({ rates, ts: Date.now() })); } catch { /* noop */ }
+      const ts = Date.now();
+      setFx(rates); setFxUpdatedAt(ts); persist(rates, ts);
     })();
     const id = setInterval(async () => {
       const rates = await fetchFx();
-      setFx(rates);
-      try { localStorage.setItem(FX_CACHE_KEY, JSON.stringify({ rates, ts: Date.now() })); } catch { /* noop */ }
+      const ts = Date.now();
+      setFx(rates); setFxUpdatedAt(ts); persist(rates, ts);
     }, FX_TTL);
     return () => { cancelled = true; clearInterval(id); };
   }, []);
+
 
   const convert = useCallback((brl: number) => {
     if (!isFinite(brl)) return 0;
@@ -97,8 +112,8 @@ export function DisplayCurrencyProvider({ children }: { children: React.ReactNod
 
   const symbol = currency === 'BRL' ? 'R$' : currency === 'USD' ? 'US$' : '€';
 
-  const value = useMemo<Ctx>(() => ({ currency, setCurrency, cycle, fx, convert, format, symbol }),
-    [currency, setCurrency, cycle, fx, convert, format, symbol]);
+  const value = useMemo<Ctx>(() => ({ currency, setCurrency, cycle, fx, convert, format, symbol, fxUpdatedAt }),
+    [currency, setCurrency, cycle, fx, convert, format, symbol, fxUpdatedAt]);
 
   return <DisplayCurrencyContext.Provider value={value}>{children}</DisplayCurrencyContext.Provider>;
 }
@@ -115,6 +130,7 @@ export function useDisplayCurrency(): Ctx {
       convert: (v) => v,
       format: (v) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v),
       symbol: 'R$',
+      fxUpdatedAt: null,
     };
   }
   return ctx;
