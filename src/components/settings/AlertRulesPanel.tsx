@@ -10,16 +10,27 @@ type Rule = {
   enabled: boolean; cooldown_minutes: number;
 };
 
-const KIND_META: Record<string, { label: string; unit: 'pct' | 'min'; default: number; help: string }> = {
+const KIND_META: Record<string, { label: string; unit: 'pct' | 'min' | 'none'; default: number; help: string }> = {
   patrimony_drop:  { label: 'Queda de patrimônio',    unit: 'pct', default: 3,  help: 'Alerta quando o patrimônio cair mais que X% vs último snapshot.' },
   patrimony_gain:  { label: 'Ganho de patrimônio',    unit: 'pct', default: 5,  help: 'Alerta quando o patrimônio subir mais que X%.' },
   daily_valuation: { label: 'Variação diária',        unit: 'pct', default: 2,  help: 'Alerta em qualquer direção se |Δ| ≥ X%.' },
   roi_threshold:   { label: 'ROI acumulado',           unit: 'pct', default: 20, help: 'Alerta quando ROI acumulado cruzar ±X%.' },
   fx_stale:        { label: 'FX desatualizado',       unit: 'min', default: 120, help: 'Alerta se cotações FX não atualizarem há N minutos.' },
-  daily_summary:   { label: 'Resumo diário 09:00',    unit: 'pct', default: 0,  help: 'Envia um resumo consolidado toda manhã às 09:00 (BRT).' },
+  daily_summary:   { label: 'Resumo diário 09:00',    unit: 'none', default: 0,  help: 'Envia um resumo consolidado toda manhã às 09:00 (BRT).' },
+  market_open:     { label: 'Abertura de bolsa',      unit: 'none', default: 0,  help: 'Alerta assim que a bolsa selecionada abrir (B3, NYSE, NASDAQ, LSE, TSE ou todas).' },
+  market_close:    { label: 'Fechamento de bolsa',    unit: 'none', default: 0,  help: 'Alerta assim que a bolsa selecionada fechar.' },
 };
 
-const ORDER = ['patrimony_drop','patrimony_gain','daily_valuation','roi_threshold','fx_stale','daily_summary'];
+const MARKET_OPTIONS = [
+  { code: 'ALL', label: 'Todas' },
+  { code: 'B3', label: 'B3' },
+  { code: 'NYSE', label: 'NYSE' },
+  { code: 'NASDAQ', label: 'NASDAQ' },
+  { code: 'LSE', label: 'Londres' },
+  { code: 'TSE', label: 'Tóquio' },
+];
+
+const ORDER = ['patrimony_drop','patrimony_gain','daily_valuation','roi_threshold','fx_stale','daily_summary','market_open','market_close'];
 
 export function AlertRulesPanel() {
   const { user } = useAuth();
