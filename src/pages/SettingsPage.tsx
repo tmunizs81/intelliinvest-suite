@@ -1702,11 +1702,16 @@ function TelegramTab() {
     if (!chatId) { toast.error('Chat ID não configurado'); return; }
     setTesting(true);
     try {
-      const { error } = await supabase.functions.invoke('telegram-test', { body: { chatId } });
+      const { error } = await supabase.functions.invoke('telegram-send', {
+        body: {
+          html: `✅ <b>Teste de envio</b>\nSeu chat_id <code>${chatId}</code> está corretamente vinculado ao SimplyNvest.\n\n🕒 ${new Date().toLocaleString('pt-BR')}`,
+          kind: 'test',
+        },
+      });
       if (error) throw error;
-      toast.success('Mensagem de teste enviada!');
-    } catch {
-      toast.error('Falha ao enviar.');
+      toast.success(`Mensagem enviada para o chat ${chatId}`);
+    } catch (e: any) {
+      toast.error(`Falha ao enviar: ${e?.message ?? 'erro desconhecido'}`);
     } finally {
       setTesting(false);
     }
