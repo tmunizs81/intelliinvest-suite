@@ -4,6 +4,8 @@ import { formatCurrency } from '@/lib/mockData';
 import { type SnapshotRow } from '@/hooks/usePortfolioSnapshots';
 import { type Asset } from '@/lib/mockData';
 import { Loader2, TrendingUp, TrendingDown, Database } from 'lucide-react';
+import { FxBadge } from './FxBadge';
+
 
 const periods = [
   { label: '7D', days: 7 },
