@@ -58,6 +58,7 @@ export default function SettingsPage() {
     { key: 'family' as const, label: 'Família', icon: Users, adminOnly: false },
     { key: 'telegram' as const, label: 'Telegram', icon: Bell, adminOnly: false },
     { key: 'rules' as const, label: 'Alertas', icon: AlertTriangle, adminOnly: false },
+    { key: 'simulation' as const, label: 'Simulação', icon: PlayCircle, adminOnly: false },
     { key: 'notifications' as const, label: 'Notificações', icon: ClipboardList, adminOnly: false },
     { key: 'backup' as const, label: 'Backup', icon: Database, adminOnly: false },
     { key: 'audit' as const, label: 'Atividades', icon: ClipboardList, adminOnly: false },
