@@ -2,7 +2,7 @@ import { TrendingUp, TrendingDown, Wallet, BarChart3, Clock, Timer } from 'lucid
 import { type Asset, formatPercent } from '@/lib/mockData';
 import { useState, useEffect, useMemo, memo } from 'react';
 import { motion } from 'framer-motion';
-import { useDisplayCurrency, CurrencyToggle } from '@/hooks/useDisplayCurrency';
+import { useDisplayCurrency } from '@/hooks/useDisplayCurrency';
 import { FxBadge } from './FxBadge';
 
 
