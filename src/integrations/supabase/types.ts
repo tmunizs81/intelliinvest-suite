@@ -171,6 +171,48 @@ export type Database = {
           },
         ]
       }
+      alert_rules: {
+        Row: {
+          channel: string
+          cooldown_minutes: number
+          created_at: string
+          enabled: boolean
+          id: string
+          kind: string
+          meta: Json
+          threshold_minutes: number | null
+          threshold_pct: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          channel?: string
+          cooldown_minutes?: number
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          kind: string
+          meta?: Json
+          threshold_minutes?: number | null
+          threshold_pct?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          channel?: string
+          cooldown_minutes?: number
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          kind?: string
+          meta?: Json
+          threshold_minutes?: number | null
+          threshold_pct?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       alerts: {
         Row: {
           alert_type: Database["public"]["Enums"]["alert_type"]
@@ -491,6 +533,50 @@ export type Database = {
           yield_rate?: string | null
         }
         Relationships: []
+      }
+      notification_log: {
+        Row: {
+          channel: string
+          error: string | null
+          id: string
+          kind: string
+          payload: Json
+          rule_id: string | null
+          sent_at: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          channel: string
+          error?: string | null
+          id?: string
+          kind: string
+          payload?: Json
+          rule_id?: string | null
+          sent_at?: string
+          status: string
+          user_id: string
+        }
+        Update: {
+          channel?: string
+          error?: string | null
+          id?: string
+          kind?: string
+          payload?: Json
+          rule_id?: string | null
+          sent_at?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_log_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "alert_rules"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       portfolio_daily_metrics: {
         Row: {

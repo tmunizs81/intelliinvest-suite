@@ -13,8 +13,12 @@ import { formatCurrency } from '@/lib/mockData';
 import { toast } from 'sonner';
 import { BrokerLogo, BROKER_DOMAINS } from '@/lib/brokerLogos';
 import { useBrokerLogoSettings, setLogoOverride, setLogoDensity, optimizeLogoOnBackend, type LogoMeta } from '@/lib/brokerLogoSettings';
+import { AlertRulesPanel } from '@/components/settings/AlertRulesPanel';
+import { NotificationsPanel } from '@/components/settings/NotificationsPanel';
+import { UserEditModal } from '@/components/settings/UserEditModal';
+import { Pencil } from 'lucide-react';
 
-type SettingsTab = 'general' | 'users' | 'keys' | 'license' | 'family' | 'telegram' | 'backup' | 'audit';
+type SettingsTab = 'general' | 'users' | 'keys' | 'license' | 'family' | 'telegram' | 'rules' | 'notifications' | 'backup' | 'audit';
 
 // ─── Serial Key Generator ───
 function generateSerialKey(): string {
@@ -52,6 +56,8 @@ export default function SettingsPage() {
     { key: 'keys' as const, label: 'Chaves', icon: Key, adminOnly: true },
     { key: 'family' as const, label: 'Família', icon: Users, adminOnly: false },
     { key: 'telegram' as const, label: 'Telegram', icon: Bell, adminOnly: false },
+    { key: 'rules' as const, label: 'Alertas', icon: AlertTriangle, adminOnly: false },
+    { key: 'notifications' as const, label: 'Notificações', icon: ClipboardList, adminOnly: false },
     { key: 'backup' as const, label: 'Backup', icon: Database, adminOnly: false },
     { key: 'audit' as const, label: 'Atividades', icon: ClipboardList, adminOnly: false },
   ].filter(t => !t.adminOnly || isAdmin);
@@ -89,6 +95,8 @@ export default function SettingsPage() {
       {tab === 'keys' && isAdmin && <SerialKeysTab />}
       {tab === 'family' && <FamilyTab />}
       {tab === 'telegram' && <TelegramTab />}
+      {tab === 'rules' && <AlertRulesPanel />}
+      {tab === 'notifications' && <NotificationsPanel />}
       {tab === 'backup' && <BackupTab />}
       {tab === 'audit' && <AuditLogPanel />}
     </div>
@@ -879,6 +887,7 @@ function UsersTab() {
   const [newRole, setNewRole] = useState<'admin' | 'user'>('user');
   const [newChatId, setNewChatId] = useState('');
   const [creating, setCreating] = useState(false);
+  const [editingUser, setEditingUser] = useState<any | null>(null);
 
   const loadUsers = useCallback(async () => {
     setLoading(true);
@@ -1044,12 +1053,21 @@ function UsersTab() {
                     {new Date(u.created_at).toLocaleDateString('pt-BR')}
                   </td>
                   <td className="p-3 text-right">
-                    <button
-                      onClick={() => toggleRole(u.user_id, u.roles)}
-                      className="text-xs px-2 py-1 rounded border border-border hover:bg-accent/50 transition-colors"
-                    >
-                      {u.roles.includes('admin') ? 'Remover Admin' : 'Tornar Admin'}
-                    </button>
+                    <div className="flex justify-end gap-1.5">
+                      <button
+                        onClick={() => setEditingUser(u)}
+                        className="text-xs px-2 py-1 rounded border border-border hover:bg-accent/50 transition-colors inline-flex items-center gap-1"
+                        title="Editar usuário, senha e licença"
+                      >
+                        <Pencil className="h-3 w-3" /> Editar
+                      </button>
+                      <button
+                        onClick={() => toggleRole(u.user_id, u.roles)}
+                        className="text-xs px-2 py-1 rounded border border-border hover:bg-accent/50 transition-colors"
+                      >
+                        {u.roles.includes('admin') ? 'Remover Admin' : 'Tornar Admin'}
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -1057,6 +1075,19 @@ function UsersTab() {
           </table>
         )}
       </div>
+      {editingUser && (
+        <UserEditModal
+          target={{
+            user_id: editingUser.user_id,
+            display_name: editingUser.display_name,
+            email: editingUser.email ?? null,
+            is_admin: editingUser.roles?.includes('admin') ?? false,
+            license: editingUser.license,
+          }}
+          onClose={() => setEditingUser(null)}
+          onSaved={loadUsers}
+        />
+      )}
     </div>
   );
 }
