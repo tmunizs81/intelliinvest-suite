@@ -13,8 +13,12 @@ import { formatCurrency } from '@/lib/mockData';
 import { toast } from 'sonner';
 import { BrokerLogo, BROKER_DOMAINS } from '@/lib/brokerLogos';
 import { useBrokerLogoSettings, setLogoOverride, setLogoDensity, optimizeLogoOnBackend, type LogoMeta } from '@/lib/brokerLogoSettings';
+import { AlertRulesPanel } from '@/components/settings/AlertRulesPanel';
+import { NotificationsPanel } from '@/components/settings/NotificationsPanel';
+import { UserEditModal } from '@/components/settings/UserEditModal';
+import { Pencil } from 'lucide-react';
 
-type SettingsTab = 'general' | 'users' | 'keys' | 'license' | 'family' | 'telegram' | 'backup' | 'audit';
+type SettingsTab = 'general' | 'users' | 'keys' | 'license' | 'family' | 'telegram' | 'rules' | 'notifications' | 'backup' | 'audit';
 
 // ─── Serial Key Generator ───
 function generateSerialKey(): string {
