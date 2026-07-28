@@ -409,6 +409,7 @@ export function usePortfolio() {
         ...(updates.avg_price !== undefined && { avg_price: updates.avg_price }),
         ...(updates.sector !== undefined && { sector: updates.sector }),
         ...(updates.broker !== undefined && { broker: updates.broker }),
+        ...(updates.purchase_currency !== undefined && { purchase_currency: (updates.purchase_currency || 'BRL').toUpperCase() }),
         ...((updates as any).yield_rate !== undefined && { yield_rate: (updates as any).yield_rate }),
         ...((updates as any).indexer_type !== undefined && { indexer_type: (updates as any).indexer_type }),
         ...((updates as any).maturity_date !== undefined && { maturity_date: (updates as any).maturity_date }),
