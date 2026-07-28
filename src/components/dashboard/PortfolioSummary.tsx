@@ -66,10 +66,7 @@ const CountdownTimer = memo(({ nextUpdate }: { nextUpdate: Date | null }) => {
 CountdownTimer.displayName = 'CountdownTimer';
 
 export default memo(function PortfolioSummary({ assets, lastUpdate, nextUpdate }: Props) {
-  const { format, currency, fxUpdatedAt, fx } = useDisplayCurrency();
-  const fxLabel = currency === 'BRL' || !fxUpdatedAt
-    ? null
-    : `1 ${currency} = R$ ${(currency === 'USD' ? fx.USD_BRL : fx.EUR_BRL).toFixed(4)} · ${new Date(fxUpdatedAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
+  const { format, currency } = useDisplayCurrency();
   const { total, cost, gain, gainPct, daily, dailyPct } = useMemo(() => {
     const total = assets.reduce((s, a) => s + a.currentPrice * a.quantity, 0);
     const cost = assets.reduce((s, a) => s + a.avgPrice * a.quantity, 0);
@@ -86,18 +83,15 @@ export default memo(function PortfolioSummary({ assets, lastUpdate, nextUpdate }
   return (
     <div className="space-y-2 sm:space-y-3">
       <div className="flex items-center justify-between gap-2 flex-wrap">
-        <div className="flex flex-col">
+        <div className="flex items-center gap-2">
           <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
             Exibindo em <strong className="text-foreground">{currency}</strong>
           </span>
-          {fxLabel && (
-            <span className="text-[10px] text-muted-foreground/80 font-mono" title="Cotação FX usada para conversão">
-              {fxLabel}
-            </span>
-          )}
+          <FxBadge />
         </div>
         <CurrencyToggle />
       </div>
+
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
         <motion.div
           initial={{ opacity: 0, scale: 0.96 }}
