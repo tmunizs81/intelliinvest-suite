@@ -752,25 +752,59 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
               />
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-muted-foreground">Quantidade *</label>
-                <input
-                  type="number" step="any" min="0.00001" value={quantity} onChange={e => setQuantity(e.target.value)} required
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                  placeholder="100"
-                />
+            <>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">Quantidade *</label>
+                  <input
+                    type="number" step="any" min="0.00001" value={quantity} onChange={e => setQuantity(e.target.value)} required
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                    placeholder="100"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">
+                    Preço Médio * <span className="text-[10px] text-muted-foreground/70">({purchaseCurrency})</span>
+                  </label>
+                  <input
+                    type="number" step="0.0001" min="0" value={avgPrice} onChange={e => setAvgPrice(e.target.value)} required
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                    placeholder={purchaseCurrency === 'BRL' ? '28,50' : purchaseCurrency === 'USD' ? '51.60' : '48,20'}
+                  />
+                </div>
               </div>
+
               <div className="space-y-1">
-                <label className="text-xs font-medium text-muted-foreground">Preço Médio *</label>
-                <input
-                  type="number" step="0.01" min="0" value={avgPrice} onChange={e => setAvgPrice(e.target.value)} required
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                  placeholder="28.50"
-                />
+                <label className="text-xs font-medium text-muted-foreground">Moeda de compra *</label>
+                <div className="inline-flex w-full rounded-md border border-input bg-background p-0.5">
+                  {(['BRL', 'USD', 'EUR'] as const).map((c) => {
+                    const active = purchaseCurrency === c;
+                    const sym = c === 'BRL' ? 'R$' : c === 'USD' ? 'US$' : '€';
+                    return (
+                      <button
+                        key={c}
+                        type="button"
+                        onClick={() => setPurchaseCurrency(c)}
+                        aria-pressed={active}
+                        className={`flex-1 inline-flex items-center justify-center gap-1.5 rounded-[6px] px-2 py-1.5 text-xs font-semibold transition-all ${
+                          active
+                            ? 'bg-primary text-primary-foreground shadow-sm'
+                            : 'text-muted-foreground hover:text-foreground'
+                        }`}
+                      >
+                        <span className="font-mono">{sym}</span>
+                        {c}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="text-[10px] text-muted-foreground/80">
+                  Selecione a moeda em que você <strong>comprou</strong> este ativo. Usada para calcular o custo em reais na cotação atual.
+                </p>
               </div>
-            </div>
+            </>
           )}
+
 
           {/* AI Copilot Signal */}
           {ticker && quantity && avgPrice && !editData && (
