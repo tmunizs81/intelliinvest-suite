@@ -95,7 +95,10 @@ export function usePortfolio() {
       setLoading(false);
       return;
     }
-      // Fetch FX to convert non-BRL purchase prices to BRL cost basis.
+    try {
+      setError(null);
+
+      // Fetch FX (USD/BRL, EUR/BRL) to convert non-BRL purchase prices into a BRL cost basis.
       const fx = await fetchFxRatesBRL();
       const toBRL = (price: number, cur: string | null | undefined) => {
         const c = (cur || 'BRL').toUpperCase();
@@ -104,9 +107,6 @@ export function usePortfolio() {
         return price;
       };
 
-
-    try {
-      setError(null);
 
       // Separate fixed income, real estate, and market assets
       const fixedIncomeHoldings = h.filter(item => item.type === 'Renda Fixa');
