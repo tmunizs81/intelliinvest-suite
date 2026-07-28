@@ -45,26 +45,57 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const LAST_UID_KEY = 'sn_last_uid_v1';
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const lastUidRef = useRef<string | null>(
+    typeof window !== 'undefined' ? localStorage.getItem(LAST_UID_KEY) : null
+  );
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    // Defensive: if a different account signs in (or user signs out), purge every
+    // per-user cache so the previous account's data can never bleed into this session.
+    const handleUidChange = async (nextUid: string | null) => {
+      const prev = lastUidRef.current;
+      if (prev !== nextUid) {
+        await purgeUserScopedCaches();
+        lastUidRef.current = nextUid;
+        try {
+          if (nextUid) localStorage.setItem(LAST_UID_KEY, nextUid);
+          else localStorage.removeItem(LAST_UID_KEY);
+        } catch { /* noop */ }
+        // Force a reload on account switch so every hook re-hydrates from scratch.
+        if (prev && nextUid && prev !== nextUid) {
+          window.location.reload();
+          return;
+        }
+      }
+    };
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      const nextUid = session?.user?.id ?? null;
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
+      if (event === 'SIGNED_OUT' || event === 'SIGNED_IN' || event === 'USER_UPDATED') {
+        void handleUidChange(nextUid);
+      }
     });
 
     supabase.auth.getSession().then(({ data: { session } }) => {
+      const nextUid = session?.user?.id ?? null;
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
+      void handleUidChange(nextUid);
     });
 
     return () => subscription.unsubscribe();
   }, []);
+
 
   const signUp = async (email: string, password: string, displayName?: string) => {
     const { error } = await supabase.auth.signUp({
