@@ -1053,12 +1053,21 @@ function UsersTab() {
                     {new Date(u.created_at).toLocaleDateString('pt-BR')}
                   </td>
                   <td className="p-3 text-right">
-                    <button
-                      onClick={() => toggleRole(u.user_id, u.roles)}
-                      className="text-xs px-2 py-1 rounded border border-border hover:bg-accent/50 transition-colors"
-                    >
-                      {u.roles.includes('admin') ? 'Remover Admin' : 'Tornar Admin'}
-                    </button>
+                    <div className="flex justify-end gap-1.5">
+                      <button
+                        onClick={() => setEditingUser(u)}
+                        className="text-xs px-2 py-1 rounded border border-border hover:bg-accent/50 transition-colors inline-flex items-center gap-1"
+                        title="Editar usuário, senha e licença"
+                      >
+                        <Pencil className="h-3 w-3" /> Editar
+                      </button>
+                      <button
+                        onClick={() => toggleRole(u.user_id, u.roles)}
+                        className="text-xs px-2 py-1 rounded border border-border hover:bg-accent/50 transition-colors"
+                      >
+                        {u.roles.includes('admin') ? 'Remover Admin' : 'Tornar Admin'}
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -1066,6 +1075,19 @@ function UsersTab() {
           </table>
         )}
       </div>
+      {editingUser && (
+        <UserEditModal
+          target={{
+            user_id: editingUser.user_id,
+            display_name: editingUser.display_name,
+            email: editingUser.email ?? null,
+            is_admin: editingUser.roles?.includes('admin') ?? false,
+            license: editingUser.license,
+          }}
+          onClose={() => setEditingUser(null)}
+          onSaved={loadUsers}
+        />
+      )}
     </div>
   );
 }
