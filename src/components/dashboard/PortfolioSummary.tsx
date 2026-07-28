@@ -3,6 +3,8 @@ import { type Asset, formatPercent } from '@/lib/mockData';
 import { useState, useEffect, useMemo, memo } from 'react';
 import { motion } from 'framer-motion';
 import { useDisplayCurrency, CurrencyToggle } from '@/hooks/useDisplayCurrency';
+import { FxBadge } from './FxBadge';
+
 
 interface Props {
   assets: Asset[];
