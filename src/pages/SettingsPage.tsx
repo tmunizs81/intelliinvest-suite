@@ -95,6 +95,8 @@ export default function SettingsPage() {
       {tab === 'keys' && isAdmin && <SerialKeysTab />}
       {tab === 'family' && <FamilyTab />}
       {tab === 'telegram' && <TelegramTab />}
+      {tab === 'rules' && <AlertRulesPanel />}
+      {tab === 'notifications' && <NotificationsPanel />}
       {tab === 'backup' && <BackupTab />}
       {tab === 'audit' && <AuditLogPanel />}
     </div>
