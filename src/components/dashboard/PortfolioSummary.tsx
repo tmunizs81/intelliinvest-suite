@@ -85,10 +85,17 @@ export default memo(function PortfolioSummary({ assets, lastUpdate, nextUpdate }
 
   return (
     <div className="space-y-2 sm:space-y-3">
-      <div className="flex items-center justify-between">
-        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
-          Exibindo em <strong className="text-foreground">{currency}</strong>
-        </span>
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <div className="flex flex-col">
+          <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+            Exibindo em <strong className="text-foreground">{currency}</strong>
+          </span>
+          {fxLabel && (
+            <span className="text-[10px] text-muted-foreground/80 font-mono" title="Cotação FX usada para conversão">
+              {fxLabel}
+            </span>
+          )}
+        </div>
         <CurrencyToggle />
       </div>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
