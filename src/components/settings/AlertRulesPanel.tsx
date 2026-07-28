@@ -8,6 +8,7 @@ type Rule = {
   id: string; user_id: string; kind: string;
   threshold_pct: number | null; threshold_minutes: number | null;
   enabled: boolean; cooldown_minutes: number;
+  meta?: { market?: string } | null;
 };
 
 const KIND_META: Record<string, { label: string; unit: 'pct' | 'min' | 'none'; default: number; help: string }> = {
