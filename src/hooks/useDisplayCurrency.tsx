@@ -57,6 +57,15 @@ export function DisplayCurrencyProvider({ children }: { children: React.ReactNod
     } catch { /* noop */ }
     return DEFAULT_FX;
   });
+  const [fxUpdatedAt, setFxUpdatedAt] = useState<number | null>(() => {
+    if (typeof window === 'undefined') return null;
+    try {
+      const raw = localStorage.getItem(FX_CACHE_KEY);
+      if (!raw) return null;
+      const { ts } = JSON.parse(raw);
+      return typeof ts === 'number' ? ts : null;
+    } catch { return null; }
+  });
 
   const setCurrency = useCallback((c: DisplayCurrency) => {
     setCurrencyState(c);
@@ -70,19 +79,23 @@ export function DisplayCurrencyProvider({ children }: { children: React.ReactNod
 
   useEffect(() => {
     let cancelled = false;
+    const persist = (rates: FxRates, ts: number) => {
+      try { localStorage.setItem(FX_CACHE_KEY, JSON.stringify({ rates, ts })); } catch { /* noop */ }
+    };
     (async () => {
       const rates = await fetchFx();
       if (cancelled) return;
-      setFx(rates);
-      try { localStorage.setItem(FX_CACHE_KEY, JSON.stringify({ rates, ts: Date.now() })); } catch { /* noop */ }
+      const ts = Date.now();
+      setFx(rates); setFxUpdatedAt(ts); persist(rates, ts);
     })();
     const id = setInterval(async () => {
       const rates = await fetchFx();
-      setFx(rates);
-      try { localStorage.setItem(FX_CACHE_KEY, JSON.stringify({ rates, ts: Date.now() })); } catch { /* noop */ }
+      const ts = Date.now();
+      setFx(rates); setFxUpdatedAt(ts); persist(rates, ts);
     }, FX_TTL);
     return () => { cancelled = true; clearInterval(id); };
   }, []);
+
 
   const convert = useCallback((brl: number) => {
     if (!isFinite(brl)) return 0;
