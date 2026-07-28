@@ -71,7 +71,7 @@ export function AlertRulesPanel() {
     setSaving(r.id);
     const { error } = await supabase.from('alert_rules').update({
       enabled: r.enabled, threshold_pct: r.threshold_pct, threshold_minutes: r.threshold_minutes,
-      cooldown_minutes: r.cooldown_minutes,
+      cooldown_minutes: r.cooldown_minutes, meta: r.meta ?? {},
     }).eq('id', r.id);
     setSaving(null);
     if (error) toast.error(error.message); else toast.success('Regra salva');
