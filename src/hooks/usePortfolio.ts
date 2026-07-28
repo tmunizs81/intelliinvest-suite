@@ -360,6 +360,7 @@ export function usePortfolio() {
         avg_price: holding.avg_price,
         sector: holding.sector,
         broker: holding.broker || null,
+        purchase_currency: (holding.purchase_currency || 'BRL').toUpperCase(),
         ...((holding as any).yield_rate && { yield_rate: (holding as any).yield_rate }),
         ...((holding as any).indexer_type && { indexer_type: (holding as any).indexer_type }),
         ...((holding as any).maturity_date && { maturity_date: (holding as any).maturity_date }),
