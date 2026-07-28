@@ -98,6 +98,7 @@ export default function SettingsPage() {
       {tab === 'family' && <FamilyTab />}
       {tab === 'telegram' && <TelegramTab />}
       {tab === 'rules' && <AlertRulesPanel />}
+      {tab === 'simulation' && <SimulationPanel />}
       {tab === 'notifications' && <NotificationsPanel />}
       {tab === 'backup' && <BackupTab />}
       {tab === 'audit' && <AuditLogPanel />}
