@@ -128,8 +128,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
+    await purgeUserScopedCaches();
+    try { localStorage.removeItem(LAST_UID_KEY); } catch { /* noop */ }
     await supabase.auth.signOut();
   };
+
 
   const resetPassword = async (email: string) => {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
