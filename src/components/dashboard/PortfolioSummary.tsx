@@ -2,7 +2,7 @@ import { TrendingUp, TrendingDown, Wallet, BarChart3, Clock, Timer } from 'lucid
 import { type Asset, formatPercent } from '@/lib/mockData';
 import { useState, useEffect, useMemo, memo } from 'react';
 import { motion } from 'framer-motion';
-import { useDisplayCurrency, CurrencyToggle } from '@/hooks/useDisplayCurrency';
+import { useDisplayCurrency } from '@/hooks/useDisplayCurrency';
 import { FxBadge } from './FxBadge';
 
 
@@ -91,7 +91,6 @@ export default memo(function PortfolioSummary({ assets, lastUpdate, nextUpdate }
           </span>
           <FxBadge />
         </div>
-        <CurrencyToggle />
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
