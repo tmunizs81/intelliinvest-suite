@@ -442,6 +442,7 @@ export type Database = {
           maturity_date: string | null
           name: string
           property_purpose: string | null
+          purchase_currency: string
           quantity: number
           rental_value: number | null
           sector: string | null
@@ -460,6 +461,7 @@ export type Database = {
           maturity_date?: string | null
           name: string
           property_purpose?: string | null
+          purchase_currency?: string
           quantity: number
           rental_value?: number | null
           sector?: string | null
@@ -478,6 +480,7 @@ export type Database = {
           maturity_date?: string | null
           name?: string
           property_purpose?: string | null
+          purchase_currency?: string
           quantity?: number
           rental_value?: number | null
           sector?: string | null
