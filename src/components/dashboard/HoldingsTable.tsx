@@ -5,6 +5,8 @@ import { type Asset, formatCurrency, formatPercent } from '@/lib/mockData';
 import type { HoldingRow } from '@/hooks/usePortfolio';
 import { motion } from 'framer-motion';
 import { BrokerLogo } from '@/lib/brokerLogos';
+import { FxBadge } from './FxBadge';
+
 
 const typeBadgeClass: Record<string, string> = {
   'Ação': 'bg-primary/10 text-primary',
