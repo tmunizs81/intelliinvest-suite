@@ -20,6 +20,8 @@ interface Ctx {
   /** Format a BRL value into the currently selected display currency string. */
   format: (brl: number) => string;
   symbol: string;
+  /** Timestamp (ms since epoch) of the FX rates currently in use. */
+  fxUpdatedAt: number | null;
 }
 
 const DEFAULT_FX: FxRates = { USD_BRL: 5.5, EUR_BRL: 6.0 };
