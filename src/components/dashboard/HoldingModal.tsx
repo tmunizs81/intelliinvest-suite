@@ -130,6 +130,8 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
       setPropertyPurpose((editData as any)?.property_purpose || 'holding');
       setRentalValue((editData as any)?.rental_value?.toString() || '');
       setMaturityDate(editData?.maturity_date ? new Date(editData.maturity_date) : undefined);
+      const pc = ((editData as any)?.purchase_currency || 'BRL').toUpperCase();
+      setPurchaseCurrency((['BRL', 'USD', 'EUR'].includes(pc) ? pc : 'BRL') as 'BRL' | 'USD' | 'EUR');
       setError('');
       setSuggestions([]);
       setShowSuggestions(false);
