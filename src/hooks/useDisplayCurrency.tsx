@@ -112,8 +112,8 @@ export function DisplayCurrencyProvider({ children }: { children: React.ReactNod
 
   const symbol = currency === 'BRL' ? 'R$' : currency === 'USD' ? 'US$' : '€';
 
-  const value = useMemo<Ctx>(() => ({ currency, setCurrency, cycle, fx, convert, format, symbol }),
-    [currency, setCurrency, cycle, fx, convert, format, symbol]);
+  const value = useMemo<Ctx>(() => ({ currency, setCurrency, cycle, fx, convert, format, symbol, fxUpdatedAt }),
+    [currency, setCurrency, cycle, fx, convert, format, symbol, fxUpdatedAt]);
 
   return <DisplayCurrencyContext.Provider value={value}>{children}</DisplayCurrencyContext.Provider>;
 }
