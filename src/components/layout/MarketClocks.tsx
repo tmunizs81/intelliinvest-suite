@@ -98,17 +98,13 @@ export default function MarketClocks() {
     <div className="hidden md:flex items-center gap-2 lg:gap-3 px-3 py-1.5 rounded-full border border-border bg-card/70 backdrop-blur">
       {MARKETS.map((mk) => {
         const st = computeStatus(now, mk);
-        const color = st.isOpen
-          ? 'bg-emerald-500'
-          : st.seconds < 3600
-          ? 'bg-amber-500'
-          : 'bg-muted-foreground/50';
+        const color = st.isOpen ? 'bg-emerald-500' : 'bg-red-500';
         return (
           <div key={mk.code} className="flex items-center gap-1.5 text-[11px] leading-none">
             <span className={`h-1.5 w-1.5 rounded-full ${color} ${st.isOpen ? 'animate-pulse' : ''}`} />
             <span className="font-semibold text-foreground">{mk.label}</span>
             <span
-              className={`font-mono tabular-nums ${st.isOpen ? 'text-emerald-500' : 'text-muted-foreground'}`}
+              className={`font-mono tabular-nums ${st.isOpen ? 'text-emerald-500' : 'text-red-500'}`}
               title={st.isOpen ? 'Fecha em' : 'Abre em'}
             >
               {st.isOpen ? '−' : ''}{fmt(st.seconds)}
