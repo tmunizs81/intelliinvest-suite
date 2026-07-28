@@ -82,24 +82,37 @@ export function DisplayCurrencyProvider({ children }: { children: React.ReactNod
     setCurrency(order[(order.indexOf(currency) + 1) % order.length]);
   }, [currency, setCurrency]);
 
+  const [fxRefreshing, setFxRefreshing] = useState(false);
+
+  const persistFx = useCallback((rates: FxRates, ts: number) => {
+    try { localStorage.setItem(FX_CACHE_KEY, JSON.stringify({ rates, ts })); } catch { /* noop */ }
+  }, []);
+
+  const refreshFx = useCallback(async (): Promise<number | null> => {
+    setFxRefreshing(true);
+    try {
+      const rates = await fetchFx();
+      const ts = Date.now();
+      setFx(rates); setFxUpdatedAt(ts); persistFx(rates, ts);
+      // Broadcast so any snapshot-based consumer can recompute against the new rates
+      try { window.dispatchEvent(new CustomEvent('fx:updated', { detail: { ts, rates } })); } catch { /* noop */ }
+      return ts;
+    } finally {
+      setFxRefreshing(false);
+    }
+  }, [persistFx]);
+
   useEffect(() => {
     let cancelled = false;
-    const persist = (rates: FxRates, ts: number) => {
-      try { localStorage.setItem(FX_CACHE_KEY, JSON.stringify({ rates, ts })); } catch { /* noop */ }
-    };
     (async () => {
       const rates = await fetchFx();
       if (cancelled) return;
       const ts = Date.now();
-      setFx(rates); setFxUpdatedAt(ts); persist(rates, ts);
+      setFx(rates); setFxUpdatedAt(ts); persistFx(rates, ts);
     })();
-    const id = setInterval(async () => {
-      const rates = await fetchFx();
-      const ts = Date.now();
-      setFx(rates); setFxUpdatedAt(ts); persist(rates, ts);
-    }, FX_TTL);
+    const id = setInterval(() => { refreshFx(); }, FX_TTL);
     return () => { cancelled = true; clearInterval(id); };
-  }, []);
+  }, [persistFx, refreshFx]);
 
 
   const convert = useCallback((brl: number) => {
@@ -117,8 +130,8 @@ export function DisplayCurrencyProvider({ children }: { children: React.ReactNod
 
   const symbol = currency === 'BRL' ? 'R$' : currency === 'USD' ? 'US$' : '€';
 
-  const value = useMemo<Ctx>(() => ({ currency, setCurrency, cycle, fx, convert, format, symbol, fxUpdatedAt }),
-    [currency, setCurrency, cycle, fx, convert, format, symbol, fxUpdatedAt]);
+  const value = useMemo<Ctx>(() => ({ currency, setCurrency, cycle, fx, convert, format, symbol, fxUpdatedAt, refreshFx, fxRefreshing }),
+    [currency, setCurrency, cycle, fx, convert, format, symbol, fxUpdatedAt, refreshFx, fxRefreshing]);
 
   return <DisplayCurrencyContext.Provider value={value}>{children}</DisplayCurrencyContext.Provider>;
 }
@@ -136,10 +149,13 @@ export function useDisplayCurrency(): Ctx {
       format: (v) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v),
       symbol: 'R$',
       fxUpdatedAt: null,
+      refreshFx: async () => null,
+      fxRefreshing: false,
     };
   }
   return ctx;
 }
+
 
 const ICONS: Record<DisplayCurrency, React.ComponentType<{ className?: string }>> = {
   BRL: Banknote,
