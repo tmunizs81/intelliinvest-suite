@@ -1,6 +1,37 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { clearCache } from '@/lib/persistentCache';
 import type { User, Session } from '@supabase/supabase-js';
+
+/**
+ * Purge all per-user client-side caches so a new sign-in on the same browser
+ * never rehydrates the previous account's data. Keeps public UI prefs
+ * (theme, display currency, FX rates) intact.
+ */
+async function purgeUserScopedCaches() {
+  // IndexedDB caches (dashboard bootstrap, holdings quotes, AI insights, snapshots)
+  try { await clearCache(); } catch { /* noop */ }
+  // localStorage keys that hold per-user data
+  try {
+    const preserve = new Set([
+      'display_currency_v1',
+      'display_currency_fx_v1',
+      'theme',
+      'privacy_mode',
+    ]);
+    const toDelete: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (!k) continue;
+      if (preserve.has(k)) continue;
+      // Drop everything user-scoped: bootstrap, metrics, alerts, ai-*, quotes, tickers
+      if (/^(dashboard_bootstrap|portfolio_|ai-|alerts:|onboarding_|user_)/.test(k)) {
+        toDelete.push(k);
+      }
+    }
+    toDelete.forEach((k) => localStorage.removeItem(k));
+  } catch { /* noop */ }
+}
 
 interface AuthContextType {
   user: User | null;
