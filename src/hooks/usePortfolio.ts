@@ -162,17 +162,22 @@ export function usePortfolio() {
         const exchangeRate = quote?.exchangeRate || 1;
         const value = currentPriceBRL * item.quantity;
         totalValue += value;
+        // Convert the stored purchase price into BRL so cost/gain math stays consistent
+        // regardless of the currency the user typed on the form.
+        const purchaseCurrency = (item.purchase_currency || 'BRL').toUpperCase();
+        const avgPriceBRL = toBRL(item.avg_price, purchaseCurrency);
         return {
           ticker: item.ticker,
           name: item.name,
           type: classifyAssetType(item.ticker, item.type) as Asset['type'],
           quantity: item.quantity,
-          avgPrice: item.avg_price,
+          avgPrice: avgPriceBRL,
           currentPrice: currentPriceBRL,
           change24h: quote?.change24h || 0,
           allocation: 0,
           sector: item.sector || undefined,
           source: quote?.source || undefined,
+
           currency,
           currentPriceBRL,
           exchangeRate,
