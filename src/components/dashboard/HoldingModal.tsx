@@ -293,6 +293,7 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
         maturity_date: isFixedIncome && maturityDate ? format(maturityDate, 'yyyy-MM-dd') : null,
         property_purpose: isProperty ? propertyPurpose : null,
         rental_value: isProperty && propertyPurpose === 'aluguel' ? parseFloat(rentalValue) || null : null,
+        purchase_currency: (isFixedIncome || isProperty) ? 'BRL' : purchaseCurrency,
       };
 
       if (!data.ticker || !data.name || isNaN(data.quantity) || isNaN(data.avg_price)) {
