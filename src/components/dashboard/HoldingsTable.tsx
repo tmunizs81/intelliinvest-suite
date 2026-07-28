@@ -5,6 +5,8 @@ import { type Asset, formatCurrency, formatPercent } from '@/lib/mockData';
 import type { HoldingRow } from '@/hooks/usePortfolio';
 import { motion } from 'framer-motion';
 import { BrokerLogo } from '@/lib/brokerLogos';
+import { FxBadge } from './FxBadge';
+
 
 const typeBadgeClass: Record<string, string> = {
   'Ação': 'bg-primary/10 text-primary',
@@ -158,12 +160,16 @@ export default function HoldingsTable({ assets, holdings, loading, onAdd, onEdit
     >
       <div className="p-5 border-b border-border flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-semibold">Carteira de Ativos</h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-lg font-semibold">Carteira de Ativos</h2>
+            <FxBadge compact />
+          </div>
           <p className="text-sm text-muted-foreground">
             {assets.length} ativos • Brapi + Yahoo Finance
             {loading && <Loader2 className="inline ml-2 h-3 w-3 animate-spin" />}
           </p>
         </div>
+
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-1.5 mr-2">
             <span className="h-2 w-2 rounded-full bg-primary animate-pulse-slow" />

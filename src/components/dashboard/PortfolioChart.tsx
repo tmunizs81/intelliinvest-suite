@@ -4,6 +4,8 @@ import { formatCurrency } from '@/lib/mockData';
 import { type SnapshotRow } from '@/hooks/usePortfolioSnapshots';
 import { type Asset } from '@/lib/mockData';
 import { Loader2, TrendingUp, TrendingDown, Database } from 'lucide-react';
+import { FxBadge } from './FxBadge';
+
 
 const periods = [
   { label: '7D', days: 7 },
@@ -152,7 +154,9 @@ export default memo(function PortfolioChart({ assets, snapshots, loading, showCo
               <TrendingDown className="h-4 w-4 text-loss" />
             )}
             <h2 className="text-lg font-semibold">Evolução Patrimonial</h2>
+            <FxBadge compact />
           </div>
+
           <p className={`text-sm font-mono ${isPositive ? 'text-gain' : 'text-loss'}`}>
             {formatCurrency(change)} ({changePct.toFixed(2)}%)
           </p>
