@@ -22,7 +22,12 @@ interface Ctx {
   symbol: string;
   /** Timestamp (ms since epoch) of the FX rates currently in use. */
   fxUpdatedAt: number | null;
+  /** Force a fresh FX fetch now; resolves with the new timestamp. */
+  refreshFx: () => Promise<number | null>;
+  /** True while a manual refresh is in flight. */
+  fxRefreshing: boolean;
 }
+
 
 const DEFAULT_FX: FxRates = { USD_BRL: 5.5, EUR_BRL: 6.0 };
 const STORAGE_KEY = 'display_currency_v1';
