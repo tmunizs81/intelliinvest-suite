@@ -1,0 +1,150 @@
+name: Isolamento e Segredos (bloqueia merge)
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: isolation-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Preview local usado pelos testes E2E.
+  E2E_BASE_URL: http://localhost:8080
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # 1) Checagens estáticas: token/segredo do Telegram, escopo de cache por conta,
+  #    guardas de autenticação nas Edge Functions. Sempre obrigatório.
+  # ---------------------------------------------------------------------------
+  static-security:
+    name: Checagens estáticas de token e isolamento
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Instalar dependências
+        run: bun install --frozen-lockfile
+
+      - name: Typecheck
+        run: bunx tsc --noEmit
+
+      - name: Suíte de segurança (multi-tenancy + cache escopado)
+        run: bun run test:security
+
+      - name: Suíte completa de testes unitários
+        run: bun run test
+
+      - name: Varredura extra por segredos hardcoded
+        run: |
+          set -euo pipefail
+          # Nenhum bot token do Telegram (formato 123456789:AA...) pode entrar no repo.
+          if grep -rInE '[0-9]{8,10}:[A-Za-z0-9_-]{30,}' \
+               --include='*.ts' --include='*.tsx' --include='*.json' \
+               --include='*.yml' --include='*.sh' \
+               src supabase scripts 2>/dev/null; then
+            echo "::error::Possível bot token do Telegram commitado."
+            exit 1
+          fi
+          # A publishable key nunca pode ser usada como bearer de sessão.
+          if grep -rIn 'Authorization.*PUBLISHABLE' --include='*.ts' --include='*.tsx' src; then
+            echo "::error::Publishable key usada como token de sessão."
+            exit 1
+          fi
+          echo "Nenhum segredo detectado."
+
+  # ---------------------------------------------------------------------------
+  # 2) E2E sequencial com duas contas reais: UI, endpoints e cache não podem
+  #    misturar dados entre usuários.
+  # ---------------------------------------------------------------------------
+  e2e-isolation:
+    name: E2E de isolamento sequencial (2 contas)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: static-security
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Exigir contas de teste configuradas
+        env:
+          TEST_USER_A: ${{ secrets.TEST_USER_A }}
+          TEST_USER_B: ${{ secrets.TEST_USER_B }}
+        run: |
+          if [ -z "${TEST_USER_A}" ] || [ -z "${TEST_USER_B}" ]; then
+            echo "::error::Configure os secrets TEST_USER_A/TEST_PASS_A e TEST_USER_B/TEST_PASS_B."
+            echo "Sem eles o teste de isolamento seria silenciosamente pulado."
+            exit 1
+          fi
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Instalar dependências
+        run: bun install --frozen-lockfile
+
+      - name: Instalar Chromium do Playwright
+        run: bunx playwright install --with-deps chromium
+
+      - name: Build de produção
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+          VITE_SUPABASE_PROJECT_ID: ${{ secrets.VITE_SUPABASE_PROJECT_ID }}
+        run: bun run build
+
+      - name: Subir preview e aguardar
+        run: |
+          bunx vite preview --port 8080 --host 127.0.0.1 &
+          for i in $(seq 1 40); do
+            curl -sf -o /dev/null "$E2E_BASE_URL" && exit 0
+            sleep 2
+          done
+          echo "::error::Preview não respondeu em 80s."
+          exit 1
+
+      - name: E2E de isolamento (falha bloqueia o merge)
+        env:
+          TEST_USER_A: ${{ secrets.TEST_USER_A }}
+          TEST_PASS_A: ${{ secrets.TEST_PASS_A }}
+          TEST_USER_B: ${{ secrets.TEST_USER_B }}
+          TEST_PASS_B: ${{ secrets.TEST_PASS_B }}
+        run: bun run test:e2e:isolation
+
+      - name: Publicar relatório em caso de falha
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-isolation-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
+
+  # ---------------------------------------------------------------------------
+  # 3) Gate único para o branch protection: exige os dois jobs verdes.
+  # ---------------------------------------------------------------------------
+  isolation-gate:
+    name: Gate de isolamento
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [static-security, e2e-isolation]
+    steps:
+      - name: Verificar resultados
+        run: |
+          echo "static-security: ${{ needs.static-security.result }}"
+          echo "e2e-isolation:   ${{ needs.e2e-isolation.result }}"
+          if [ "${{ needs.static-security.result }}" != "success" ] || \
+             [ "${{ needs.e2e-isolation.result }}" != "success" ]; then
+            echo "::error::Regressão de isolamento/segredos detectada — merge bloqueado."
+            exit 1
+          fi
+          echo "Isolamento verificado."
