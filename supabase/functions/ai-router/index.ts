@@ -8,14 +8,16 @@
  * beneficia todas as tarefas de uma vez.
  */
 import {
-  corsHeaders, corsPreflight, jsonResponse, errorResponse, rateLimitResponse,
-  extractUserId, isRateLimited, callDeepSeek, parseDeepSeekJson,
+  corsHeaders, corsPreflight, jsonResponse, errorResponse,
+  isRateLimited, callDeepSeek, parseDeepSeekJson,
 } from "../_ai-core.ts";
 import { withAICache } from "../ai-cache-helper.ts";
 import { buildInsightsPrompt, type InsightsPayload } from "../_ai-prompts/insights.ts";
 import { buildScoringPrompt, type ScoringPayload } from "../_ai-prompts/scoring.ts";
 import { logMetric } from "../_telemetry.ts";
-import { requireCaller } from "../_shared/auth.ts";
+import { resolveCaller } from "../_shared/auth.ts";
+import { enforceRateLimit } from "../_shared/rate-limit.ts";
+
 
 type TaskBuilder = (payload: any) => {
   cacheKey: string;
