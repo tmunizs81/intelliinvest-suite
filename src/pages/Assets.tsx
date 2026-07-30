@@ -1,10 +1,11 @@
 import { useState, useRef, useMemo, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
-  Plus, Upload, Download, Search, Pencil, Trash2, ArrowUpRight,
-  ArrowDownRight, ChevronRight, Loader2, FileSpreadsheet, X, AlertTriangle, FileUp,
+  Plus, Upload, Download, Search, Trash2,
+  ChevronRight, Loader2, FileSpreadsheet, X, AlertTriangle, FileUp,
   Wallet, DollarSign, Building2, ArrowUpDown, ChevronDown,
 } from 'lucide-react';
+
 import { toast } from 'sonner';
 import { usePortfolio, type HoldingRow } from '@/hooks/usePortfolio';
 import HoldingModal from '@/components/dashboard/HoldingModal';
