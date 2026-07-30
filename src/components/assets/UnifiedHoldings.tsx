@@ -104,13 +104,20 @@ export const SORT_LABELS: Record<SortKey, string> = {
   ticker: 'Ticker',
 };
 
-function sortAggregates(list: TickerAggregate[], sort: SortState): TickerAggregate[] {
+export function sortAggregates(list: TickerAggregate[], sort: SortState): TickerAggregate[] {
   const mult = sort.dir === 'asc' ? 1 : -1;
   return [...list].sort((a, b) => {
-    if (sort.key === 'ticker') return a.ticker.localeCompare(b.ticker) * mult;
+    if (sort.key === 'ticker') {
+      const t = a.ticker.localeCompare(b.ticker) * mult;
+      return t !== 0 ? t : a.key.localeCompare(b.key);
+    }
     const va = a[sort.key] as number;
     const vb = b[sort.key] as number;
-    if (va === vb) return a.ticker.localeCompare(b.ticker);
+    if (va === vb) {
+      // Imóveis homônimos: desempate estável e determinístico pela chave única.
+      const t = a.ticker.localeCompare(b.ticker);
+      return t !== 0 ? t : a.key.localeCompare(b.key);
+    }
     return (va - vb) * mult;
   });
 }
@@ -811,7 +818,7 @@ export function isPropertyAsset(a: { ticker: string; type: string }): boolean {
 
 /** Chave de agrupamento. Imóveis recebem chave exclusiva por posição. */
 export function aggregationKeyFor(
-  a: Pick<Asset, 'ticker' | 'type' | 'name' | 'broker' | 'holdingId'>,
+  a: { ticker: string; type: string; name?: string; broker?: string | null; holdingId?: string | null },
 ): string {
   const ticker = a.ticker.trim().toUpperCase();
   if (!isPropertyAsset(a)) return ticker;
@@ -894,7 +901,7 @@ export function aggregateByTicker(assets: Asset[], holdings: HoldingRow[]): Tick
   });
 
   map.forEach((agg) => agg.lots.sort((x, y) => y.value - x.value));
-  return Array.from(map.values());
+  return assertNoPropertyMerge(Array.from(map.values()));
 }
 
 /* ------------------------------------------------------------------ *
