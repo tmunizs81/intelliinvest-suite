@@ -1,5 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getUser, requireCron, unauthorized } from "../_shared/auth.ts";
+import { logSecurityEvent } from "../_shared/security-log.ts";
+
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
