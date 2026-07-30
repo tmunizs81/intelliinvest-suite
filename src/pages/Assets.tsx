@@ -3,8 +3,9 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Plus, Upload, Download, Search, Pencil, Trash2, ArrowUpRight,
   ArrowDownRight, ChevronRight, Loader2, FileSpreadsheet, X, AlertTriangle, FileUp,
-  Wallet, DollarSign, Building2, ArrowUpDown,
+  Wallet, DollarSign, Building2, ArrowUpDown, ChevronDown,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { usePortfolio, type HoldingRow } from '@/hooks/usePortfolio';
 import HoldingModal from '@/components/dashboard/HoldingModal';
 import BulkImportYahoo from '@/components/dashboard/BulkImportYahoo';
@@ -18,6 +19,9 @@ import CustodyModal from '@/components/dashboard/CustodyModal';
 import { BrokerLogo, preloadBrokers } from '@/lib/brokerLogos';
 import { useBrokerLogoSettings, setLogoDensity } from '@/lib/brokerLogoSettings';
 
+/** Bucket para lotes sem corretora definida — nunca é fundido com outra corretora. */
+const NO_BROKER = '__SEM_CORRETORA__';
+
 const typeBadgeClass: Record<string, string> = {
   'Ação': 'bg-primary/10 text-primary',
   'FII': 'bg-[hsl(270,70%,60%)]/10 text-[hsl(270,70%,85%)]',
@@ -26,6 +30,21 @@ const typeBadgeClass: Record<string, string> = {
   'Cripto': 'bg-[hsl(160,84%,39%)]/10 text-[hsl(160,84%,80%)]',
   'Renda Fixa': 'bg-secondary text-secondary-foreground',
 };
+
+/** Checkbox acessível e consistente com o design system. */
+function RowCheckbox({ checked, onChange, label }: { checked: boolean; onChange: () => void; label: string }) {
+  return (
+    <input
+      type="checkbox"
+      checked={checked}
+      onChange={onChange}
+      onClick={(e) => e.stopPropagation()}
+      aria-label={label}
+      className="h-4 w-4 cursor-pointer accent-[hsl(var(--primary))] rounded border-border"
+    />
+  );
+}
+
 
 export default function Assets() {
   const navigate = useNavigate();
