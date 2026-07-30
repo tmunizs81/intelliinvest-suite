@@ -815,18 +815,25 @@ function MobileCard({
 
         {/* linha 2 — grade compacta de métricas (table-like) */}
         <dl className="mt-2.5 grid grid-cols-4 gap-x-2 gap-y-1 pl-6 text-[10px]">
-          {[
-            { k: 'Qtd', v: num(agg.quantity, 4) },
-            { k: 'PM', v: formatCurrency(agg.avgPrice) },
-            { k: 'Atual', v: hasPrice ? formatCurrency(agg.currentPrice) : '—' },
-            { k: 'Aloc.', v: pctLabel(agg.allocation) },
-          ].map((m) => (
+          {([
+            { k: 'Qtd', v: num(agg.quantity, 4), m: 'quantity' as const },
+            { k: 'PM', v: formatCurrency(agg.avgPrice), m: 'avgPrice' as const },
+            { k: 'Atual', v: hasPrice ? formatCurrency(agg.currentPrice) : '—', m: null },
+            { k: 'Aloc.', v: pctLabel(agg.allocation), m: 'allocation' as const },
+          ]).map((m) => (
             <div key={m.k} className="min-w-0">
               <dt className="uppercase tracking-wide text-muted-foreground/70">{m.k}</dt>
-              <dd className="truncate font-mono text-[11px] tabular-nums">{m.v}</dd>
+              <dd className="truncate font-mono text-[11px] tabular-nums">
+                {isPropertyAsset(agg) && m.m ? (
+                  <Info tip={<PropertyTip agg={agg} metric={m.m} />}>{m.v}</Info>
+                ) : (
+                  m.v
+                )}
+              </dd>
             </div>
           ))}
         </dl>
+
 
         {/* linha 3 — 24h + corretoras + ações */}
         <div className="mt-2 flex items-center gap-2 pl-6">
