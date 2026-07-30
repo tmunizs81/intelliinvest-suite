@@ -8,6 +8,7 @@ import { calculateFixedIncomeValue, fetchReferenceRates } from '@/lib/fixedIncom
 import { fetchWithRetry, withCircuitBreaker, deduplicateRequest, checkRateLimit } from '@/lib/apiResilience';
 import { getCached, setCache, CACHE_TTL } from '@/lib/persistentCache';
 import { toast } from 'sonner';
+import { validateReassignment, normalizeBroker } from '@/lib/holdingsIsolation';
 
 const POLL_INTERVAL = 10 * 60 * 1000; // 10 minutes (server cron also refreshes alerts every 10min)
 
