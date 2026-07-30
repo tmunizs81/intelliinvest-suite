@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect, useCallback, useRef, memo, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
+import { useMemo, useState, useEffect, useCallback, useRef, memo, forwardRef, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
 import {
   ChevronRight, ChevronDown, Pencil, Trash2, ArrowUpRight, ArrowDownRight, ArrowUp, ArrowDown,
   AlertTriangle,
@@ -12,6 +12,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 /* ------------------------------------------------------------------ *
  * Modelo de apresentação
@@ -84,6 +85,8 @@ const FOCUS_RING =
 const ROW_CV: CSSProperties = { contentVisibility: 'auto', containIntrinsicSize: 'auto 44px' } as CSSProperties;
 const CARD_CV: CSSProperties = { contentVisibility: 'auto', containIntrinsicSize: 'auto 96px' } as CSSProperties;
 
+const NOOP = () => {};
+
 /** Quantidade inicial de linhas e tamanho de cada lote incremental. */
 const PAGE_SIZE = 40;
 
@@ -92,6 +95,14 @@ const PAGE_SIZE = 40;
  * adiciona os lotes seguintes conforme o sentinela entra na viewport. Mantém o
  * primeiro paint barato sem quebrar Ctrl+F/scroll (nada é desmontado depois).
  */
+const ListSentinel = forwardRef<HTMLDivElement, { remaining: number }>(function ListSentinel({ remaining }, ref) {
+  return (
+    <div ref={ref} className="px-4 py-3 text-center text-[11px] text-muted-foreground" aria-hidden>
+      Carregando mais {remaining} {remaining === 1 ? 'linha' : 'linhas'}…
+    </div>
+  );
+});
+
 function useProgressiveList(total: number, deps: unknown[]) {
   const [limit, setLimit] = useState(PAGE_SIZE);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
@@ -1534,6 +1545,14 @@ export default function UnifiedHoldings({
     [selected, onToggleIds, onOpen, onEdit, onSell, onDelete],
   );
 
+  /* Um único layout montado por vez: metade dos nós no DOM e zero trabalho duplicado. */
+  const isMobile = useIsMobile();
+  const { limit, sentinelRef, hasMore } = useProgressiveList(
+    viewMode === 'ticker' ? aggregates.length : 0,
+    [classFilter, sort.key, sort.dir, viewMode, isMobile],
+  );
+  const visibleRows = useMemo(() => aggregates.slice(0, limit), [aggregates, limit]);
+
   /* ---------- barra de ordenação (mobile) ---------- */
   const mobileSortBar = (
     <div className="flex items-center gap-1.5 overflow-x-auto border-b border-border bg-card/95 px-3 py-2 no-scrollbar md:hidden">
@@ -1698,6 +1717,7 @@ export default function UnifiedHoldings({
                   agg={agg}
                   expanded={expanded.has(agg.key)}
                   onToggleExpand={toggleExpand}
+                  showBrokerColumn
                   showBrokers
                   {...rowProps}
                 />
@@ -1717,6 +1737,7 @@ export default function UnifiedHoldings({
                       agg={agg}
                       expanded={false}
                       onToggleExpand={NOOP}
+                      showBrokerColumn={false}
                       showBrokers={false}
                       {...rowProps}
                     />
