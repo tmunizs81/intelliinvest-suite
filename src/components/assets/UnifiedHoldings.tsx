@@ -1014,6 +1014,45 @@ export function detectPropertyMergeIssues(list: TickerAggregate[]): PropertyMerg
     .map((agg) => ({ ticker: agg.ticker, lots: agg.lots.length }));
 }
 
+/* ------------------------------------------------------------------ *
+ * Auditoria de unificação de imóveis
+ * ------------------------------------------------------------------ */
+
+export interface MergeAuditEntry {
+  ticker: string;
+  /** Posições que estariam sendo somadas numa única linha. */
+  positions: Array<{
+    holdingId?: string | null;
+    name: string;
+    broker: string;
+    quantity: number;
+    value: number;
+    cost: number;
+  }>;
+  value: number;
+  cost: number;
+}
+
+/** Detalha, posição a posição, quais imóveis seriam afetados por uma fusão. */
+export function buildMergeAudit(list: TickerAggregate[]): MergeAuditEntry[] {
+  return list
+    .filter((agg) => isPropertyAsset(agg) && agg.lots.length > 1)
+    .map((agg) => ({
+      ticker: agg.ticker,
+      value: agg.value,
+      cost: agg.cost,
+      positions: agg.lots.map((l) => ({
+        holdingId: l.asset.holdingId,
+        name: l.asset.name,
+        broker: l.brokerLabel,
+        quantity: l.quantity,
+        value: l.value,
+        cost: l.cost,
+      })),
+    }));
+}
+
+
 /** Invariante: nenhuma linha de imóvel pode conter mais de um lote. */
 export function assertNoPropertyMerge(list: TickerAggregate[]): TickerAggregate[] {
   list.forEach((agg) => {
