@@ -1528,7 +1528,11 @@ export default function UnifiedHoldings({
     </div>
   );
 
-  const rowProps = { selected, onToggleIds, onOpen, onEdit, onSell, onDelete };
+  /* Objeto estável: sem isso todo re-render invalidaria o memo das linhas. */
+  const rowProps = useMemo(
+    () => ({ selected, onToggleIds, onOpen, onEdit, onSell, onDelete }),
+    [selected, onToggleIds, onOpen, onEdit, onSell, onDelete],
+  );
 
   /* ---------- barra de ordenação (mobile) ---------- */
   const mobileSortBar = (
