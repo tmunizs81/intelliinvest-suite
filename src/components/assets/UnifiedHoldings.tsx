@@ -371,6 +371,7 @@ const TickerRow = memo(function TickerRow({
     <>
       <div
         data-holdings-row
+        data-agg-key={agg.key}
         role="row"
         tabIndex={0}
         aria-selected={allSelected}
