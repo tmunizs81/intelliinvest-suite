@@ -1,12 +1,16 @@
 import { useMemo, useState, useEffect, useCallback, memo, type KeyboardEvent, type ReactNode } from 'react';
 import {
   ChevronRight, ChevronDown, Pencil, Trash2, ArrowUpRight, ArrowDownRight, ArrowUp, ArrowDown,
+  AlertTriangle,
 } from 'lucide-react';
 import { type Asset, formatCurrency, formatPercent } from '@/lib/mockData';
 import type { HoldingRow } from '@/hooks/usePortfolio';
 import { BrokerLogo } from '@/lib/brokerLogos';
 import { NO_BROKER } from '@/lib/holdingsIsolation';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
+} from '@/components/ui/dialog';
 import { toast } from 'sonner';
 
 /* ------------------------------------------------------------------ *
@@ -137,6 +141,57 @@ export function filterByClass<T extends { ticker: string; type: string }>(
   const wantProperty = filter === 'property';
   return list.filter((a) => isPropertyAsset(a) === wantProperty);
 }
+
+/* ------------------------------------------------------------------ *
+ * Busca textual (ticker, nome e corretora) — persistida
+ * ------------------------------------------------------------------ */
+
+const SEARCH_STORAGE_KEY = 'assets:search:v1';
+
+/** Normaliza para busca tolerante a acento e caixa. */
+function normalizeText(s: string): string {
+  return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+}
+
+export function loadSearchQuery(): string {
+  try {
+    return typeof window !== 'undefined' ? localStorage.getItem(SEARCH_STORAGE_KEY) ?? '' : '';
+  } catch {
+    return '';
+  }
+}
+
+export function saveSearchQuery(q: string) {
+  try {
+    if (q) localStorage.setItem(SEARCH_STORAGE_KEY, q);
+    else localStorage.removeItem(SEARCH_STORAGE_KEY);
+  } catch { /* storage indisponível */ }
+}
+
+/**
+ * Casa o termo contra ticker, nome do ativo e corretora.
+ * Todos os termos separados por espaço precisam casar (busca AND),
+ * o que permite consultas como "petr xp".
+ */
+export function matchesQuery(
+  a: { ticker: string; name?: string | null; broker?: string | null },
+  query: string,
+): boolean {
+  const q = normalizeText(query);
+  if (!q) return true;
+  const haystack = normalizeText(`${a.ticker} ${a.name ?? ''} ${a.broker ?? ''}`);
+  return q.split(/\s+/).every((term) => haystack.includes(term));
+}
+
+/** Filtra preservando a ordem original (ordenação é aplicada depois). */
+export function filterByQuery<T extends { ticker: string; name?: string | null; broker?: string | null }>(
+  list: T[],
+  query: string,
+): T[] {
+  if (!query.trim()) return list;
+  return list.filter((a) => matchesQuery(a, query));
+}
+
 
 
 
@@ -444,6 +499,83 @@ function PropertyTip({ agg, metric }: { agg: TickerAggregate; metric: 'avgPrice'
   );
 }
 
+
+/* ------------------------------------------------------------------ *
+ * Totais por corretora — explicação das regras de agregação
+ * ------------------------------------------------------------------ */
+
+export interface BrokerTotals {
+  label: string;
+  value: number;
+  cost: number;
+  gain: number;
+  share: number;
+  totalVisible: number;
+  rows: TickerAggregate[];
+  propertyCount: number;
+  propertyValue: number;
+  financialCount: number;
+  financialValue: number;
+  lotCount: number;
+}
+
+/**
+ * Deixa explícito que o total da corretora mistura duas regras distintas:
+ * financeiros somados por ticker (fungíveis) e imóveis contados por posição.
+ */
+function BrokerTotalsTip({ g, metric }: { g: BrokerTotals; metric: 'value' | 'gain' | 'share' }) {
+  const rule = (
+    <div className="space-y-0.5 border-t border-border/50 pt-1 text-muted-foreground">
+      <p className="font-mono tabular-nums">
+        Financeiros: {g.financialCount} {g.financialCount === 1 ? 'ticker' : 'tickers'} • {formatCurrency(g.financialValue)}
+      </p>
+      <p className="font-mono tabular-nums">
+        Imóveis: {g.propertyCount} {g.propertyCount === 1 ? 'posição' : 'posições'} • {formatCurrency(g.propertyValue)}
+      </p>
+      <p>Financeiros são somados por ticker (lotes fungíveis); imóveis entram um a um, sem fusão entre bens de código igual.</p>
+    </div>
+  );
+
+  if (metric === 'gain') {
+    return (
+      <div className="space-y-1">
+        <p className="font-semibold">Resultado em {g.label}</p>
+        <p className="font-mono tabular-nums">Valor atual {formatCurrency(g.value)}</p>
+        <p className="font-mono tabular-nums">Custo {formatCurrency(g.cost)}</p>
+        <p className="font-mono tabular-nums">
+          Lucro {formatCurrency(g.gain)} ({formatPercent(g.cost > 0 ? (g.gain / g.cost) * 100 : 0)})
+        </p>
+        <p className="text-muted-foreground">Percentual calculado sobre o custo desta corretora, não sobre a carteira inteira.</p>
+        {rule}
+      </div>
+    );
+  }
+
+  if (metric === 'share') {
+    return (
+      <div className="space-y-1">
+        <p className="font-semibold">Peso de {g.label}</p>
+        <p className="font-mono tabular-nums">
+          {formatCurrency(g.value)} ÷ {formatCurrency(g.totalVisible)} = {pctLabel(g.share)}
+        </p>
+        <p className="text-muted-foreground">
+          Base = total visível na classe filtrada. Ao alternar Tudo/Financeiros/Imóveis o denominador muda junto.
+        </p>
+        {rule}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-1">
+      <p className="font-semibold">Total custodiado em {g.label}</p>
+      <p className="font-mono tabular-nums">
+        {g.rows.length} {g.rows.length === 1 ? 'linha' : 'linhas'} • {g.lotCount} {g.lotCount === 1 ? 'lote' : 'lotes'} = {formatCurrency(g.value)}
+      </p>
+      {rule}
+    </div>
+  );
+}
 
 const TickerRow = memo(function TickerRow({
   agg, expanded, onToggleExpand, selected, onToggleIds, onOpen, onEdit, onSell, onDelete, showBrokerColumn,
@@ -963,6 +1095,45 @@ export function detectPropertyMergeIssues(list: TickerAggregate[]): PropertyMerg
     .map((agg) => ({ ticker: agg.ticker, lots: agg.lots.length }));
 }
 
+/* ------------------------------------------------------------------ *
+ * Auditoria de unificação de imóveis
+ * ------------------------------------------------------------------ */
+
+export interface MergeAuditEntry {
+  ticker: string;
+  /** Posições que estariam sendo somadas numa única linha. */
+  positions: Array<{
+    holdingId?: string | null;
+    name: string;
+    broker: string;
+    quantity: number;
+    value: number;
+    cost: number;
+  }>;
+  value: number;
+  cost: number;
+}
+
+/** Detalha, posição a posição, quais imóveis seriam afetados por uma fusão. */
+export function buildMergeAudit(list: TickerAggregate[]): MergeAuditEntry[] {
+  return list
+    .filter((agg) => isPropertyAsset(agg) && agg.lots.length > 1)
+    .map((agg) => ({
+      ticker: agg.ticker,
+      value: agg.value,
+      cost: agg.cost,
+      positions: agg.lots.map((l) => ({
+        holdingId: l.asset.holdingId,
+        name: l.asset.name,
+        broker: l.brokerLabel,
+        quantity: l.quantity,
+        value: l.value,
+        cost: l.cost,
+      })),
+    }));
+}
+
+
 /** Invariante: nenhuma linha de imóvel pode conter mais de um lote. */
 export function assertNoPropertyMerge(list: TickerAggregate[]): TickerAggregate[] {
   list.forEach((agg) => {
@@ -1046,6 +1217,73 @@ export function aggregateByTicker(assets: Asset[], holdings: HoldingRow[]): Tick
  * Componente principal
  * ------------------------------------------------------------------ */
 
+/* ------------------------------------------------------------------ *
+ * Painel de auditoria de fusão de imóveis
+ * ------------------------------------------------------------------ */
+
+function MergeAuditPanel({
+  open, onOpenChange, entries, onOpenPosition,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  entries: MergeAuditEntry[];
+  onOpenPosition: (holdingId: string) => void;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-base">
+            <AlertTriangle className="h-4 w-4 text-[hsl(38,92%,60%)]" aria-hidden />
+            Auditoria de imóveis com código repetido
+          </DialogTitle>
+          <DialogDescription className="text-[12px]">
+            Estes bens compartilham o mesmo código e seriam somados numa única linha. Cada imóvel é único —
+            renomeie o código de cada posição para manter totais, alocação e relatórios corretos.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="max-h-[55vh] space-y-4 overflow-y-auto pr-1">
+          {entries.map((e) => (
+            <section key={e.ticker} className="rounded-lg border border-border">
+              <header className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 bg-muted/40 px-3 py-2">
+                <span className="font-mono text-[12px] font-semibold">{e.ticker}</span>
+                <span className="font-mono text-[11px] tabular-nums text-muted-foreground">
+                  {e.positions.length} posições afetadas • {formatCurrency(e.value)}
+                </span>
+              </header>
+              <ul className="divide-y divide-border/50">
+                {e.positions.map((p, i) => (
+                  <li key={p.holdingId ?? `${p.broker}-${i}`} className="flex flex-wrap items-center gap-2 px-3 py-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-[12px] font-medium">{p.name}</p>
+                      <p className="truncate text-[11px] text-muted-foreground">{p.broker}</p>
+                    </div>
+                    <span className="font-mono text-[11px] tabular-nums text-muted-foreground">
+                      {formatCurrency(p.value)}
+                    </span>
+                    {p.holdingId && (
+                      <button
+                        onClick={() => { onOpenPosition(p.holdingId!); onOpenChange(false); }}
+                        className={`rounded-full border border-border px-2 py-0.5 text-[10px] text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary ${FOCUS_RING}`}
+                      >
+                        Revisar
+                      </button>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ))}
+          {entries.length === 0 && (
+            <p className="py-6 text-center text-[12px] text-muted-foreground">Nenhuma fusão de imóveis pendente.</p>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export type AssetsViewMode = 'ticker' | 'broker';
 
 interface Props {
@@ -1109,15 +1347,19 @@ export default function UnifiedHoldings({
     [visibleAssets, holdings, sort],
   );
 
-  /* Aviso amigável: imóveis homônimos jamais podem compartilhar uma linha. */
+  /* Aviso amigável + auditoria: imóveis homônimos jamais compartilham linha. */
   const mergeIssues = useMemo(() => detectPropertyMergeIssues(aggregates), [aggregates]);
+  const [auditOpen, setAuditOpen] = useState(false);
+  const auditRows = useMemo(() => buildMergeAudit(aggregates), [aggregates]);
+
   useEffect(() => {
-    if (mergeIssues.length === 0) return;
+    if (mergeIssues.length === 0) { setAuditOpen(false); return; }
     const list = mergeIssues.map((i) => `${i.ticker} (${i.lots})`).join(', ');
     toast.warning('Imóveis com o mesmo código detectados', {
       id: 'property-merge-warning',
       description: `${list}. Cada imóvel é um bem único — renomeie o código para mantê-los separados nos relatórios.`,
-      duration: 8000,
+      duration: 12000,
+      action: { label: 'Revisar posições', onClick: () => setAuditOpen(true) },
     });
   }, [mergeIssues]);
 
@@ -1129,11 +1371,13 @@ export default function UnifiedHoldings({
       const arr = map.get(key);
       if (arr) arr.push(a); else map.set(key, [a]);
     });
-    return Array.from(map.entries())
+    const groups = Array.from(map.entries())
       .map(([broker, items]) => {
         const rows = sortAggregates(aggregateByTicker(items, holdings), sort);
         const value = rows.reduce((s, r) => s + r.value, 0);
         const cost = rows.reduce((s, r) => s + r.cost, 0);
+        const propertyRows = rows.filter(isPropertyAsset);
+        const financialRows = rows.filter((r) => !isPropertyAsset(r));
         return {
           broker,
           label: broker === NO_BROKER ? 'Sem corretora' : broker,
@@ -1142,10 +1386,25 @@ export default function UnifiedHoldings({
           cost,
           gain: value - cost,
           ids: rows.flatMap((r) => r.ids),
+          /* Auditoria dos totais: quantas linhas vêm de cada regra de agregação. */
+          propertyCount: propertyRows.length,
+          propertyValue: propertyRows.reduce((s, r) => s + r.value, 0),
+          financialCount: financialRows.length,
+          financialValue: financialRows.reduce((s, r) => s + r.value, 0),
+          lotCount: rows.reduce((s, r) => s + r.lots.length, 0),
         };
       })
       .sort((a, b) => (a.broker === NO_BROKER ? 1 : b.broker === NO_BROKER ? -1 : b.value - a.value));
+
+    const totalVisible = groups.reduce((s, x) => s + x.value, 0);
+    return groups.map((g) => ({
+      ...g,
+      /** Peso da corretora dentro da visão filtrada — base dos percentuais exibidos. */
+      share: totalVisible > 0 ? (g.value / totalVisible) * 100 : 0,
+      totalVisible,
+    }));
   }, [visibleAssets, holdings, viewMode, sort]);
+
 
   /* ---------- filtro de classe (desktop + mobile) ---------- */
   const classFilterBar = (
@@ -1269,10 +1528,17 @@ export default function UnifiedHoldings({
           </span>
         </button>
         <div className="ml-auto flex shrink-0 items-center gap-2 font-mono text-[11px] tabular-nums md:gap-3">
-          <span className="text-muted-foreground">{formatCurrency(g.value)}</span>
-          <span className={g.gain >= 0 ? 'text-gain' : 'text-loss'}>
-            {formatCurrency(g.gain)} ({formatPercent(g.cost > 0 ? (g.gain / g.cost) * 100 : 0)})
-          </span>
+          <Info tip={<BrokerTotalsTip g={g} metric="value" />}>
+            <span className="text-muted-foreground">{formatCurrency(g.value)}</span>
+          </Info>
+          <Info tip={<BrokerTotalsTip g={g} metric="gain" />}>
+            <span className={g.gain >= 0 ? 'text-gain' : 'text-loss'}>
+              {formatCurrency(g.gain)} ({formatPercent(g.cost > 0 ? (g.gain / g.cost) * 100 : 0)})
+            </span>
+          </Info>
+          <Info tip={<BrokerTotalsTip g={g} metric="share" />}>
+            <span className="text-muted-foreground/70">{pctLabel(g.share)}</span>
+          </Info>
           {g.broker !== NO_BROKER && !compact && (
             <button
               onClick={() => onBrokerFilter(brokerFilter === g.broker ? '' : g.broker)}
@@ -1289,6 +1555,33 @@ export default function UnifiedHoldings({
   return (
     <div data-holdings-root role="grid" aria-label="Carteira de ativos">
       {classFilterBar}
+
+      {auditRows.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2 border-b border-[hsl(38,92%,50%)]/30 bg-[hsl(38,92%,50%)]/10 px-3 py-2 text-[11px] md:px-4">
+          <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-[hsl(38,92%,60%)]" aria-hidden />
+          <span className="min-w-0 flex-1">
+            {auditRows.length} {auditRows.length === 1 ? 'código de imóvel repetido' : 'códigos de imóveis repetidos'} —
+            os totais por posição podem ficar confusos nos relatórios.
+          </span>
+          <button
+            onClick={() => setAuditOpen(true)}
+            className={`shrink-0 rounded-full border border-[hsl(38,92%,50%)]/40 px-2.5 py-1 font-medium text-[hsl(38,92%,65%)] transition-colors hover:bg-[hsl(38,92%,50%)]/15 ${FOCUS_RING}`}
+          >
+            Revisar posições
+          </button>
+        </div>
+      )}
+
+      <MergeAuditPanel
+        open={auditOpen}
+        onOpenChange={setAuditOpen}
+        entries={auditRows}
+        onOpenPosition={(id) => {
+          const lot = aggregates.flatMap((a) => a.lots).find((l) => l.asset.holdingId === id);
+          if (lot?.holdingRow) onEdit(lot.holdingRow);
+        }}
+      />
+
       {aggregates.length === 0 && (
         <p className="px-4 py-6 text-center text-[12px] text-muted-foreground">
           Nenhum {classFilter === 'property' ? 'imóvel' : 'ativo financeiro'} nesta visão.

@@ -21,7 +21,8 @@ import { BrokerLogo, preloadBrokers } from '@/lib/brokerLogos';
 import { useBrokerLogoSettings, setLogoDensity } from '@/lib/brokerLogoSettings';
 import BrokerReconciliationModal from '@/components/dashboard/BrokerReconciliationModal';
 import { reconciliationGroups, assetRoute, NO_BROKER, brokerLabel } from '@/lib/holdingsIsolation';
-import UnifiedHoldings, { aggregationKeyFor, type AssetsViewMode } from '@/components/assets/UnifiedHoldings';
+import UnifiedHoldings, { aggregationKeyFor, matchesQuery, loadSearchQuery, saveSearchQuery, type AssetsViewMode } from '@/components/assets/UnifiedHoldings';
+import { useDebounce } from '@/hooks/useDebounce';
 
 
 
@@ -50,7 +51,9 @@ export default function Assets() {
   const [sellOpen, setSellOpen] = useState(false);
   const [sellingHolding, setSellingHolding] = useState<HoldingRow | null>(null);
   const [sellingPrice, setSellingPrice] = useState(0);
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState<string>(loadSearchQuery);
+  const debouncedSearch = useDebounce(search, 180);
+  useEffect(() => { saveSearchQuery(search); }, [search]);
   const [typeFilter, setTypeFilter] = useState<string>('');
   const [searchParams, setSearchParams] = useSearchParams();
   const brokerFilter = searchParams.get('broker') || '';
@@ -119,7 +122,7 @@ export default function Assets() {
 
   const filtered = useMemo(() => {
     const list = assets.filter(a => {
-      const matchSearch = !search || a.ticker.toLowerCase().includes(search.toLowerCase()) || a.name.toLowerCase().includes(search.toLowerCase());
+      const matchSearch = matchesQuery(a, debouncedSearch);
       const matchType = !typeFilter || a.type === typeFilter;
       const matchBroker = !brokerFilter || brokerOf(a) === brokerFilter;
       return matchSearch && matchType && matchBroker;
@@ -137,7 +140,7 @@ export default function Assets() {
       }
     });
     return sorted;
-  }, [assets, search, typeFilter, brokerFilter, sortBy]);
+  }, [assets, debouncedSearch, typeFilter, brokerFilter, sortBy]);
 
 
 
@@ -404,13 +407,32 @@ export default function Assets() {
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3 mb-6">
         <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" aria-hidden />
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar por ticker ou nome..."
-            className="w-full rounded-lg border border-input bg-card pl-9 pr-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+            onKeyDown={(e) => { if (e.key === 'Escape') setSearch(''); }}
+            type="search"
+            inputMode="search"
+            enterKeyHint="search"
+            aria-label="Buscar por ticker, nome do ativo ou corretora"
+            placeholder="Buscar por ticker, nome ou corretora..."
+            className="w-full rounded-lg border border-input bg-card pl-9 pr-9 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring [&::-webkit-search-cancel-button]:hidden"
           />
+          {search && (
+            <button
+              onClick={() => setSearch('')}
+              aria-label="Limpar busca"
+              className="absolute right-2 top-1/2 -translate-y-1/2 flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            >
+              <X className="h-3.5 w-3.5" aria-hidden />
+            </button>
+          )}
+          {search && (
+            <p className="absolute -bottom-5 left-1 text-[10px] text-muted-foreground" role="status" aria-live="polite">
+              {filtered.length} {filtered.length === 1 ? 'posição encontrada' : 'posições encontradas'}
+            </p>
+          )}
         </div>
         <div className="flex gap-1 bg-muted rounded-lg p-1 overflow-x-auto">
           <button
