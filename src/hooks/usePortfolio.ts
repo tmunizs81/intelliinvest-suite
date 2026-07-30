@@ -167,6 +167,8 @@ export function usePortfolio() {
         const purchaseCurrency = (item.purchase_currency || 'BRL').toUpperCase();
         const avgPriceBRL = toBRL(item.avg_price, purchaseCurrency);
         return {
+          holdingId: item.id,
+          broker: item.broker || null,
           ticker: item.ticker,
           name: item.name,
           type: classifyAssetType(item.ticker, item.type) as Asset['type'],
