@@ -805,7 +805,7 @@ function MobileCard({
  * mesmo "ticker" (ex.: IMOVEL-TERRASALP) sem serem o mesmo bem. Só ativos
  * financeiros (fungíveis) podem ser unificados por ticker.
  */
-export function isPropertyAsset(a: Pick<Asset, 'ticker' | 'type'>): boolean {
+export function isPropertyAsset(a: { ticker: string; type: string }): boolean {
   return a.type === 'Imóvel' || a.ticker.trim().toUpperCase().startsWith('IMOVEL');
 }
 

@@ -21,7 +21,7 @@ import { BrokerLogo, preloadBrokers } from '@/lib/brokerLogos';
 import { useBrokerLogoSettings, setLogoDensity } from '@/lib/brokerLogoSettings';
 import BrokerReconciliationModal from '@/components/dashboard/BrokerReconciliationModal';
 import { reconciliationGroups, assetRoute, NO_BROKER, brokerLabel } from '@/lib/holdingsIsolation';
-import UnifiedHoldings, { type AssetsViewMode } from '@/components/assets/UnifiedHoldings';
+import UnifiedHoldings, { aggregationKeyFor, type AssetsViewMode } from '@/components/assets/UnifiedHoldings';
 
 
 
