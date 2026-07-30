@@ -7,7 +7,7 @@ interface Props {
   open: boolean;
   onClose: () => void;
   settings: TelegramSettings;
-  onSave: (settings: TelegramSettings) => Promise<void>;
+  onSave: (settings: TelegramSettings, botToken?: string) => Promise<void>;
 }
 
 const features = [
@@ -34,7 +34,7 @@ export default function TelegramSettingsModal({ open, onClose, settings, onSave 
 
   const handleSave = async () => {
     setLoading(true);
-    await onSave({ ...settings, bot_token: null, chat_id: chatId || null, enabled });
+    await onSave({ ...settings, chat_id: chatId || null, enabled });
     setLoading(false);
     onClose();
   };

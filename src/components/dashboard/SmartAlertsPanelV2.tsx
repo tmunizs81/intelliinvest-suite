@@ -36,7 +36,7 @@ export default function SmartAlertsPanelV2() {
   const [filter, setFilter] = useState<FilterKey>('all');
   const seenTriggered = useRef<Set<string>>(new Set());
 
-  const telegramReady = telegramSettings.enabled && !!telegramSettings.bot_token && !!telegramSettings.chat_id;
+  const telegramReady = telegramSettings.enabled && telegramSettings.has_bot_token && !!telegramSettings.chat_id;
   const emailReady = telegramSettings.notify_email && !!telegramSettings.email_address;
 
   // Fire browser notification when an alert transitions to 'triggered'
