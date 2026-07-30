@@ -395,56 +395,82 @@ Deno.serve(async (req) => {
     if (limited) return limited;
   }
 
+  const started = performance.now();
+
   try {
-    const { ticker, type } = await req.json();
+    const { ticker, type, refresh = false } = await req.json();
     if (!ticker) {
       return new Response(JSON.stringify({ error: "ticker required" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const yahooTicker = mapToYahooTicker(ticker);
-    const category = getAssetCategory(ticker, type);
-    const isBrazilian = /^[A-Z]{4}\d{1,2}$/i.test(ticker);
+    const ttl = CACHE_TTL.fundamentals;
+    const { value: result, hit } = await withHttpCache<FundamentalResult>(
+      { namespace: NS, key: cacheKey(ticker, type), ttl, bypass: refresh === true },
+      async () => {
+        const yahooTicker = mapToYahooTicker(ticker);
+        const category = getAssetCategory(ticker, type);
+        const isBrazilian = /^[A-Z]{4}\d{1,2}$/i.test(ticker);
 
-    console.log(`Fetching fundamentals for ${ticker} → ${yahooTicker} (category: ${category})`);
+        console.log(`Fetching fundamentals for ${ticker} → ${yahooTicker} (category: ${category})`);
 
-    const activeSources: string[] = [];
+        const activeSources: string[] = [];
 
-    // Parallel: Brapi + StatusInvest + Yahoo (all at once)
-    const [brapiData, statusInvestData, auth] = await Promise.all([
-      isBrazilian ? tryBrapi(ticker) : Promise.resolve(null),
-      isBrazilian ? tryStatusInvest(ticker, category) : Promise.resolve(null),
-      getCrumbAndCookie(),
-    ]);
+        // Parallel: Brapi + StatusInvest + Yahoo (all at once)
+        const [brapiData, statusInvestData, auth] = await Promise.all([
+          isBrazilian ? tryBrapi(ticker) : Promise.resolve(null),
+          isBrazilian ? tryStatusInvest(ticker, category) : Promise.resolve(null),
+          getCrumbAndCookie(),
+        ]);
 
-    if (brapiData) activeSources.push("Brapi");
-    if (statusInvestData) activeSources.push("StatusInvest");
+        if (brapiData) activeSources.push("Brapi");
+        if (statusInvestData) activeSources.push("StatusInvest");
 
-    const [yahooV10, yahooChart] = await Promise.all([
-      tryYahooV10(yahooTicker, auth),
-      tryYahooChart(yahooTicker),
-    ]);
+        const [yahooV10, yahooChart] = await Promise.all([
+          tryYahooV10(yahooTicker, auth),
+          tryYahooChart(yahooTicker),
+        ]);
 
-    if (yahooV10) activeSources.push("Yahoo Finance");
-    if (yahooChart) activeSources.push("Yahoo Chart");
+        if (yahooV10) activeSources.push("Yahoo Finance");
+        if (yahooChart) activeSources.push("Yahoo Chart");
 
-    // Merge priority: Brapi → StatusInvest → Yahoo
-    const result = isBrazilian
-      ? mergeData(brapiData, statusInvestData, yahooV10, yahooChart)
-      : mergeData(yahooV10, yahooChart);
+        // Merge priority: Brapi → StatusInvest → Yahoo
+        const merged = isBrazilian
+          ? mergeData(brapiData, statusInvestData, yahooV10, yahooChart)
+          : mergeData(yahooV10, yahooChart);
 
-    result.sources = activeSources;
+        merged.sources = activeSources;
+        console.log(`Sources for ${ticker}: ${activeSources.join(", ")}`);
+        return merged;
+      },
+    );
 
-    console.log(`Sources for ${ticker}: ${activeSources.join(", ")}`);
+    logMetric({
+      function_name: "yahoo-finance-fundamentals",
+      duration_ms: performance.now() - started,
+      status_code: 200,
+      user_id: caller.user?.id ?? null,
+      cache_hit: hit,
+      meta: { cold_start: COLD_START, ticker },
+    });
+    COLD_START = false;
 
-    return new Response(JSON.stringify(result), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    return new Response(JSON.stringify({ ...result, _cached: hit }), {
+      headers: { ...corsHeaders, ...cacheHeaders(hit, ttl), "Content-Type": "application/json" },
     });
   } catch (err) {
     console.error("yahoo-finance-fundamentals error:", err);
+    logMetric({
+      function_name: "yahoo-finance-fundamentals",
+      duration_ms: performance.now() - started,
+      status_code: 500,
+      user_id: caller.user?.id ?? null,
+      error_message: err instanceof Error ? err.message : "Unknown error",
+    });
     return new Response(JSON.stringify({ error: err instanceof Error ? err.message : "Unknown error" }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });
+
