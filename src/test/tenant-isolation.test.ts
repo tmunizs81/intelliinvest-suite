@@ -6,14 +6,14 @@
  *
  *  1. Cache de navegador com dados pessoais precisa ser escopado por conta.
  *  2. Chamadas a Edge Functions não podem usar a publishable key como bearer
- *     (isso derruba a identidade do chamador e quebra o rate limit por usuário).
- *  3. Edge Functions não podem confiar em `user_id` vindo do corpo da requisição.
- *  4. Nenhuma policy do banco pode liberar leitura com condição sempre verdadeira.
+ *     (isso derruba a identidade do chamador e o rate limit por usuário).
+ *  3. Edge Functions expostas precisam verificar a identidade do chamador.
+ *  4. Nenhuma policy ativa pode liberar leitura com condição sempre verdadeira.
  *  5. O bot_token do Telegram não pode ser lido por rotas administrativas.
  */
 import { describe, it, expect } from "vitest";
 import { readFileSync, readdirSync, statSync } from "node:fs";
-import { join } from "node:path";
+import { join, basename } from "node:path";
 
 function walk(dir: string, exts: string[]): string[] {
   const out: string[] = [];
@@ -32,36 +32,50 @@ function walk(dir: string, exts: string[]): string[] {
   return out;
 }
 
-const SRC_FILES = walk("src", [".ts", ".tsx"]).filter((f) => !f.includes(".test."));
-const FUNCTION_FILES = walk("supabase/functions", [".ts"]);
-const MIGRATIONS = walk("supabase/migrations", [".sql"]);
-
 const read = (f: string) => readFileSync(f, "utf8");
+const stripComments = (s: string) =>
+  s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+
+const SRC_FILES = walk("src", [".ts", ".tsx"]).filter((f) => !f.includes(".test."));
+const FUNCTION_FILES = walk("supabase/functions", [".ts"]).filter(
+  (f) => !f.includes("_test") && !f.includes(".test."),
+);
+const MIGRATIONS = walk("supabase/migrations", [".sql"]).sort();
+
+/** Chaves de cache derivadas de dados da carteira do usuário. */
+const PERSONAL_CACHE = /(ai-insights|ai-advisor|dashboard_bootstrap|portfolio_metrics)/;
 
 describe("isolamento — cache do navegador", () => {
-  it("toda leitura de cache pessoal informa o dono da entrada", () => {
-    const PERSONAL = /getCached<[^>]*>?\(\s*[^)]*?(ai-insights|ai-advisor|dashboard_bootstrap|portfolio_metrics)/;
+  it("toda leitura de cache pessoal valida o dono da entrada", () => {
     const offenders: string[] = [];
-
     for (const file of SRC_FILES) {
-      const content = read(file);
-      for (const line of content.split("\n")) {
-        if (!line.includes("getCached")) continue;
-        if (!PERSONAL.test(line) && !line.includes("userScopedKey")) continue;
-        if (!line.includes("owner")) offenders.push(`${file}: ${line.trim()}`);
+      for (const line of read(file).split("\n")) {
+        if (!/getCached\s*[<(]/.test(line)) continue;
+        const isPersonal = PERSONAL_CACHE.test(line) || line.includes("userScopedKey");
+        if (isPersonal && !line.includes("owner")) offenders.push(`${file}: ${line.trim()}`);
       }
     }
-
     expect(offenders, "cache pessoal lido sem validar o dono").toEqual([]);
+  });
+
+  it("toda escrita de cache pessoal marca o dono da entrada", () => {
+    const offenders: string[] = [];
+    for (const file of SRC_FILES) {
+      for (const line of read(file).split("\n")) {
+        if (!/setCache\s*\(/.test(line)) continue;
+        const isPersonal = PERSONAL_CACHE.test(line) || /cacheKey/.test(line);
+        if (isPersonal && !line.includes("owner")) offenders.push(`${file}: ${line.trim()}`);
+      }
+    }
+    expect(offenders, "cache pessoal gravado sem dono").toEqual([]);
   });
 
   it("chaves de IA e dashboard passam por userScopedKey", () => {
     const offenders: string[] = [];
     for (const file of SRC_FILES) {
       for (const line of read(file).split("\n")) {
-        const isKeyDef = /cacheKey\s*=/.test(line);
-        const isPersonal = /(ai-insights|ai-advisor|dashboard_bootstrap|portfolio_metrics)/.test(line);
-        if (isKeyDef && isPersonal && !line.includes("userScopedKey")) {
+        if (!/cacheKey\s*=/.test(line)) continue;
+        if (PERSONAL_CACHE.test(line) && !line.includes("userScopedKey")) {
           offenders.push(`${file}: ${line.trim()}`);
         }
       }
@@ -83,12 +97,11 @@ describe("isolamento — autenticação das chamadas ao backend", () => {
     expect(offenders, "publishable key usada como bearer (identidade perdida)").toEqual([]);
   });
 
-  it("chamadas diretas a /functions/v1 enviam o access_token da sessão", () => {
+  it("fetch direto a /functions/v1 envia o access_token da sessão", () => {
     const offenders: string[] = [];
     for (const file of SRC_FILES) {
       const content = read(file);
-      if (!content.includes("/functions/v1")) continue;
-      if (!content.includes("fetch(")) continue;
+      if (!content.includes("/functions/v1") || !content.includes("fetch(")) continue;
       if (!content.includes("access_token")) offenders.push(file);
     }
     expect(offenders, "fetch a edge function sem token de sessão").toEqual([]);
@@ -96,84 +109,112 @@ describe("isolamento — autenticação das chamadas ao backend", () => {
 });
 
 describe("isolamento — Edge Functions", () => {
-  const SKIP = ["_shared", "telegram-webhook", "job-worker", "index.test"];
+  /** Endpoints públicos por desenho (não retornam dado de usuário). */
+  const PUBLIC_BY_DESIGN = new Set(["health-check"]);
 
-  it("nenhuma função deriva identidade de atob(jwt) ou do corpo da requisição", () => {
-    const offenders: string[] = [];
-    for (const file of FUNCTION_FILES) {
-      const content = read(file);
-      if (/atob\(\s*(token|jwt|authHeader)/.test(content)) {
-        offenders.push(`${file}: decodifica JWT manualmente`);
-      }
-      // user_id vindo do body só é aceitável se houver verificação da identidade.
-      const usesBodyUser = /(const|let)\s*\{[^}]*\buserId\b[^}]*\}\s*=\s*await req\.json/.test(content);
-      const verifies = /resolveCaller|requireUser|getUser\(req\)|requireCron/.test(content);
-      if (usesBodyUser && !verifies) {
-        offenders.push(`${file}: confia em userId do corpo sem verificar sessão`);
-      }
-    }
-    expect(offenders).toEqual([]);
+  const GUARDS =
+    /resolveCaller|requireUser|requireCaller|requireCron|requireTelegramSecret|auth\.getUser\(|auth\.getClaims\(|getUser\(req|getUser\(authedReq/;
+
+  const entrypoints = FUNCTION_FILES.filter(
+    (f) => basename(f) === "index.ts" && read(f).includes("Deno.serve"),
+  );
+
+  it("existe pelo menos um entrypoint para analisar", () => {
+    expect(entrypoints.length).toBeGreaterThan(10);
   });
 
-  it("funções expostas exigem sessão verificada ou segredo de cron", () => {
-    const offenders: string[] = [];
-    for (const file of FUNCTION_FILES) {
-      if (SKIP.some((s) => file.includes(s))) continue;
-      const content = read(file);
-      if (!content.includes("Deno.serve")) continue;
-      const guarded = /resolveCaller|requireUser|requireCaller|requireCron|requireTelegramSecret/.test(content);
-      if (!guarded) offenders.push(file);
-    }
+  it("nenhuma função deriva identidade de atob(jwt)", () => {
+    const offenders = FUNCTION_FILES.filter((f) =>
+      /atob\(\s*(token|jwt|authHeader|auth)/.test(stripComments(read(f))),
+    );
+    expect(offenders, "JWT decodificado manualmente (forjável)").toEqual([]);
+  });
+
+  it("todo endpoint exposto verifica a identidade do chamador", () => {
+    const offenders = entrypoints.filter((f) => {
+      const name = f.split("/").at(-2)!;
+      if (PUBLIC_BY_DESIGN.has(name)) return false;
+      return !GUARDS.test(stripComments(read(f)));
+    });
     expect(offenders, "edge function sem verificação de identidade").toEqual([]);
   });
 
+  it("nenhuma função confia em userId vindo do corpo sem verificar sessão", () => {
+    const offenders = FUNCTION_FILES.filter((f) => {
+      const content = stripComments(read(f));
+      const bodyUser =
+        /(const|let)\s*\{[^}]*\b(userId|user_id)\b[^}]*\}\s*=\s*(await\s*)?req\.json/.test(content);
+      return bodyUser && !GUARDS.test(content);
+    });
+    expect(offenders).toEqual([]);
+  });
+
   it("cache de IA com dados de carteira é escopado por conta", () => {
-    const offenders: string[] = [];
-    for (const file of FUNCTION_FILES) {
-      const content = read(file);
-      if (!content.includes("withAICache(")) continue;
-      if (file.includes("ai-cache-helper")) continue;
-      if (!content.includes("userId")) offenders.push(file);
-    }
+    const offenders = FUNCTION_FILES.filter(
+      (f) =>
+        read(f).includes("withAICache(") &&
+        !f.includes("ai-cache-helper") &&
+        !read(f).includes("userId"),
+    );
     expect(offenders, "withAICache sem userId (reuso entre contas)").toEqual([]);
   });
 });
 
 describe("isolamento — políticas de banco", () => {
-  const policyLines = MIGRATIONS.flatMap((f) =>
-    read(f)
-      .split(";")
-      .filter((stmt) => /CREATE\s+POLICY/i.test(stmt))
-      .map((stmt) => ({ file: f, stmt: stmt.replace(/\s+/g, " ").trim() })),
-  );
+  /** Reconstrói o estado final das policies aplicando as migrações em ordem. */
+  function effectivePolicies() {
+    const active = new Map<string, string>();
+    for (const file of MIGRATIONS) {
+      const sql = read(file);
+      for (const raw of sql.split(";")) {
+        const stmt = raw.replace(/\s+/g, " ").trim();
+        const created = stmt.match(/CREATE\s+POLICY\s+"?([^"]+?)"?\s+ON\s+([\w.]+)/i);
+        const dropped = stmt.match(/DROP\s+POLICY\s+(IF\s+EXISTS\s+)?"?([^"]+?)"?\s+ON\s+([\w.]+)/i);
+        if (dropped) active.delete(`${dropped[3]}|${dropped[2]}`);
+        if (created) active.set(`${created[2]}|${created[1]}`, `${file} :: ${stmt}`);
+      }
+    }
+    return [...active.values()];
+  }
 
-  it("nenhuma policy de leitura para usuários logados usa condição sempre verdadeira", () => {
-    const offenders = policyLines.filter(({ stmt }) => {
+  it("nenhuma policy ativa libera leitura ampla para usuários logados", () => {
+    const offenders = effectivePolicies().filter((entry) => {
+      const stmt = entry.split(" :: ")[1];
       const isRead = /FOR\s+(SELECT|ALL)/i.test(stmt);
-      const toAuthenticated = /TO\s+authenticated/i.test(stmt) || !/TO\s+service_role/i.test(stmt);
+      const serviceOnly = /TO\s+service_role/i.test(stmt) && !/authenticated|anon/i.test(stmt);
       const alwaysTrue = /USING\s*\(\s*true\s*\)/i.test(stmt);
-      return isRead && toAuthenticated && alwaysTrue;
+      return isRead && alwaysTrue && !serviceOnly;
     });
 
-    // A correção do ai_cache removeu a última ocorrência; qualquer nova quebra o teste.
-    const active = offenders.filter(({ stmt }) => !/service_role/i.test(stmt));
-    expect(active.map((o) => `${o.file}: ${o.stmt.slice(0, 120)}`)).toEqual([]);
+    // Catálogos públicos (dados de mercado, sem PII) podem permanecer abertos.
+    const PUBLIC_CATALOGS = /ondo_gm_tokens/;
+    const sensitive = offenders.filter((o) => !PUBLIC_CATALOGS.test(o));
+    expect(sensitive.map((o) => o.slice(0, 160))).toEqual([]);
   });
 
-  it("nenhuma rota administrativa lê o bot_token do Telegram", () => {
+  it("o cache de IA não é legível por usuários logados", () => {
+    const aiCache = effectivePolicies().filter((e) => /ON\s+public\.ai_cache/i.test(e));
+    const readableByUsers = aiCache.filter((e) => /TO\s+(anon|authenticated)/i.test(e));
+    expect(readableByUsers).toEqual([]);
+  });
+
+  it("nenhuma leitura ampla de telegram_settings no cliente", () => {
     const offenders: string[] = [];
     for (const file of SRC_FILES) {
-      const content = read(file);
-      // Leitura da tabela sem filtro por user_id = leitura de outras contas.
-      const lines = content.split("\n");
+      const lines = read(file).split("\n");
       lines.forEach((line, i) => {
-        if (!line.includes("from('telegram_settings')") && !line.includes('from("telegram_settings")')) return;
+        if (!/from\(['"]telegram_settings['"]\)/.test(line)) return;
         const window = lines.slice(i, i + 3).join(" ");
-        if (!/eq\(\s*['"]user_id['"]/.test(window)) {
-          offenders.push(`${file}:${i + 1} ${line.trim()}`);
-        }
+        // Só leituras importam; escritas já são barradas pelo RLS (WITH CHECK).
+        if (!/\.select\(/.test(window)) return;
+        if (!/eq\(\s*['"]user_id['"]/.test(window)) offenders.push(`${file}:${i + 1} ${line.trim()}`);
       });
     }
-    expect(offenders, "leitura ampla de telegram_settings no cliente").toEqual([]);
+    expect(offenders, "leitura de telegram_settings sem filtro por usuário").toEqual([]);
+  });
+
+  it("o painel admin usa a visão sem bot_token", () => {
+    const settings = read("src/pages/SettingsPage.tsx");
+    expect(settings).toContain("admin_list_telegram_overview");
   });
 });
