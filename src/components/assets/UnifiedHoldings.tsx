@@ -1555,6 +1555,33 @@ export default function UnifiedHoldings({
   return (
     <div data-holdings-root role="grid" aria-label="Carteira de ativos">
       {classFilterBar}
+
+      {auditRows.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2 border-b border-[hsl(38,92%,50%)]/30 bg-[hsl(38,92%,50%)]/10 px-3 py-2 text-[11px] md:px-4">
+          <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-[hsl(38,92%,60%)]" aria-hidden />
+          <span className="min-w-0 flex-1">
+            {auditRows.length} {auditRows.length === 1 ? 'código de imóvel repetido' : 'códigos de imóveis repetidos'} —
+            os totais por posição podem ficar confusos nos relatórios.
+          </span>
+          <button
+            onClick={() => setAuditOpen(true)}
+            className={`shrink-0 rounded-full border border-[hsl(38,92%,50%)]/40 px-2.5 py-1 font-medium text-[hsl(38,92%,65%)] transition-colors hover:bg-[hsl(38,92%,50%)]/15 ${FOCUS_RING}`}
+          >
+            Revisar posições
+          </button>
+        </div>
+      )}
+
+      <MergeAuditPanel
+        open={auditOpen}
+        onOpenChange={setAuditOpen}
+        entries={auditRows}
+        onOpenPosition={(id) => {
+          const lot = aggregates.flatMap((a) => a.lots).find((l) => l.asset.holdingId === id);
+          if (lot?.holdingRow) onEdit(lot.holdingRow);
+        }}
+      />
+
       {aggregates.length === 0 && (
         <p className="px-4 py-6 text-center text-[12px] text-muted-foreground">
           Nenhum {classFilter === 'property' ? 'imóvel' : 'ativo financeiro'} nesta visão.
