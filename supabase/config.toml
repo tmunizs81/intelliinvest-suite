@@ -152,3 +152,9 @@ verify_jwt = false
 
 [functions.ai-ir-assistant]
 verify_jwt = false
+
+[functions.job-worker]
+verify_jwt = false
+
+[functions.observability-alerts]
+verify_jwt = false

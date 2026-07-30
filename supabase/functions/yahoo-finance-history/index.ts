@@ -1,5 +1,11 @@
 import { resolveCaller } from "../_shared/auth.ts";
 import { enforceRateLimit } from "../_shared/rate-limit.ts";
+import { withHttpCache, cacheKey, cacheHeaders, CACHE_TTL } from "../_shared/http-cache.ts";
+import { logMetric } from "../_telemetry.ts";
+
+const NS = "yahoo-history";
+let COLD_START = true;
+
 
 
 const corsHeaders = {
@@ -134,8 +140,11 @@ Deno.serve(async (req) => {
     if (limited) return limited;
   }
 
+  const started = performance.now();
+
   try {
-    const { ticker, range = "6mo", interval = "1d" } = await req.json();
+    const body = await req.json();
+    const { ticker, range = "6mo", interval = "1d", refresh = false } = body ?? {};
 
     if (!ticker) {
       return new Response(
@@ -144,71 +153,94 @@ Deno.serve(async (req) => {
       );
     }
 
-    const isCrypto = CRYPTO_SET.has(ticker.toUpperCase());
-    const isOndoGM = ONDO_GM_SET.has(ticker) || !!(await getDynamicOndoUnderlying(ticker));
-    const yahooTicker = await mapToYahooTicker(ticker);
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${yahooTicker}?interval=${interval}&range=${range}`;
+    const ttl = interval === "1d" || interval === "1wk" || interval === "1mo"
+      ? CACHE_TTL.history
+      : CACHE_TTL.historyIntraday;
+    const key = cacheKey(ticker, range, interval);
 
-    const resp = await fetch(url, {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+    const { value: payload, hit } = await withHttpCache<any>(
+      { namespace: NS, key, ttl, bypass: refresh === true },
+      async () => {
+        const isCrypto = CRYPTO_SET.has(ticker.toUpperCase());
+        const isOndoGM = ONDO_GM_SET.has(ticker) || !!(await getDynamicOndoUnderlying(ticker));
+        const yahooTicker = await mapToYahooTicker(ticker);
+        const url = `https://query1.finance.yahoo.com/v8/finance/chart/${yahooTicker}?interval=${interval}&range=${range}`;
+
+        const resp = await fetch(url, {
+          headers: {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+          },
+          signal: AbortSignal.timeout(10000),
+        });
+
+        if (!resp.ok) throw new Error(`Yahoo Finance HTTP ${resp.status}`);
+
+        const data = await resp.json();
+        const result = data.chart?.result?.[0];
+        if (!result) throw new Error("No data returned");
+
+        const timestamps = result.timestamp || [];
+        const quote = result.indicators?.quote?.[0] || {};
+        const { open, high, low, close, volume } = quote;
+
+        // Get USD/BRL rate for crypto conversion
+        const needsUsdConversion = isCrypto || isOndoGM;
+        const usdBrl = needsUsdConversion ? await getUsdBrlRate() : 1;
+
+        const candles = timestamps.map((ts: number, i: number) => ({
+          date: new Date(ts * 1000).toISOString().split("T")[0],
+          timestamp: ts,
+          open: open?.[i] != null ? Math.round(open[i] * usdBrl * 100) / 100 : null,
+          high: high?.[i] != null ? Math.round(high[i] * usdBrl * 100) / 100 : null,
+          low: low?.[i] != null ? Math.round(low[i] * usdBrl * 100) / 100 : null,
+          close: close?.[i] != null ? Math.round(close[i] * usdBrl * 100) / 100 : null,
+          volume: volume?.[i] ?? 0,
+        })).filter((c: any) => c.open !== null && c.close !== null);
+
+        const meta = result.meta;
+
+        return {
+          ticker,
+          currency: "BRL",
+          name: meta?.shortName || meta?.symbol || ticker,
+          currentPrice: Math.round((meta?.regularMarketPrice ?? 0) * usdBrl * 100) / 100,
+          previousClose: Math.round((meta?.chartPreviousClose ?? meta?.previousClose ?? 0) * usdBrl * 100) / 100,
+          candles,
+          fetchedAt: new Date().toISOString(),
+        };
       },
-      signal: AbortSignal.timeout(10000),
+    );
+
+    logMetric({
+      function_name: "yahoo-finance-history",
+      duration_ms: performance.now() - started,
+      status_code: 200,
+      user_id: caller.user?.id ?? null,
+      cache_hit: hit,
+      meta: { cold_start: COLD_START, ticker, range, interval },
     });
-
-    if (!resp.ok) {
-      return new Response(
-        JSON.stringify({ error: `Yahoo Finance HTTP ${resp.status}` }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    const data = await resp.json();
-    const result = data.chart?.result?.[0];
-
-    if (!result) {
-      return new Response(
-        JSON.stringify({ error: "No data returned" }),
-        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    const timestamps = result.timestamp || [];
-    const quote = result.indicators?.quote?.[0] || {};
-    const { open, high, low, close, volume } = quote;
-
-    // Get USD/BRL rate for crypto conversion
-    const needsUsdConversion = isCrypto || isOndoGM;
-    const usdBrl = needsUsdConversion ? await getUsdBrlRate() : 1;
-
-    const candles = timestamps.map((ts: number, i: number) => ({
-      date: new Date(ts * 1000).toISOString().split("T")[0],
-      timestamp: ts,
-      open: open?.[i] != null ? Math.round(open[i] * usdBrl * 100) / 100 : null,
-      high: high?.[i] != null ? Math.round(high[i] * usdBrl * 100) / 100 : null,
-      low: low?.[i] != null ? Math.round(low[i] * usdBrl * 100) / 100 : null,
-      close: close?.[i] != null ? Math.round(close[i] * usdBrl * 100) / 100 : null,
-      volume: volume?.[i] ?? 0,
-    })).filter((c: any) => c.open !== null && c.close !== null);
-
-    const meta = result.meta;
+    COLD_START = false;
 
     return new Response(
-      JSON.stringify({
-        ticker,
-        currency: "BRL",
-        name: meta?.shortName || meta?.symbol || ticker,
-        currentPrice: Math.round((meta?.regularMarketPrice ?? 0) * usdBrl * 100) / 100,
-        previousClose: Math.round((meta?.chartPreviousClose ?? meta?.previousClose ?? 0) * usdBrl * 100) / 100,
-        candles,
-      }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      JSON.stringify({ ...payload, _cached: hit }),
+      { headers: { ...corsHeaders, ...cacheHeaders(hit, ttl), "Content-Type": "application/json" } }
     );
   } catch (err) {
-    console.error("yahoo-finance-history error:", err);
+    const message = err instanceof Error ? err.message : "Unknown error";
+    console.error("yahoo-finance-history error:", message);
+    logMetric({
+      function_name: "yahoo-finance-history",
+      duration_ms: performance.now() - started,
+      status_code: 500,
+      user_id: caller.user?.id ?? null,
+      error_message: message,
+      meta: { cold_start: COLD_START },
+    });
+    COLD_START = false;
     return new Response(
-      JSON.stringify({ error: err instanceof Error ? err.message : "Unknown error" }),
+      JSON.stringify({ error: message }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });
+

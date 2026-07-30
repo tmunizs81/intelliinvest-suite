@@ -1,6 +1,10 @@
 import { withAICache, normalizePortfolioForCache } from "../ai-cache-helper.ts";
 import { resolveCaller } from "../_shared/auth.ts";
 import { enforceRateLimit } from "../_shared/rate-limit.ts";
+import { logMetric } from "../_telemetry.ts";
+
+let COLD_START = true;
+
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -46,37 +50,42 @@ Deno.serve(async (req) => {
   }
 
 
+  const started = performance.now();
+  let portfolio: any[] = [];
+
+  // Fallback local (sem IA) — usado quando o provedor recusa/estoura cota.
+  const buildFallback = (reason: string) => {
+    const totalValue = portfolio.reduce((s: number, a: any) => s + (a.currentPrice * a.quantity), 0);
+    const totalCost = portfolio.reduce((s: number, a: any) => s + (a.avgPrice * a.quantity), 0);
+    const totalReturn = totalCost > 0 ? ((totalValue - totalCost) / totalCost * 100) : 0;
+    const topAsset = portfolio.reduce((a: any, b: any) => ((b.allocation || 0) > (a.allocation || 0) ? b : a), portfolio[0]);
+    const negativeAssets = portfolio.filter((a: any) => (a.change24h || 0) < -3);
+    const fallbackInsights: any[] = [
+      { type: "analysis", title: "Resumo da carteira", description: `Patrimônio de R$${totalValue.toFixed(0)} com ${portfolio.length} ativos. Retorno total: ${totalReturn.toFixed(1)}%.`, severity: "info" },
+    ];
+    if (topAsset) {
+      fallbackInsights.push({ type: "alert", title: `Maior posição: ${topAsset.ticker}`, description: `${topAsset.ticker} representa ${(topAsset.allocation || 0).toFixed(1)}% da carteira. Avalie concentração.`, severity: (topAsset.allocation || 0) > 20 ? "warning" : "info", ticker: topAsset.ticker });
+    }
+    if (negativeAssets.length > 0) {
+      fallbackInsights.push({ type: "alert", title: `${negativeAssets.length} ativo(s) em queda forte`, description: negativeAssets.map((a: any) => `${a.ticker} (${(a.change24h || 0).toFixed(1)}%)`).join(", "), severity: "warning", ticker: negativeAssets[0].ticker });
+    }
+    return new Response(JSON.stringify({
+      insights: fallbackInsights,
+      summary: `Carteira com ${portfolio.length} ativos e retorno de ${totalReturn.toFixed(1)}% (${reason})`,
+      _provider: "local", _fallback: true, timestamp: new Date().toISOString(),
+    }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  };
+
   try {
-    const { portfolio } = await req.json();
+    const body = await req.json();
+    portfolio = body?.portfolio;
     if (!portfolio || !Array.isArray(portfolio)) return new Response(JSON.stringify({ error: "portfolio array required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
     const totalValue = portfolio.reduce((s: number, a: any) => s + (a.currentPrice * a.quantity), 0);
     const totalCost = portfolio.reduce((s: number, a: any) => s + (a.avgPrice * a.quantity), 0);
     const totalReturn = totalCost > 0 ? ((totalValue - totalCost) / totalCost * 100) : 0;
 
-    // Helper to build local fallback insights
-    const buildFallback = (reason: string) => {
-      const topAsset = portfolio.reduce((a: any, b: any) => ((b.allocation || 0) > (a.allocation || 0) ? b : a), portfolio[0]);
-      const negativeAssets = portfolio.filter((a: any) => (a.change24h || 0) < -3);
-      const fallbackInsights: any[] = [
-        { type: "analysis", title: "Resumo da carteira", description: `Patrimônio de R$${totalValue.toFixed(0)} com ${portfolio.length} ativos. Retorno total: ${totalReturn.toFixed(1)}%.`, severity: "info" },
-        { type: "alert", title: `Maior posição: ${topAsset.ticker}`, description: `${topAsset.ticker} representa ${(topAsset.allocation || 0).toFixed(1)}% da carteira. Avalie concentração.`, severity: (topAsset.allocation || 0) > 20 ? "warning" : "info", ticker: topAsset.ticker },
-      ];
-      if (negativeAssets.length > 0) {
-        fallbackInsights.push({ type: "alert", title: `${negativeAssets.length} ativo(s) em queda forte`, description: negativeAssets.map((a: any) => `${a.ticker} (${(a.change24h || 0).toFixed(1)}%)`).join(", "), severity: "warning", ticker: negativeAssets[0].ticker });
-      }
-      return new Response(JSON.stringify({
-        insights: fallbackInsights,
-        summary: `Carteira com ${portfolio.length} ativos e retorno de ${totalReturn.toFixed(1)}% (${reason})`,
-        _provider: "local", _fallback: true, timestamp: new Date().toISOString(),
-      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    };
 
-    // Rate limit → return local fallback instead of 429
-    if (isRateLimited(req)) {
-      console.warn("Rate limited, returning local fallback");
-      return buildFallback("limite de chamadas");
-    }
 
     const portfolioText = portfolio.map((a: any) => {
       const value = a.currentPrice * a.quantity;
@@ -173,6 +182,16 @@ Gere insights inteligentes, alertas e recomendações baseados nestes dados reai
       throw new Error("Failed to parse AI response");
     }
 
+    logMetric({
+      function_name: "ai-insights",
+      duration_ms: performance.now() - started,
+      status_code: 200,
+      user_id: caller.user?.id ?? null,
+      cache_hit: cacheResult.cached,
+      meta: { cold_start: COLD_START, assets: portfolio.length },
+    });
+    COLD_START = false;
+
     return new Response(JSON.stringify({
       insights: parsed.insights,
       summary: parsed.summary,
@@ -184,12 +203,20 @@ Gere insights inteligentes, alertas e recomendações baseados nestes dados reai
       headers: { ...corsHeaders, "Content-Type": "application/json", "x-ai-provider": cacheResult.provider },
     });
   } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    logMetric({
+      function_name: "ai-insights",
+      duration_ms: performance.now() - started,
+      status_code: message.startsWith("AI_RATE_LIMIT") ? 200 : 500,
+      user_id: caller.user?.id ?? null,
+      error_message: message,
+      meta: { cold_start: COLD_START },
+    });
+    COLD_START = false;
     // Handle rate limit errors that bubble up from cache miss
-    if (err instanceof Error && err.message.startsWith("AI_RATE_LIMIT")) {
-      const fallback = buildFallback("análise local");
-      return fallback;
-    }
+    if (message.startsWith("AI_RATE_LIMIT")) return buildFallback("análise local");
     console.error("ai-insights error:", err);
-    return new Response(JSON.stringify({ error: err instanceof Error ? err.message : "Unknown error" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ error: message }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
+
 });
