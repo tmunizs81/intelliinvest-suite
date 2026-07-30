@@ -123,6 +123,7 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
       setAvgPrice(editData?.avg_price?.toString() || '');
       setSector(editData?.sector || '');
       setBroker(editData?.broker || '');
+      setBrokerSuggestion(null);
       setYieldRate(editData?.yield_rate || '');
       setIndexerType(editData?.indexer_type || 'Pós-fixado');
       setFixedIncomeSubtype(editData?.sector && editData?.type === 'Renda Fixa' ? editData.sector : 'CDB');
