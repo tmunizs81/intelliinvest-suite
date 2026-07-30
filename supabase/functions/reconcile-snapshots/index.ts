@@ -10,6 +10,7 @@
 //      (bump attempts + backoff exponencial).
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { getUser, requireCron, unauthorized } from "../_shared/auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -22,6 +23,12 @@ interface Holding {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+
+  // Cron (x-cron-secret) ou usuário autenticado disparando manualmente pela UI.
+  const cronDenied = requireCron(req);
+  if (cronDenied !== null && !(await getUser(req))) {
+    return unauthorized("Reconciliação exige sessão válida.");
+  }
 
   const started = performance.now();
   const supabase = createClient(

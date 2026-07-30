@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { getUser, requireCron, unauthorized } from "../_shared/auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -15,22 +16,21 @@ Deno.serve(async (req) => {
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-    // Check if a specific user was requested (manual backup)
-    let targetUserId: string | null = null;
-    try {
-      const body = await req.json();
-      targetUserId = body?.userId || null;
-    } catch {
-      // No body = run for all users (cron)
-    }
+    // Duas formas de invocação permitidas:
+    //  1) cron/manutenção  -> header x-cron-secret (faz backup de todos)
+    //  2) usuário logado   -> JWT válido (faz backup APENAS de si mesmo)
+    // O `userId` do body é ignorado: nunca confie no cliente para escolher o alvo.
+    const cronDenied = requireCron(req);
+    const isCron = cronDenied === null;
+    const authed = isCron ? null : await getUser(req);
+    if (!isCron && !authed) return unauthorized("Backup exige sessão válida.");
 
-    // Get users to backup
     let userIds: string[] = [];
-    if (targetUserId) {
-      userIds = [targetUserId];
-    } else {
+    if (isCron) {
       const { data: profiles } = await supabase.from("profiles").select("user_id");
       userIds = (profiles || []).map((p: any) => p.user_id);
+    } else {
+      userIds = [authed!.id];
     }
 
     const results: any[] = [];

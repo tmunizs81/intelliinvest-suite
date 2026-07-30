@@ -15,6 +15,7 @@ import { withAICache } from "../ai-cache-helper.ts";
 import { buildInsightsPrompt, type InsightsPayload } from "../_ai-prompts/insights.ts";
 import { buildScoringPrompt, type ScoringPayload } from "../_ai-prompts/scoring.ts";
 import { logMetric } from "../_telemetry.ts";
+import { requireCaller } from "../_shared/auth.ts";
 
 type TaskBuilder = (payload: any) => {
   cacheKey: string;
@@ -32,6 +33,11 @@ const TASKS: Record<string, TaskBuilder> = {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
+
+  // Somente sessão válida (ou chamada interna cron/service): evita uso do endpoint
+  // como proxy gratuito de LLM e vazamento de dados entre contas.
+  const denied = await requireCaller(req);
+  if (denied) return denied;
 
   const started = performance.now();
   let taskName = "unknown";

@@ -1,3 +1,4 @@
+import { requireCron } from "../_shared/auth.ts";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -27,6 +28,10 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+
+  // Rota de automação: exige x-cron-secret (ou service role). Bloqueia chamadas públicas.
+  const denied = requireCron(req);
+  if (denied) return denied;
 
   try {
     console.log("Fetching Ondo GM token list from GitHub...");

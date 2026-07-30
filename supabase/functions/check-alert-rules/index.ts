@@ -1,6 +1,7 @@
 // Cron: every 10 min. Evaluates all active rules and dispatches Telegram alerts.
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { admin, dispatchAlert, brl, pct } from "../_shared/telegram.ts";
+import { requireCron } from "../_shared/auth.ts";
 
 interface Rule {
   id: string; user_id: string; kind: string; threshold_pct: number | null;
@@ -84,6 +85,10 @@ ROI acumulado: ${pct(roiPct)}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+
+  // Rota de automação: exige x-cron-secret (ou service role). Bloqueia chamadas públicas.
+  const denied = requireCron(req);
+  if (denied) return denied;
   try {
     const db = admin();
     const { data: rules } = await db

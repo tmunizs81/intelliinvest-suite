@@ -66,7 +66,7 @@ export function usePortfolioMetrics() {
         if (qErr) throw qErr;
 
         if (!data) {
-          await (supabase as any).rpc("refresh_portfolio_metrics", { _user_id: uid });
+          await (supabase as any).rpc("refresh_my_portfolio_metrics");
           const retry = await (supabase as any)
             .from("portfolio_daily_metrics")
             .select("*")
@@ -96,7 +96,7 @@ export function usePortfolioMetrics() {
     const { data: auth } = await supabase.auth.getUser();
     const uid = auth.user?.id;
     if (!uid) return;
-    await (supabase as any).rpc("refresh_portfolio_metrics", { _user_id: uid });
+    await (supabase as any).rpc("refresh_my_portfolio_metrics");
     await fetchMetrics(true);
   }, [fetchMetrics]);
 

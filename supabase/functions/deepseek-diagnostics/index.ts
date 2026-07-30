@@ -1,7 +1,13 @@
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
+import { requireCaller } from "../_shared/auth.ts";
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+
+  // Somente sessão válida (ou chamada interna cron/service): evita uso do endpoint
+  // como proxy gratuito de LLM e vazamento de dados entre contas.
+  const denied = await requireCaller(req);
+  if (denied) return denied;
 
   const key = Deno.env.get('DEEPSEEK_API_KEY');
   const result: Record<string, unknown> = {

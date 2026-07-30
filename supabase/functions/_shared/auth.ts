@@ -115,8 +115,13 @@ function constantTimeEqual(a: string, b: string): boolean {
  * Retorna uma Response 401 quando a chamada não é confiável.
  */
 export function requireCron(req: Request): Response | null {
-  const expected = Deno.env.get("CRON_SECRET");
-  if (!expected) {
+  // Aceita qualquer um dos segredos de cron configurados (permite rotação sem downtime).
+  const candidates = [
+    Deno.env.get("CRON_SECRET"),
+    Deno.env.get("CRON_SHARED_SECRET"),
+  ].filter((v): v is string => Boolean(v));
+
+  if (candidates.length === 0) {
     return new Response(
       JSON.stringify({ error: "CRON_SECRET não configurado no servidor." }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
@@ -124,7 +129,7 @@ export function requireCron(req: Request): Response | null {
   }
 
   const provided = req.headers.get("x-cron-secret") || "";
-  if (provided && constantTimeEqual(provided, expected)) return null;
+  if (provided && candidates.some((c) => constantTimeEqual(provided, c))) return null;
 
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
   const bearer = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "").trim();
@@ -132,6 +137,7 @@ export function requireCron(req: Request): Response | null {
 
   return unauthorized("Rota restrita: header x-cron-secret ausente ou inválido.");
 }
+
 
 /** Webhook do Telegram: valida o X-Telegram-Bot-Api-Secret-Token. */
 export function requireTelegramSecret(req: Request): Response | null {
@@ -145,4 +151,18 @@ export function requireTelegramSecret(req: Request): Response | null {
   const provided = req.headers.get("x-telegram-bot-api-secret-token") || "";
   if (provided && constantTimeEqual(provided, expected)) return null;
   return unauthorized("Update do Telegram rejeitado: secret token inválido.");
+}
+
+/**
+ * Gate genérico para funções que podem ser chamadas:
+ *  - pelo frontend com um JWT de usuário válido, OU
+ *  - internamente (função → função / cron) com x-cron-secret ou service role.
+ *
+ * Retorna Response 401 quando nenhuma das duas condições é satisfeita.
+ */
+export async function requireCaller(req: Request): Promise<Response | null> {
+  if (requireCron(req) === null) return null;
+  const user = await getUser(req);
+  if (user) return null;
+  return unauthorized("Endpoint restrito: autentique-se para usar este recurso.");
 }

@@ -940,6 +940,7 @@ export type Database = {
         Returns: undefined
       }
       refresh_all_daily_snapshots: { Args: never; Returns: number }
+      refresh_my_portfolio_metrics: { Args: never; Returns: undefined }
       refresh_portfolio_metrics: {
         Args: { _user_id: string }
         Returns: undefined

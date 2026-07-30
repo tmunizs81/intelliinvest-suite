@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { requireUser } from "../_shared/auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -233,6 +234,9 @@ async function fetchPastDecisions(
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
+  const authed = await requireUser(req);
+  if (authed instanceof Response) return authed;
+
   try {
     const { messages, portfolio, analysisType } = await req.json();
     if (!messages || !Array.isArray(messages)) {
@@ -241,13 +245,8 @@ Deno.serve(async (req) => {
       });
     }
 
-    // ID do usuário via JWT (para RPCs futuras)
-    const auth = req.headers.get("authorization") || "";
-    let userId = "";
-    try {
-      const parts = auth.replace("Bearer ", "").split(".");
-      if (parts[1]) userId = JSON.parse(atob(parts[1])).sub || "";
-    } catch { /* ignore */ }
+    // ID do usuário validado criptograficamente (assinatura + expiração)
+    const userId = authed.id;
 
     const supa = createClient(
       Deno.env.get("SUPABASE_URL")!,
