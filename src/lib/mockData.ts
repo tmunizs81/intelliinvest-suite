@@ -1,4 +1,8 @@
 export interface Asset {
+  /** DB holding id — unique per (ticker, broker) lot. Use as React key. */
+  holdingId?: string;
+  /** Broker that owns this lot. Never inferred from another lot. */
+  broker?: string | null;
   ticker: string;
   name: string;
   type: 'Ação' | 'FII' | 'ETF' | 'ETF Internacional' | 'REIT' | 'Cripto' | 'Renda Fixa' | 'BDR' | 'Internacional' | 'Stock' | 'Imóvel';
