@@ -1248,11 +1248,12 @@ export default function UnifiedHoldings({
       })
       .sort((a, b) => (a.broker === NO_BROKER ? 1 : b.broker === NO_BROKER ? -1 : b.value - a.value));
 
+    const totalVisible = groups.reduce((s, x) => s + x.value, 0);
     return groups.map((g) => ({
       ...g,
       /** Peso da corretora dentro da visão filtrada — base dos percentuais exibidos. */
-      share: 0,
-      totalVisible: groups.reduce((s, x) => s + x.value, 0),
+      share: totalVisible > 0 ? (g.value / totalVisible) * 100 : 0,
+      totalVisible,
     }));
   }, [visibleAssets, holdings, viewMode, sort]);
 
