@@ -387,6 +387,64 @@ interface RowProps {
   showBrokerColumn: boolean;
 }
 
+/**
+ * Tooltips exclusivos de imóveis: deixam explícito que o cálculo é POR
+ * POSIÇÃO (bem individual), nunca agregado por ticker como nos financeiros.
+ */
+function PropertyTip({ agg, metric }: { agg: TickerAggregate; metric: 'avgPrice' | 'profit' | 'allocation' | 'quantity' }) {
+  const base = (
+    <p className="text-muted-foreground">
+      Imóvel é bem único: os números abaixo são desta posição isolada, sem soma com outros imóveis de código igual.
+    </p>
+  );
+  if (metric === 'avgPrice') {
+    return (
+      <div className="space-y-1">
+        <p className="font-semibold">Custo de aquisição (por imóvel)</p>
+        <p className="font-mono tabular-nums">
+          {formatCurrency(agg.cost)} ÷ {num(agg.quantity, 6)} = {formatCurrency(agg.avgPrice)}
+        </p>
+        <p>Inclui o valor pago registrado nesta posição. Reformas e custos extras devem ser lançados na edição do imóvel.</p>
+        {base}
+      </div>
+    );
+  }
+  if (metric === 'profit') {
+    return (
+      <div className="space-y-1">
+        <p className="font-semibold">Valorização do imóvel</p>
+        <p className="font-mono tabular-nums">Avaliação atual {formatCurrency(agg.value)}</p>
+        <p className="font-mono tabular-nums">Aquisição {formatCurrency(agg.cost)}</p>
+        <p className="font-mono tabular-nums">
+          Resultado {formatCurrency(agg.profit)} ({formatPercent(agg.profitPct)})
+        </p>
+        <p>Não considera aluguéis recebidos, IPTU, condomínio nem custos de venda.</p>
+        {base}
+      </div>
+    );
+  }
+  if (metric === 'allocation') {
+    return (
+      <div className="space-y-1">
+        <p className="font-semibold">Peso deste imóvel no patrimônio</p>
+        <p className="font-mono tabular-nums">
+          {formatCurrency(agg.value)} = {pctLabel(agg.allocation)} do total.
+        </p>
+        <p>Cada imóvel entra com seu próprio percentual — imóveis homônimos não somam entre si.</p>
+        {base}
+      </div>
+    );
+  }
+  return (
+    <div className="space-y-1">
+      <p className="font-semibold">Quantidade</p>
+      <p>Imóveis usam 1 unidade por bem (ou fração de propriedade, se cadastrada).</p>
+      {base}
+    </div>
+  );
+}
+
+
 const TickerRow = memo(function TickerRow({
   agg, expanded, onToggleExpand, selected, onToggleIds, onOpen, onEdit, onSell, onDelete, showBrokerColumn,
 }: RowProps) {
