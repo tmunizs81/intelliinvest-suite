@@ -116,7 +116,7 @@ Gere insights inteligentes, alertas e recomendações baseados nestes dados reai
     const cacheResult = await withAICache({
       functionName: "ai-insights",
       prompt: cachePrompt,
-      userId,
+      userId: caller.isInternal ? undefined : caller.subjectId,
       ttlMinutes: 30, // Insights valid for 30 min
       callAI: async () => {
         const { response, provider } = await callAI({
