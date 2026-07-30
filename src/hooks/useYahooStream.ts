@@ -26,9 +26,20 @@ export function useYahooStream(tickers: string[]) {
     let stopped = false;
     const list = tickers.slice(0, 50);
 
-    const connect = () => {
+    const connect = async () => {
       if (stopped) return;
-      const url = `wss://${PROJECT_ID}.functions.supabase.co/yahoo-stream`;
+      // O relay exige sessão válida. Handshake WS não aceita headers, então o
+      // access token vai na query string (a conexão é wss, portanto cifrada).
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+      if (!token) {
+        // Sem sessão não há stream; tenta de novo quando o login concluir.
+        if (!stopped) retryRef.current = setTimeout(connect, 5000);
+        return;
+      }
+      if (stopped) return;
+
+      const url = `wss://${PROJECT_ID}.functions.supabase.co/yahoo-stream?access_token=${encodeURIComponent(token)}`;
       const ws = new WebSocket(url);
       wsRef.current = ws;
 
@@ -36,6 +47,7 @@ export function useYahooStream(tickers: string[]) {
         setConnected(true);
         ws.send(JSON.stringify({ subscribe: list }));
       };
+
       ws.onmessage = (ev) => {
         try {
           const q = JSON.parse(ev.data);
