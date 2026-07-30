@@ -199,12 +199,32 @@ export default function Assets() {
   const handleBulkDelete = async () => {
     const ids = Array.from(selected);
     if (ids.length === 0) return;
-    if (!confirm(`Remover ${ids.length} ${ids.length === 1 ? 'ativo' : 'ativos'} da carteira? Esta ação não pode ser desfeita.`)) return;
     setBulkDeleting(true);
     try {
-      await bulkDeleteHoldings(ids);
+      const removed = await bulkDeleteHoldings(ids);
       setSelected(new Set());
-      toast.success(`${ids.length} ${ids.length === 1 ? 'ativo removido' : 'ativos removidos'}`);
+      const summary = removed
+        .slice(0, 3)
+        .map(h => `${h.ticker} (${brokerLabel(h.broker)})`)
+        .join(', ');
+      toast.success(
+        `${removed.length} ${removed.length === 1 ? 'posição removida' : 'posições removidas'}`,
+        {
+          description: summary + (removed.length > 3 ? ` +${removed.length - 3}` : ''),
+          duration: 10000,
+          action: {
+            label: 'Desfazer',
+            onClick: async () => {
+              try {
+                await restoreHoldings(removed);
+                toast.success('Exclusão desfeita');
+              } catch (e: any) {
+                toast.error(e?.message || 'Não foi possível desfazer');
+              }
+            },
+          },
+        },
+      );
     } catch (err: any) {
       toast.error(err?.message || 'Erro ao remover ativos');
     } finally {
