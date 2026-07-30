@@ -432,7 +432,7 @@ function useRowKeys({
 interface RowProps {
   agg: TickerAggregate;
   expanded: boolean;
-  onToggleExpand: () => void;
+  onToggleExpand: (key: string) => void;
   selected: Set<string>;
   onToggleIds: (ids: string[], select: boolean) => void;
   onOpen: (asset: Asset) => void;
@@ -590,8 +590,8 @@ const TickerRow = memo(function TickerRow({
   const onKeyDown = useRowKeys({
     onOpen: () => onOpen(single.asset),
     onSelect: () => onToggleIds(agg.ids, !allSelected),
-    onExpand: multi && !expanded ? onToggleExpand : undefined,
-    onCollapse: multi && expanded ? onToggleExpand : undefined,
+    onExpand: multi && !expanded ? () => onToggleExpand(agg.key) : undefined,
+    onCollapse: multi && expanded ? () => onToggleExpand(agg.key) : undefined,
   });
 
   return (
@@ -620,7 +620,7 @@ const TickerRow = memo(function TickerRow({
         {/* ativo */}
         <div className="flex min-w-0 items-center gap-2.5">
           <button
-            onClick={(e) => { e.stopPropagation(); if (multi) onToggleExpand(); }}
+            onClick={(e) => { e.stopPropagation(); if (multi) onToggleExpand(agg.key); }}
             aria-label={multi ? `${expanded ? 'Recolher' : 'Expandir'} corretoras de ${agg.ticker}` : undefined}
             aria-expanded={multi ? expanded : undefined}
             tabIndex={multi ? 0 : -1}
@@ -779,7 +779,7 @@ const TickerRow = memo(function TickerRow({
         <div>
           {multi ? (
             <button
-              onClick={(e) => { e.stopPropagation(); onToggleExpand(); }}
+              onClick={(e) => { e.stopPropagation(); onToggleExpand(agg.key); }}
               aria-expanded={expanded}
               className={`ml-auto flex h-7 items-center justify-end rounded-md px-2 text-[10px] font-medium text-muted-foreground opacity-0 transition-opacity hover:text-primary group-hover:opacity-100 group-focus-within:opacity-100 ${FOCUS_RING}`}
             >
@@ -892,7 +892,7 @@ function LotRow({
  * Cartão "table-like" — mobile
  * ------------------------------------------------------------------ */
 
-function MobileCard({
+const MobileCard = memo(function MobileCard({
   agg, expanded, onToggleExpand, selected, onToggleIds, onOpen, onEdit, onSell, onDelete, showBrokers,
 }: RowProps & { showBrokers: boolean }) {
   const allSelected = agg.ids.length > 0 && agg.ids.every((id) => selected.has(id));
@@ -904,8 +904,8 @@ function MobileCard({
   const onKeyDown = useRowKeys({
     onOpen: () => onOpen(single.asset),
     onSelect: () => onToggleIds(agg.ids, !allSelected),
-    onExpand: multi && !expanded ? onToggleExpand : undefined,
-    onCollapse: multi && expanded ? onToggleExpand : undefined,
+    onExpand: multi && !expanded ? () => onToggleExpand(agg.key) : undefined,
+    onCollapse: multi && expanded ? () => onToggleExpand(agg.key) : undefined,
   });
 
   return (
@@ -979,7 +979,7 @@ function MobileCard({
           {showBrokers && (
             multi ? (
               <button
-                onClick={(e) => { e.stopPropagation(); onToggleExpand(); }}
+                onClick={(e) => { e.stopPropagation(); onToggleExpand(agg.key); }}
                 aria-expanded={expanded}
                 aria-label={`${expanded ? 'Recolher' : 'Expandir'} corretoras de ${agg.ticker}`}
                 className={`inline-flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-[10px] text-muted-foreground ${FOCUS_RING}`}
