@@ -77,8 +77,20 @@ Deno.serve(async (req) => {
   const builder = TASKS[task];
   if (!builder) { finish(400, { error: "unknown task" }); return errorResponse(`Task desconhecida: ${task}`, 400); }
 
-  userId = extractUserId(req);
-  if (isRateLimited(userId)) { finish(429, { error: "rate limited" }); return rateLimitResponse(); }
+  // Amortecedor local + cota persistida (atômica, vale para todos os isolates).
+  if (!caller.isInternal) {
+    if (isRateLimited(caller.subjectId)) {
+      finish(429, { error: "rate limited (local)" });
+      return errorResponse("Limite de chamadas atingido. Aguarde alguns instantes.", 429);
+    }
+    const limited = await enforceRateLimit(req, caller.subjectId, {
+      resource: `ai-router:${task}`,
+      max: 20,
+      windowSeconds: 60,
+    });
+    if (limited) { finish(429, { error: "rate limited" }); return limited; }
+  }
+
 
   let spec;
   try {
