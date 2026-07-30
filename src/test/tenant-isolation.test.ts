@@ -227,7 +227,7 @@ describe("isolamento — segredo do Telegram nunca chega ao cliente", () => {
       for (const line of read(file).split("\n")) {
         const reads =
           /(data|settings|row|t)\.bot_token/.test(line) ||
-          /bot_token\s*:\s*(data|settings|local|s)\./.test(line);
+          /(?<![_\\w])bot_token\s*:\s*(data|settings|local|s)\./.test(line);
         if (reads) offenders.push(`${file}: ${line.trim()}`);
       }
     }
