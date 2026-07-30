@@ -122,7 +122,7 @@ export default function Assets() {
 
   const filtered = useMemo(() => {
     const list = assets.filter(a => {
-      const matchSearch = !search || a.ticker.toLowerCase().includes(search.toLowerCase()) || a.name.toLowerCase().includes(search.toLowerCase());
+      const matchSearch = matchesQuery(a, debouncedSearch);
       const matchType = !typeFilter || a.type === typeFilter;
       const matchBroker = !brokerFilter || brokerOf(a) === brokerFilter;
       return matchSearch && matchType && matchBroker;
@@ -140,7 +140,7 @@ export default function Assets() {
       }
     });
     return sorted;
-  }, [assets, search, typeFilter, brokerFilter, sortBy]);
+  }, [assets, debouncedSearch, typeFilter, brokerFilter, sortBy]);
 
 
 
