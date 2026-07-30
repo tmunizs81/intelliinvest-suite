@@ -138,6 +138,57 @@ export function filterByClass<T extends { ticker: string; type: string }>(
   return list.filter((a) => isPropertyAsset(a) === wantProperty);
 }
 
+/* ------------------------------------------------------------------ *
+ * Busca textual (ticker, nome e corretora) — persistida
+ * ------------------------------------------------------------------ */
+
+const SEARCH_STORAGE_KEY = 'assets:search:v1';
+
+/** Normaliza para busca tolerante a acento e caixa. */
+function normalizeText(s: string): string {
+  return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+}
+
+export function loadSearchQuery(): string {
+  try {
+    return typeof window !== 'undefined' ? localStorage.getItem(SEARCH_STORAGE_KEY) ?? '' : '';
+  } catch {
+    return '';
+  }
+}
+
+export function saveSearchQuery(q: string) {
+  try {
+    if (q) localStorage.setItem(SEARCH_STORAGE_KEY, q);
+    else localStorage.removeItem(SEARCH_STORAGE_KEY);
+  } catch { /* storage indisponível */ }
+}
+
+/**
+ * Casa o termo contra ticker, nome do ativo e corretora.
+ * Todos os termos separados por espaço precisam casar (busca AND),
+ * o que permite consultas como "petr xp".
+ */
+export function matchesQuery(
+  a: { ticker: string; name?: string | null; broker?: string | null },
+  query: string,
+): boolean {
+  const q = normalizeText(query);
+  if (!q) return true;
+  const haystack = normalizeText(`${a.ticker} ${a.name ?? ''} ${a.broker ?? ''}`);
+  return q.split(/\s+/).every((term) => haystack.includes(term));
+}
+
+/** Filtra preservando a ordem original (ordenação é aplicada depois). */
+export function filterByQuery<T extends { ticker: string; name?: string | null; broker?: string | null }>(
+  list: T[],
+  query: string,
+): T[] {
+  if (!query.trim()) return list;
+  return list.filter((a) => matchesQuery(a, query));
+}
+
+
 
 
 export function sortAggregates(list: TickerAggregate[], sort: SortState): TickerAggregate[] {
