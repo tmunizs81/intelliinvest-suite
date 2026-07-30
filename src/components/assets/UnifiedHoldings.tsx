@@ -7,6 +7,7 @@ import type { HoldingRow } from '@/hooks/usePortfolio';
 import { BrokerLogo } from '@/lib/brokerLogos';
 import { NO_BROKER } from '@/lib/holdingsIsolation';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { toast } from 'sonner';
 
 /* ------------------------------------------------------------------ *
  * Modelo de apresentação
