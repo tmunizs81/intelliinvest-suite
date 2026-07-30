@@ -35,7 +35,6 @@ Deno.serve(async (req) => {
     });
     if (limited) return limited;
   }
-  const rl = checkRateLimit(req); if (rl) return rl;
 
   try {
     const { year, positions, previousPositions, monthlyTaxes, cnpjMap } = await req.json();
