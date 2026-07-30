@@ -2044,7 +2044,7 @@ function BackupTab() {
         supabase.from('holdings').select('*').eq('user_id', user.id),
         supabase.from('transactions').select('*').eq('user_id', user.id),
         supabase.from('alerts').select('*').eq('user_id', user.id),
-        supabase.from('telegram_settings').select('*').eq('user_id', user.id),
+        supabase.from('telegram_settings').select('id,user_id,chat_id,enabled,link_code,created_at,updated_at').eq('user_id', user.id),
         (supabase as any).from('family_members').select('*').eq('owner_id', user.id),
       ]);
       const backup = {
@@ -2053,7 +2053,8 @@ function BackupTab() {
         holdings: holdingsRes.data || [],
         transactions: transactionsRes.data || [],
         alerts: alertsRes.data || [],
-        telegramSettings: telegramRes.data || [],
+        // O bot_token nunca sai do servidor: o backup carrega apenas metadados.
+        telegramSettings: (telegramRes.data || []).map((t: any) => ({ ...t, bot_token: null })),
         familyMembers: familyRes.data || [],
       };
       if (format === 'json') {
