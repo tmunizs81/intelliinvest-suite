@@ -1,4 +1,5 @@
-import { useMemo, useState, useEffect, useCallback, useRef, memo, forwardRef, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
+import { useMemo, useState, useEffect, useLayoutEffect, useCallback, useRef, memo, forwardRef, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
+import { useWindowVirtualizer } from '@tanstack/react-virtual';
 import {
   ChevronRight, ChevronDown, Pencil, Trash2, ArrowUpRight, ArrowDownRight, ArrowUp, ArrowDown,
   AlertTriangle,
