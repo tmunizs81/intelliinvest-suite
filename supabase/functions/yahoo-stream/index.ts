@@ -1,3 +1,6 @@
+import { getUser } from "../_shared/auth.ts";
+import { enforceRateLimit } from "../_shared/rate-limit.ts";
+import { logSecurityEvent } from "../_shared/security-log.ts";
 /**
  * yahoo-stream — WebSocket relay para o streamer do Yahoo Finance.
  *
