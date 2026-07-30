@@ -1200,6 +1200,12 @@ export default function UnifiedHoldings({
 
   return (
     <div data-holdings-root role="grid" aria-label="Carteira de ativos">
+      {classFilterBar}
+      {aggregates.length === 0 && (
+        <p className="px-4 py-6 text-center text-[12px] text-muted-foreground">
+          Nenhum {classFilter === 'property' ? 'imóvel' : 'ativo financeiro'} nesta visão.
+        </p>
+      )}
       {/* --------- Desktop: grade densa --------- */}
       <div className="hidden overflow-x-auto md:block">
         <div className="min-w-[1100px]">
