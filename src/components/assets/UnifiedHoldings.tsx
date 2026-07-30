@@ -29,6 +29,8 @@ export interface TickerLot {
 }
 
 export interface TickerAggregate {
+  /** Chave única do agrupamento (imóveis nunca são fundidos entre si). */
+  key: string;
   ticker: string;
   name: string;
   type: string;
@@ -803,8 +805,12 @@ export function aggregateByTicker(assets: Asset[], holdings: HoldingRow[]): Tick
   const map = new Map<string, TickerAggregate>();
 
   assets.forEach((a) => {
-    const key = a.ticker.trim().toUpperCase();
+    const ticker = a.ticker.trim().toUpperCase();
     const broker = (a.broker || '').trim() || NO_BROKER;
+    // Imóveis são bens únicos: mesmo com ticker igual, cada posição é um
+    // imóvel distinto e NUNCA deve ser fundido com outro.
+    const isProperty = a.type === 'Imóvel' || ticker.startsWith('IMOVEL');
+    const key = isProperty ? `${ticker}::${a.holdingId ?? `${broker}::${a.name}`}` : ticker;
     const value = a.currentPrice * a.quantity;
     const cost = a.avgPrice * a.quantity;
     const lot: TickerLot = {
@@ -824,7 +830,8 @@ export function aggregateByTicker(assets: Asset[], holdings: HoldingRow[]): Tick
     const cur = map.get(key);
     if (!cur) {
       map.set(key, {
-        ticker: key,
+        key,
+        ticker,
         name: a.name,
         type: a.type,
         currency: a.currency,
@@ -1062,10 +1069,10 @@ export default function UnifiedHoldings({
           {viewMode === 'ticker' &&
             aggregates.map((agg) => (
               <TickerRow
-                key={agg.ticker}
+                key={agg.key}
                 agg={agg}
-                expanded={expanded.has(agg.ticker)}
-                onToggleExpand={() => toggleExpand(agg.ticker)}
+                expanded={expanded.has(agg.key)}
+                onToggleExpand={() => toggleExpand(agg.key)}
                 showBrokerColumn
                 {...rowProps}
               />
@@ -1078,7 +1085,7 @@ export default function UnifiedHoldings({
                 {!collapsedBrokers.has(g.broker) &&
                   g.rows.map((agg) => (
                     <TickerRow
-                      key={`${g.broker}::${agg.ticker}`}
+                      key={`${g.broker}::${agg.key}`}
                       agg={agg}
                       expanded={false}
                       onToggleExpand={() => {}}
@@ -1097,10 +1104,10 @@ export default function UnifiedHoldings({
         {viewMode === 'ticker' &&
           aggregates.map((agg) => (
             <MobileCard
-              key={agg.ticker}
+              key={agg.key}
               agg={agg}
-              expanded={expanded.has(agg.ticker)}
-              onToggleExpand={() => toggleExpand(agg.ticker)}
+              expanded={expanded.has(agg.key)}
+              onToggleExpand={() => toggleExpand(agg.key)}
               showBrokerColumn
               showBrokers
               {...rowProps}
@@ -1114,7 +1121,7 @@ export default function UnifiedHoldings({
               {!collapsedBrokers.has(g.broker) &&
                 g.rows.map((agg) => (
                   <MobileCard
-                    key={`${g.broker}::${agg.ticker}`}
+                    key={`${g.broker}::${agg.key}`}
                     agg={agg}
                     expanded={false}
                     onToggleExpand={() => {}}
