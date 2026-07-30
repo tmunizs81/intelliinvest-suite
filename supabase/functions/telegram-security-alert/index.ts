@@ -1,5 +1,6 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { getUser, requireCron, unauthorized } from "../_shared/auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -15,7 +16,17 @@ Deno.serve(async (req) => {
     const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN")!;
     const adminClient = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { alertType, userId, details } = await req.json();
+    const body = await req.json();
+    const alertType = body?.alertType;
+    const details = body?.details;
+
+    // O destinatário NUNCA vem do body quando a chamada é de um usuário:
+    // isso permitiria phishing (mandar alerta em nome do sistema para terceiros).
+    const cronDenied = requireCron(req);
+    const isCron = cronDenied === null;
+    const authed = isCron ? null : await getUser(req);
+    if (!isCron && !authed) return unauthorized("Alerta de segurança exige sessão válida.");
+    const userId: string | undefined = isCron ? body?.userId : authed!.id;
 
     if (!alertType || !userId) {
       return new Response(JSON.stringify({ error: "alertType and userId required" }), {
