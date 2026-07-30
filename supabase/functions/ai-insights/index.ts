@@ -37,8 +37,14 @@ Deno.serve(async (req) => {
 
   // Somente sessão válida (ou chamada interna cron/service): evita uso do endpoint
   // como proxy gratuito de LLM e vazamento de dados entre contas.
-  const denied = await requireCaller(req);
-  if (denied) return denied;
+  const caller = await resolveCaller(req);
+  if (caller instanceof Response) return caller;
+
+  if (!caller.isInternal) {
+    const limited = await enforceRateLimit(req, caller.subjectId, RATE_RULE);
+    if (limited) return limited;
+  }
+
 
   try {
     const { portfolio } = await req.json();
