@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useRole } from '@/hooks/useRole';
-import { ClipboardList, Loader2, RefreshCw } from 'lucide-react';
+import { ClipboardList, Loader2, RefreshCw, ShieldAlert } from 'lucide-react';
 
 interface AuditEntry {
   id: string;
@@ -12,6 +12,21 @@ interface AuditEntry {
   details: any;
   created_at: string;
 }
+
+interface SensitiveEntry {
+  id: string;
+  resource: string;
+  action: string;
+  outcome: string;
+  subject_id: string | null;
+  meta: any;
+  created_at: string;
+}
+
+const sensitiveLabels: Record<string, string> = {
+  read_own: 'Leitura das próprias configurações',
+  read_all: 'Leitura administrativa',
+};
 
 const actionLabels: Record<string, string> = {
   buy: '🟢 Compra',
@@ -26,6 +41,7 @@ export default function AuditLogPanel() {
   const { isAdmin } = useRole();
   const [logs, setLogs] = useState<AuditEntry[]>([]);
   const [loading, setLoading] = useState(false);
+  const [sensitive, setSensitive] = useState<SensitiveEntry[]>([]);
 
   const load = useCallback(async () => {
     if (!user) return;
@@ -36,6 +52,10 @@ export default function AuditLogPanel() {
       .order('created_at', { ascending: false })
       .limit(50);
     setLogs((data as any[]) || []);
+
+    // Trilha de acessos a dados sensíveis (Telegram, credenciais, etc.).
+    const { data: sens } = await (supabase as any).rpc('list_sensitive_access_log', { _limit: 50 });
+    setSensitive((sens as SensitiveEntry[]) || []);
     setLoading(false);
   }, [user]);
 
@@ -73,6 +93,35 @@ export default function AuditLogPanel() {
             </p>
           </div>
         ))}
+      </div>
+
+      <div className="pt-4 border-t border-border space-y-2">
+        <h4 className="font-semibold flex items-center gap-2 text-sm">
+          <ShieldAlert className="h-4 w-4 text-primary" /> Acessos a dados sensíveis
+          {isAdmin && <span className="text-[10px] text-muted-foreground">(visão global)</span>}
+        </h4>
+        {sensitive.length === 0 && !loading && (
+          <p className="text-xs text-muted-foreground py-4">Nenhum acesso sensível registrado.</p>
+        )}
+        <div className="space-y-2 max-h-[320px] overflow-y-auto">
+          {sensitive.map((e) => (
+            <div key={e.id} className="rounded-lg bg-muted/20 p-3 text-xs">
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-medium">
+                  {sensitiveLabels[e.action] || e.action} • {e.meta?.resource || e.resource.replace(/^db:/, '')}
+                </span>
+                <span className={e.outcome === 'allowed' ? 'text-muted-foreground' : 'text-destructive'}>
+                  {e.outcome === 'allowed' ? 'permitido' : 'negado'}
+                </span>
+              </div>
+              <p className="text-[11px] text-muted-foreground mt-1">
+                {new Date(e.created_at).toLocaleString('pt-BR')}
+                {isAdmin && e.subject_id ? ` • ${e.subject_id.slice(0, 8)}…` : ''}
+                {e.meta?.is_admin ? ' • via admin' : ''}
+              </p>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
