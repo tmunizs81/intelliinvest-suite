@@ -1213,6 +1213,73 @@ export function aggregateByTicker(assets: Asset[], holdings: HoldingRow[]): Tick
  * Componente principal
  * ------------------------------------------------------------------ */
 
+/* ------------------------------------------------------------------ *
+ * Painel de auditoria de fusão de imóveis
+ * ------------------------------------------------------------------ */
+
+function MergeAuditPanel({
+  open, onOpenChange, entries, onOpenPosition,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  entries: MergeAuditEntry[];
+  onOpenPosition: (holdingId: string) => void;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-base">
+            <AlertTriangle className="h-4 w-4 text-[hsl(38,92%,60%)]" aria-hidden />
+            Auditoria de imóveis com código repetido
+          </DialogTitle>
+          <DialogDescription className="text-[12px]">
+            Estes bens compartilham o mesmo código e seriam somados numa única linha. Cada imóvel é único —
+            renomeie o código de cada posição para manter totais, alocação e relatórios corretos.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="max-h-[55vh] space-y-4 overflow-y-auto pr-1">
+          {entries.map((e) => (
+            <section key={e.ticker} className="rounded-lg border border-border">
+              <header className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 bg-muted/40 px-3 py-2">
+                <span className="font-mono text-[12px] font-semibold">{e.ticker}</span>
+                <span className="font-mono text-[11px] tabular-nums text-muted-foreground">
+                  {e.positions.length} posições afetadas • {formatCurrency(e.value)}
+                </span>
+              </header>
+              <ul className="divide-y divide-border/50">
+                {e.positions.map((p, i) => (
+                  <li key={p.holdingId ?? `${p.broker}-${i}`} className="flex flex-wrap items-center gap-2 px-3 py-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-[12px] font-medium">{p.name}</p>
+                      <p className="truncate text-[11px] text-muted-foreground">{p.broker}</p>
+                    </div>
+                    <span className="font-mono text-[11px] tabular-nums text-muted-foreground">
+                      {formatCurrency(p.value)}
+                    </span>
+                    {p.holdingId && (
+                      <button
+                        onClick={() => { onOpenPosition(p.holdingId!); onOpenChange(false); }}
+                        className={`rounded-full border border-border px-2 py-0.5 text-[10px] text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary ${FOCUS_RING}`}
+                      >
+                        Revisar
+                      </button>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ))}
+          {entries.length === 0 && (
+            <p className="py-6 text-center text-[12px] text-muted-foreground">Nenhuma fusão de imóveis pendente.</p>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export type AssetsViewMode = 'ticker' | 'broker';
 
 interface Props {
