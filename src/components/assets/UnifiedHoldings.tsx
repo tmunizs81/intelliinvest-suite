@@ -551,7 +551,6 @@ const TickerRow = memo(function TickerRow({
           </Info>
         </div>
 
-        </div>
 
         {/* atual */}
         <div className="text-right">
