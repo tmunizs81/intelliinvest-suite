@@ -1,4 +1,4 @@
-
+import { requireUser } from "../_shared/auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -10,6 +10,10 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+
+  // Evita que o bot seja usado como relay anônimo de mensagens.
+  const authed = await requireUser(req);
+  if (authed instanceof Response) return authed;
 
   try {
     const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN");
