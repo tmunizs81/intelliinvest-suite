@@ -22,7 +22,6 @@ Deno.serve(async (req) => {
     });
     if (limited) return limited;
   }
-  const rl = checkRateLimit(req); if (rl) return rl;
 
   try {
     const { messages, context } = await req.json();
