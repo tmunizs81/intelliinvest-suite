@@ -805,8 +805,12 @@ export function aggregateByTicker(assets: Asset[], holdings: HoldingRow[]): Tick
   const map = new Map<string, TickerAggregate>();
 
   assets.forEach((a) => {
-    const key = a.ticker.trim().toUpperCase();
+    const ticker = a.ticker.trim().toUpperCase();
     const broker = (a.broker || '').trim() || NO_BROKER;
+    // Imóveis são bens únicos: mesmo com ticker igual, cada posição é um
+    // imóvel distinto e NUNCA deve ser fundido com outro.
+    const isProperty = a.type === 'Imóvel' || ticker.startsWith('IMOVEL');
+    const key = isProperty ? `${ticker}::${a.holdingId ?? `${broker}::${a.name}`}` : ticker;
     const value = a.currentPrice * a.quantity;
     const cost = a.avgPrice * a.quantity;
     const lot: TickerLot = {
@@ -826,7 +830,8 @@ export function aggregateByTicker(assets: Asset[], holdings: HoldingRow[]): Tick
     const cur = map.get(key);
     if (!cur) {
       map.set(key, {
-        ticker: key,
+        key,
+        ticker,
         name: a.name,
         type: a.type,
         currency: a.currency,
