@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { getCached, setCache, CACHE_TTL } from "@/lib/persistentCache";
+import { getCached, setCache, CACHE_TTL, userScopedKey } from "@/lib/persistentCache";
 
 export interface PortfolioMetrics {
   user_id: string;
@@ -45,10 +45,10 @@ export function usePortfolioMetrics() {
         const uid = auth.user?.id;
         if (!uid) { setLoading(false); return; }
 
-        const cacheKey = `${CACHE_PREFIX}${uid}`;
+        const cacheKey = userScopedKey(uid, `${CACHE_PREFIX}${uid}`);
 
         if (!force) {
-          const cached = await getCached<PortfolioMetrics>(cacheKey);
+          const cached = await getCached<PortfolioMetrics>(cacheKey, { owner: uid });
           if (cached) {
             setMetrics(cached);
             setLoading(false);

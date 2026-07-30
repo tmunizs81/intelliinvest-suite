@@ -11,7 +11,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { getCached, setCache, CACHE_TTL } from "@/lib/persistentCache";
+import { getCached, setCache, CACHE_TTL, userScopedKey } from "@/lib/persistentCache";
 import type { PortfolioMetrics } from "./usePortfolioMetrics";
 
 export interface DashboardBootstrap {
@@ -47,11 +47,11 @@ export function useDashboardBootstrap() {
         const uid = auth.user?.id;
         if (!uid) { setLoading(false); return; }
 
-        const cacheKey = `${CACHE_PREFIX}${uid}`;
+        const cacheKey = userScopedKey(uid, `${CACHE_PREFIX}${uid}`);
 
         // 1) SWR: paint stale cache
         if (!force) {
-          const cached = await getCached<DashboardBootstrap>(cacheKey);
+          const cached = await getCached<DashboardBootstrap>(cacheKey, { owner: uid });
           if (cached) {
             setData(cached);
             setFromCache(true);
@@ -68,7 +68,7 @@ export function useDashboardBootstrap() {
         setData(fresh as DashboardBootstrap);
         setFromCache(false);
         setError(null);
-        await setCache(cacheKey, fresh, CACHE_TTL.SNAPSHOTS); // 1h
+        await setCache(cacheKey, fresh, CACHE_TTL.SNAPSHOTS, { owner: uid }); // 1h
       } catch (e: any) {
         setError(e?.message || "Erro ao carregar dashboard");
       } finally {
