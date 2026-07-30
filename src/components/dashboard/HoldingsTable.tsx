@@ -43,7 +43,9 @@ const TableRow = memo(({ asset, holdingRow, onEdit, onDelete, deletingId, naviga
   const profitPct = cost > 0 ? (profit / cost) * 100 : 0;
   const isPositive = asset.change24h >= 0;
   const isProfitable = profit >= 0;
-  const broker = holdingRow?.broker?.trim();
+  // A corretora vem SEMPRE do próprio lote (asset.broker), nunca de outro
+  // registro com o mesmo ticker — isso evitava a mistura entre corretoras.
+  const broker = (asset.broker || holdingRow?.broker || '').trim();
 
   return (
     <tr
