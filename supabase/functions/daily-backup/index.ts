@@ -22,10 +22,31 @@ Deno.serve(async (req) => {
     //  1) cron/manutenção  -> header x-cron-secret (faz backup de todos)
     //  2) usuário logado   -> JWT válido (faz backup APENAS de si mesmo)
     // O `userId` do body é ignorado: nunca confie no cliente para escolher o alvo.
-    const cronDenied = requireCron(req);
+    const cronDenied = requireCron(req, { audit: false });
     const isCron = cronDenied === null;
     const authed = isCron ? null : await getUser(req);
-    if (!isCron && !authed) return unauthorized("Backup exige sessão válida.");
+    if (!isCron && !authed) {
+      logSecurityEvent(req, {
+        function_name: "daily-backup",
+        reason: req.headers.get("x-cron-secret")
+          ? "invalid_cron_secret"
+          : req.headers.get("authorization")
+          ? "invalid_or_expired_jwt"
+          : "missing_credentials",
+        status_code: 401,
+      });
+      return unauthorized("Backup exige sessão válida.");
+    }
+
+    logSecurityEvent(req, {
+      function_name: "daily-backup",
+      outcome: "allowed",
+      reason: isCron ? "cron_invocation" : "authenticated_self_backup",
+      status_code: 200,
+      subject_id: isCron ? "internal:cron" : authed!.id,
+      claims: isCron ? null : authed!.claims,
+      key_id: isCron ? "cron" : null,
+    });
 
     let userIds: string[] = [];
     if (isCron) {
@@ -34,6 +55,7 @@ Deno.serve(async (req) => {
     } else {
       userIds = [authed!.id];
     }
+
 
     const results: any[] = [];
 
