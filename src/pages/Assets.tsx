@@ -3,8 +3,9 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Plus, Upload, Download, Search, Pencil, Trash2, ArrowUpRight,
   ArrowDownRight, ChevronRight, Loader2, FileSpreadsheet, X, AlertTriangle, FileUp,
-  Wallet, DollarSign, Building2, ArrowUpDown,
+  Wallet, DollarSign, Building2, ArrowUpDown, ChevronDown,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { usePortfolio, type HoldingRow } from '@/hooks/usePortfolio';
 import HoldingModal from '@/components/dashboard/HoldingModal';
 import BulkImportYahoo from '@/components/dashboard/BulkImportYahoo';
@@ -18,6 +19,9 @@ import CustodyModal from '@/components/dashboard/CustodyModal';
 import { BrokerLogo, preloadBrokers } from '@/lib/brokerLogos';
 import { useBrokerLogoSettings, setLogoDensity } from '@/lib/brokerLogoSettings';
 
+/** Bucket para lotes sem corretora definida — nunca é fundido com outra corretora. */
+const NO_BROKER = '__SEM_CORRETORA__';
+
 const typeBadgeClass: Record<string, string> = {
   'Ação': 'bg-primary/10 text-primary',
   'FII': 'bg-[hsl(270,70%,60%)]/10 text-[hsl(270,70%,85%)]',
@@ -27,10 +31,25 @@ const typeBadgeClass: Record<string, string> = {
   'Renda Fixa': 'bg-secondary text-secondary-foreground',
 };
 
+/** Checkbox acessível e consistente com o design system. */
+function RowCheckbox({ checked, onChange, label }: { checked: boolean; onChange: () => void; label: string }) {
+  return (
+    <input
+      type="checkbox"
+      checked={checked}
+      onChange={onChange}
+      onClick={(e) => e.stopPropagation()}
+      aria-label={label}
+      className="h-4 w-4 cursor-pointer accent-[hsl(var(--primary))] rounded border-border"
+    />
+  );
+}
+
+
 export default function Assets() {
   const navigate = useNavigate();
   const { density } = useBrokerLogoSettings();
-  const { assets, holdings, cashBalance, cashBalances, loading, refresh, addHolding, updateHolding, deleteHolding, sellHolding, updateCashBalance, loadCashMovements } = usePortfolio();
+  const { assets, holdings, cashBalance, cashBalances, loading, refresh, addHolding, updateHolding, deleteHolding, bulkDeleteHoldings, sellHolding, updateCashBalance, loadCashMovements } = usePortfolio();
   const [modalOpen, setModalOpen] = useState(false);
   const [editingHolding, setEditingHolding] = useState<HoldingRow | null>(null);
   const [sellOpen, setSellOpen] = useState(false);
@@ -57,6 +76,10 @@ export default function Assets() {
   const [custodyOpen, setCustodyOpen] = useState(false);
   const [bulkYahooOpen, setBulkYahooOpen] = useState(false);
   const [csvBulkOpen, setCsvBulkOpen] = useState(false);
+  // Seleção em lote (ids de holdings) e colapso por corretora
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
 
   const handleSell = (holdingRow: HoldingRow, asset: Asset) => {
     setSellingHolding(holdingRow);
@@ -82,17 +105,14 @@ export default function Assets() {
     preloadBrokers(brokerFacets.slice(0, 8).map(([b]) => b));
   }, [brokerFacets]);
 
-  const brokerByTicker = useMemo(() => {
-    const m = new Map<string, string>();
-    holdings.forEach((h) => { if (h.broker) m.set(h.ticker, h.broker); });
-    return m;
-  }, [holdings]);
+  /** Corretora do lote — sempre do próprio registro, nunca de outro ticker igual. */
+  const brokerOf = (a: Asset) => (a.broker || '').trim();
 
   const filtered = useMemo(() => {
     const list = assets.filter(a => {
       const matchSearch = !search || a.ticker.toLowerCase().includes(search.toLowerCase()) || a.name.toLowerCase().includes(search.toLowerCase());
       const matchType = !typeFilter || a.type === typeFilter;
-      const matchBroker = !brokerFilter || (brokerByTicker.get(a.ticker) || '') === brokerFilter;
+      const matchBroker = !brokerFilter || brokerOf(a) === brokerFilter;
       return matchSearch && matchType && matchBroker;
     });
     if (sortBy === 'default') return list;
@@ -102,13 +122,88 @@ export default function Assets() {
         case 'value_desc': return (b.currentPrice * b.quantity) - (a.currentPrice * a.quantity);
         case 'value_asc': return (a.currentPrice * a.quantity) - (b.currentPrice * b.quantity);
         case 'name_asc': return a.ticker.localeCompare(b.ticker);
-        case 'broker_asc': return (brokerByTicker.get(a.ticker) || 'zz').localeCompare(brokerByTicker.get(b.ticker) || 'zz');
+        case 'broker_asc': return (brokerOf(a) || 'zzz').localeCompare(brokerOf(b) || 'zzz');
         case 'change_desc': return (b.change24h || 0) - (a.change24h || 0);
         default: return 0;
       }
     });
     return sorted;
-  }, [assets, search, typeFilter, brokerFilter, sortBy, brokerByTicker]);
+  }, [assets, search, typeFilter, brokerFilter, sortBy]);
+
+  /** Agrupamento por corretora — a fonte da verdade visual do módulo. */
+  const groups = useMemo(() => {
+    const map = new Map<string, Asset[]>();
+    filtered.forEach((a) => {
+      const key = brokerOf(a) || NO_BROKER;
+      const arr = map.get(key);
+      if (arr) arr.push(a); else map.set(key, [a]);
+    });
+    return Array.from(map.entries())
+      .map(([broker, items]) => {
+        const value = items.reduce((s, a) => s + a.currentPrice * a.quantity, 0);
+        const cost = items.reduce((s, a) => s + a.avgPrice * a.quantity, 0);
+        return { broker, items, value, cost, gain: value - cost };
+      })
+      .sort((a, b) => {
+        if (a.broker === NO_BROKER) return 1;
+        if (b.broker === NO_BROKER) return -1;
+        return b.value - a.value;
+      });
+  }, [filtered]);
+
+  const visibleIds = useMemo(
+    () => filtered.map(a => a.holdingId).filter(Boolean) as string[],
+    [filtered],
+  );
+
+  // Mantém a seleção coerente quando a lista muda (filtro, exclusão, refresh)
+  useEffect(() => {
+    setSelected(prev => {
+      const next = new Set<string>();
+      prev.forEach(id => { if (visibleIds.includes(id)) next.add(id); });
+      return next.size === prev.size ? prev : next;
+    });
+  }, [visibleIds]);
+
+  const toggleOne = (id?: string) => {
+    if (!id) return;
+    setSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleGroup = (items: Asset[]) => {
+    const ids = items.map(a => a.holdingId).filter(Boolean) as string[];
+    const allSelected = ids.length > 0 && ids.every(id => selected.has(id));
+    setSelected(prev => {
+      const next = new Set(prev);
+      ids.forEach(id => { if (allSelected) next.delete(id); else next.add(id); });
+      return next;
+    });
+  };
+
+  const allVisibleSelected = visibleIds.length > 0 && visibleIds.every(id => selected.has(id));
+  const toggleAllVisible = () => {
+    setSelected(allVisibleSelected ? new Set() : new Set(visibleIds));
+  };
+
+  const handleBulkDelete = async () => {
+    const ids = Array.from(selected);
+    if (ids.length === 0) return;
+    if (!confirm(`Remover ${ids.length} ${ids.length === 1 ? 'ativo' : 'ativos'} da carteira? Esta ação não pode ser desfeita.`)) return;
+    setBulkDeleting(true);
+    try {
+      await bulkDeleteHoldings(ids);
+      setSelected(new Set());
+      toast.success(`${ids.length} ${ids.length === 1 ? 'ativo removido' : 'ativos removidos'}`);
+    } catch (err: any) {
+      toast.error(err?.message || 'Erro ao remover ativos');
+    } finally {
+      setBulkDeleting(false);
+    }
+  };
 
   const total = assets.reduce((s, a) => s + a.currentPrice * a.quantity, 0);
   const cost = assets.reduce((s, a) => s + a.avgPrice * a.quantity, 0);
@@ -118,6 +213,7 @@ export default function Assets() {
     if (!confirm('Remover este ativo da carteira?')) return;
     await deleteHolding(id);
   };
+
 
   const handleCSVImport = async () => {
     if (!importData.trim()) return;
@@ -422,11 +518,39 @@ export default function Assets() {
           </div>
         ) : (
           <>
-            {/* Desktop Table */}
+            {/* Barra de ação em lote */}
+            <div className="flex flex-wrap items-center gap-3 border-b border-border bg-muted/30 px-4 py-2.5 text-xs">
+              <label className="inline-flex items-center gap-2 cursor-pointer text-muted-foreground hover:text-foreground">
+                <RowCheckbox checked={allVisibleSelected} onChange={toggleAllVisible} label="Selecionar todos os ativos visíveis" />
+                Selecionar todos ({visibleIds.length})
+              </label>
+              {selected.size > 0 && (
+                <>
+                  <span className="text-primary font-medium">{selected.size} selecionado{selected.size > 1 ? 's' : ''}</span>
+                  <button
+                    onClick={() => setSelected(new Set())}
+                    className="rounded-full border border-border px-2 py-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    Limpar seleção
+                  </button>
+                  <button
+                    onClick={handleBulkDelete}
+                    disabled={bulkDeleting}
+                    className="ml-auto inline-flex items-center gap-1.5 rounded-lg bg-[hsl(var(--loss)/0.12)] border border-[hsl(var(--loss)/0.35)] px-3 py-1.5 text-[11px] font-semibold text-[hsl(var(--loss-foreground))] hover:bg-[hsl(var(--loss)/0.2)] transition-colors disabled:opacity-50"
+                  >
+                    {bulkDeleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                    Excluir selecionados
+                  </button>
+                </>
+              )}
+            </div>
+
+            {/* Desktop Table — agrupado por corretora */}
             <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border text-muted-foreground">
+                    <th className="w-10 p-4"></th>
                     <th className="text-left p-4 font-medium">Ativo</th>
                     <th className="text-left p-4 font-medium">Tipo</th>
                     <th className="text-right p-4 font-medium">Qtd</th>
@@ -439,92 +563,248 @@ export default function Assets() {
                     <th className="text-right p-4 font-medium w-24"></th>
                   </tr>
                 </thead>
-                <tbody>
-                  {filtered.map((asset) => {
-                    const assetTotal = asset.currentPrice * asset.quantity;
-                    const assetCost = asset.avgPrice * asset.quantity;
-                    const profit = assetTotal - assetCost;
-                    const profitPct = assetCost > 0 ? (profit / assetCost) * 100 : 0;
-                    const isPositive = asset.change24h >= 0;
-                    const isProfitable = profit >= 0;
-                    const holdingRow = holdings.find(h => h.ticker === asset.ticker);
-
-                    return (
-                      <tr
-                        key={asset.ticker}
-                        className="border-b border-border/50 hover:bg-accent/50 transition-colors cursor-pointer"
-                        onClick={() => navigate(`/analysis?ticker=${asset.ticker}`)}
-                      >
-                        <td className="p-4">
+                {groups.map((g) => {
+                  const ids = g.items.map(a => a.holdingId).filter(Boolean) as string[];
+                  const groupSelected = ids.length > 0 && ids.every(id => selected.has(id));
+                  const isCollapsed = collapsed.has(g.broker);
+                  const label = g.broker === NO_BROKER ? 'Sem corretora' : g.broker;
+                  return (
+                    <tbody key={g.broker}>
+                      <tr className="bg-muted/40 border-y border-border">
+                        <td className="p-3 pl-4">
+                          <RowCheckbox checked={groupSelected} onChange={() => toggleGroup(g.items)} label={`Selecionar todos de ${label}`} />
+                        </td>
+                        <td colSpan={10} className="p-3 pr-4">
                           <div className="flex items-center gap-2">
-                            {brokerByTicker.get(asset.ticker) && (
-                              <button
-                                onClick={(e) => { e.stopPropagation(); setBrokerFilter(brokerByTicker.get(asset.ticker)!); }}
-                                title={`Filtrar apenas ${brokerByTicker.get(asset.ticker)}`}
-                                className="shrink-0 rounded-sm hover:ring-2 hover:ring-primary/50 transition"
-                              >
-                                <BrokerLogo broker={brokerByTicker.get(asset.ticker)!} size={20} />
-                              </button>
-                            )}
-                            <div className="min-w-0">
-                              <div className="flex items-center gap-1.5">
-                                <span className="font-semibold font-mono">{asset.ticker}</span>
-                                <ChevronRight className="h-3 w-3 text-muted-foreground" />
-                              </div>
-                              <p className="text-xs text-muted-foreground truncate">{asset.name}</p>
-                              {density === 'full' && brokerByTicker.get(asset.ticker) && (
-                                <p className="text-[10px] text-muted-foreground/70">{brokerByTicker.get(asset.ticker)}</p>
+                            <button
+                              onClick={() => setCollapsed(prev => {
+                                const next = new Set(prev);
+                                if (next.has(g.broker)) next.delete(g.broker); else next.add(g.broker);
+                                return next;
+                              })}
+                              className="inline-flex items-center gap-2 text-sm font-semibold hover:text-primary transition-colors"
+                            >
+                              <ChevronDown className={`h-4 w-4 transition-transform ${isCollapsed ? '-rotate-90' : ''}`} />
+                              {g.broker !== NO_BROKER && <BrokerLogo broker={g.broker} size={18} />}
+                              {label}
+                              <span className="text-[11px] font-normal text-muted-foreground">
+                                ({g.items.length} {g.items.length === 1 ? 'ativo' : 'ativos'})
+                              </span>
+                            </button>
+                            <div className="ml-auto flex items-center gap-3 font-mono text-xs">
+                              <span className="text-muted-foreground">{formatCurrency(g.value)}</span>
+                              <span className={g.gain >= 0 ? 'text-gain' : 'text-loss'}>
+                                {formatCurrency(g.gain)} ({formatPercent(g.cost > 0 ? (g.gain / g.cost) * 100 : 0)})
+                              </span>
+                              {g.broker !== NO_BROKER && (
+                                <button
+                                  onClick={() => setBrokerFilter(brokerFilter === g.broker ? '' : g.broker)}
+                                  className="rounded-full border border-border px-2 py-0.5 text-[10px] font-sans text-muted-foreground hover:text-primary hover:border-primary/50 transition-colors"
+                                >
+                                  {brokerFilter === g.broker ? 'Limpar' : 'Ver só esta'}
+                                </button>
                               )}
                             </div>
                           </div>
                         </td>
-                        <td className="p-4">
-                          <span className={`text-xs px-2 py-1 rounded-full font-medium ${typeBadgeClass[asset.type] || ''}`}>
-                            {asset.type}
-                          </span>
-                        </td>
-                        <td className="text-right p-4 font-mono">{asset.quantity}</td>
-                        <td className="text-right p-4 font-mono text-muted-foreground">{formatCurrency(asset.avgPrice)}</td>
-                        <td className="text-right p-4 font-mono font-medium">
-                          {asset.currentPrice > 0 ? (
-                            <div>
-                              <span>{formatCurrency(asset.currentPrice)}</span>
-                              {asset.currency && asset.currency !== 'BRL' && asset.originalPrice && asset.originalPrice > 0 && (
-                                <p className="text-[10px] text-muted-foreground">
-                                  {formatCurrency(asset.originalPrice, asset.currency)}
+                      </tr>
+
+                      {!isCollapsed && g.items.map((asset) => {
+                        const assetTotal = asset.currentPrice * asset.quantity;
+                        const assetCost = asset.avgPrice * asset.quantity;
+                        const profit = assetTotal - assetCost;
+                        const profitPct = assetCost > 0 ? (profit / assetCost) * 100 : 0;
+                        const isPositive = asset.change24h >= 0;
+                        const isProfitable = profit >= 0;
+                        const holdingRow = holdings.find(h => h.id === asset.holdingId);
+                        const isSelected = !!asset.holdingId && selected.has(asset.holdingId);
+
+                        return (
+                          <tr
+                            key={asset.holdingId || `${asset.ticker}::${g.broker}`}
+                            className={`border-b border-border/50 hover:bg-accent/50 transition-colors cursor-pointer ${isSelected ? 'bg-primary/5' : ''}`}
+                            onClick={() => navigate(`/analysis?ticker=${asset.ticker}`)}
+                          >
+                            <td className="p-4" onClick={e => e.stopPropagation()}>
+                              <RowCheckbox
+                                checked={isSelected}
+                                onChange={() => toggleOne(asset.holdingId)}
+                                label={`Selecionar ${asset.ticker} em ${label}`}
+                              />
+                            </td>
+                            <td className="p-4">
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="font-semibold font-mono">{asset.ticker}</span>
+                                  <ChevronRight className="h-3 w-3 text-muted-foreground" />
+                                </div>
+                                <p className="text-xs text-muted-foreground truncate">{asset.name}</p>
+                              </div>
+                            </td>
+                            <td className="p-4">
+                              <span className={`text-xs px-2 py-1 rounded-full font-medium ${typeBadgeClass[asset.type] || ''}`}>
+                                {asset.type}
+                              </span>
+                            </td>
+                            <td className="text-right p-4 font-mono">{asset.quantity}</td>
+                            <td className="text-right p-4 font-mono text-muted-foreground">{formatCurrency(asset.avgPrice)}</td>
+                            <td className="text-right p-4 font-mono font-medium">
+                              {asset.currentPrice > 0 ? (
+                                <div>
+                                  <span>{formatCurrency(asset.currentPrice)}</span>
+                                  {asset.currency && asset.currency !== 'BRL' && asset.originalPrice && asset.originalPrice > 0 && (
+                                    <p className="text-[10px] text-muted-foreground">
+                                      {formatCurrency(asset.originalPrice, asset.currency)}
+                                    </p>
+                                  )}
+                                </div>
+                              ) : '—'}
+                            </td>
+                            <td className="text-right p-4">
+                              {asset.currentPrice > 0 ? (
+                                <span className={`inline-flex items-center gap-1 font-mono text-sm ${isPositive ? 'text-gain' : 'text-loss'}`}>
+                                  {isPositive ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
+                                  {formatPercent(asset.change24h)}
+                                </span>
+                              ) : '—'}
+                            </td>
+                            <td className="text-right p-4 font-mono font-medium">
+                              {asset.currentPrice > 0 ? formatCurrency(assetTotal) : '—'}
+                            </td>
+                            <td className="text-right p-4">
+                              {asset.currentPrice > 0 ? (
+                                <div className={`font-mono ${isProfitable ? 'text-gain' : 'text-loss'}`}>
+                                  <span className="font-medium">{formatCurrency(profit)}</span>
+                                  <p className="text-xs">{formatPercent(profitPct)}</p>
+                                </div>
+                              ) : '—'}
+                            </td>
+                            <td className="text-right p-4 font-mono text-muted-foreground">{asset.allocation}%</td>
+                            <td className="text-right p-4" onClick={e => e.stopPropagation()}>
+                              <div className="flex items-center justify-end gap-1">
+                                {holdingRow && (
+                                  <>
+                                    <button
+                                      onClick={() => handleSell(holdingRow, asset)}
+                                      className="h-7 px-2 rounded flex items-center justify-center gap-1 text-[10px] font-semibold text-[hsl(var(--loss-foreground))] bg-[hsl(var(--loss)/0.1)] hover:bg-[hsl(var(--loss)/0.2)] transition-colors"
+                                      title="Vender"
+                                    >
+                                      <ArrowDownRight className="h-3 w-3" />
+                                      Vender
+                                    </button>
+                                    <button
+                                      onClick={() => { setEditingHolding(holdingRow); setModalOpen(true); }}
+                                      className="h-7 w-7 rounded flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                                    >
+                                      <Pencil className="h-3.5 w-3.5" />
+                                    </button>
+                                    <button
+                                      onClick={() => handleDelete(holdingRow.id)}
+                                      className="h-7 w-7 rounded flex items-center justify-center text-muted-foreground hover:text-[hsl(var(--loss-foreground))] hover:bg-[hsl(var(--loss)/0.1)] transition-colors"
+                                    >
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                    </button>
+                                  </>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  );
+                })}
+              </table>
+            </div>
+
+            {/* Mobile Card View — agrupado por corretora */}
+            <div className="md:hidden">
+              {groups.map((g) => {
+                const ids = g.items.map(a => a.holdingId).filter(Boolean) as string[];
+                const groupSelected = ids.length > 0 && ids.every(id => selected.has(id));
+                const label = g.broker === NO_BROKER ? 'Sem corretora' : g.broker;
+                return (
+                  <div key={g.broker}>
+                    <div className="flex items-center gap-2 bg-muted/40 border-y border-border px-4 py-2">
+                      <RowCheckbox checked={groupSelected} onChange={() => toggleGroup(g.items)} label={`Selecionar todos de ${label}`} />
+                      {g.broker !== NO_BROKER && <BrokerLogo broker={g.broker} size={16} />}
+                      <span className="text-xs font-semibold">{label}</span>
+                      <span className="text-[10px] text-muted-foreground">({g.items.length})</span>
+                      <span className="ml-auto font-mono text-[11px] text-muted-foreground">{formatCurrency(g.value)}</span>
+                    </div>
+                    <div className="divide-y divide-border">
+                      {g.items.map((asset) => {
+                        const assetTotal = asset.currentPrice * asset.quantity;
+                        const assetCost = asset.avgPrice * asset.quantity;
+                        const profit = assetTotal - assetCost;
+                        const profitPct = assetCost > 0 ? (profit / assetCost) * 100 : 0;
+                        const isPositive = asset.change24h >= 0;
+                        const isProfitable = profit >= 0;
+                        const holdingRow = holdings.find(h => h.id === asset.holdingId);
+                        const isSelected = !!asset.holdingId && selected.has(asset.holdingId);
+
+                        return (
+                          <div
+                            key={asset.holdingId || `${asset.ticker}::${g.broker}`}
+                            className={`p-4 hover:bg-accent/30 active:bg-accent/50 transition-colors cursor-pointer ${isSelected ? 'bg-primary/5' : ''}`}
+                            onClick={() => navigate(`/analysis?ticker=${asset.ticker}`)}
+                          >
+                            <div className="flex items-start justify-between mb-2">
+                              <div className="flex items-start gap-2 min-w-0">
+                                <span className="mt-1" onClick={e => e.stopPropagation()}>
+                                  <RowCheckbox
+                                    checked={isSelected}
+                                    onChange={() => toggleOne(asset.holdingId)}
+                                    label={`Selecionar ${asset.ticker} em ${label}`}
+                                  />
+                                </span>
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-bold font-mono">{asset.ticker}</span>
+                                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${typeBadgeClass[asset.type] || ''}`}>
+                                      {asset.type}
+                                    </span>
+                                  </div>
+                                  <p className="text-xs text-muted-foreground mt-0.5 truncate">{asset.name}</p>
+                                  {density === 'full' && g.broker !== NO_BROKER && (
+                                    <p className="text-[10px] text-muted-foreground/70">{g.broker}</p>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <p className="font-mono font-semibold text-sm">
+                                  {asset.currentPrice > 0 ? formatCurrency(asset.currentPrice) : '—'}
                                 </p>
+                                {asset.currentPrice > 0 && asset.currency && asset.currency !== 'BRL' && asset.originalPrice && asset.originalPrice > 0 && (
+                                  <p className="text-[10px] text-muted-foreground font-mono">
+                                    {formatCurrency(asset.originalPrice, asset.currency)}
+                                  </p>
+                                )}
+                                {asset.currentPrice > 0 && (
+                                  <span className={`inline-flex items-center gap-0.5 text-xs font-mono ${isPositive ? 'text-gain' : 'text-loss'}`}>
+                                    {isPositive ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
+                                    {formatPercent(asset.change24h)}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex items-center justify-between text-xs">
+                              <div className="flex items-center gap-3 text-muted-foreground">
+                                <span>{asset.quantity} un</span>
+                                <span>PM {formatCurrency(asset.avgPrice)}</span>
+                                <span>{asset.allocation}%</span>
+                              </div>
+                              {asset.currentPrice > 0 && (
+                                <span className={`font-mono font-medium ${isProfitable ? 'text-gain' : 'text-loss'}`}>
+                                  {formatCurrency(profit)} ({formatPercent(profitPct)})
+                                </span>
                               )}
                             </div>
-                          ) : '—'}
-                        </td>
-                        <td className="text-right p-4">
-                          {asset.currentPrice > 0 ? (
-                            <span className={`inline-flex items-center gap-1 font-mono text-sm ${isPositive ? 'text-gain' : 'text-loss'}`}>
-                              {isPositive ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
-                              {formatPercent(asset.change24h)}
-                            </span>
-                          ) : '—'}
-                        </td>
-                        <td className="text-right p-4 font-mono font-medium">
-                          {asset.currentPrice > 0 ? formatCurrency(assetTotal) : '—'}
-                        </td>
-                        <td className="text-right p-4">
-                          {asset.currentPrice > 0 ? (
-                            <div className={`font-mono ${isProfitable ? 'text-gain' : 'text-loss'}`}>
-                              <span className="font-medium">{formatCurrency(profit)}</span>
-                              <p className="text-xs">{formatPercent(profitPct)}</p>
-                            </div>
-                          ) : '—'}
-                        </td>
-                        <td className="text-right p-4 font-mono text-muted-foreground">{asset.allocation}%</td>
-                        <td className="text-right p-4" onClick={e => e.stopPropagation()}>
-                          <div className="flex items-center justify-end gap-1">
                             {holdingRow && (
-                              <>
+                              <div className="flex items-center justify-end gap-1 mt-2" onClick={e => e.stopPropagation()}>
                                 <button
                                   onClick={() => handleSell(holdingRow, asset)}
-                                  className="h-7 px-2 rounded flex items-center justify-center gap-1 text-[10px] font-semibold text-[hsl(var(--loss-foreground))] bg-[hsl(var(--loss)/0.1)] hover:bg-[hsl(var(--loss)/0.2)] transition-colors"
-                                  title="Vender"
+                                  className="h-7 px-2 rounded flex items-center gap-1 text-[10px] font-semibold text-[hsl(var(--loss-foreground))] bg-[hsl(var(--loss)/0.1)] hover:bg-[hsl(var(--loss)/0.2)] transition-colors"
                                 >
                                   <ArrowDownRight className="h-3 w-3" />
                                   Vender
@@ -541,110 +821,12 @@ export default function Assets() {
                                 >
                                   <Trash2 className="h-3.5 w-3.5" />
                                 </button>
-                              </>
+                              </div>
                             )}
                           </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Mobile Card View */}
-            <div className="md:hidden divide-y divide-border">
-              {filtered.map((asset) => {
-                const assetTotal = asset.currentPrice * asset.quantity;
-                const assetCost = asset.avgPrice * asset.quantity;
-                const profit = assetTotal - assetCost;
-                const profitPct = assetCost > 0 ? (profit / assetCost) * 100 : 0;
-                const isPositive = asset.change24h >= 0;
-                const isProfitable = profit >= 0;
-                const holdingRow = holdings.find(h => h.ticker === asset.ticker);
-
-                return (
-                  <div
-                    key={asset.ticker}
-                    className="p-4 hover:bg-accent/30 active:bg-accent/50 transition-colors cursor-pointer"
-                    onClick={() => navigate(`/analysis?ticker=${asset.ticker}`)}
-                  >
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex items-start gap-2 min-w-0">
-                        {brokerByTicker.get(asset.ticker) && (
-                          <button
-                            onClick={(e) => { e.stopPropagation(); setBrokerFilter(brokerByTicker.get(asset.ticker)!); }}
-                            title={`Filtrar apenas ${brokerByTicker.get(asset.ticker)}`}
-                            className="shrink-0 rounded-sm hover:ring-2 hover:ring-primary/50 transition mt-0.5"
-                          >
-                            <BrokerLogo broker={brokerByTicker.get(asset.ticker)!} size={22} />
-                          </button>
-                        )}
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold font-mono">{asset.ticker}</span>
-                            <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${typeBadgeClass[asset.type] || ''}`}>
-                              {asset.type}
-                            </span>
-                          </div>
-                          <p className="text-xs text-muted-foreground mt-0.5 truncate">{asset.name}</p>
-                          {density === 'full' && brokerByTicker.get(asset.ticker) && (
-                            <p className="text-[10px] text-muted-foreground/70">{brokerByTicker.get(asset.ticker)}</p>
-                          )}
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-mono font-semibold text-sm">
-                          {asset.currentPrice > 0 ? formatCurrency(asset.currentPrice) : '—'}
-                        </p>
-                        {asset.currentPrice > 0 && asset.currency && asset.currency !== 'BRL' && asset.originalPrice && asset.originalPrice > 0 && (
-                          <p className="text-[10px] text-muted-foreground font-mono">
-                            {formatCurrency(asset.originalPrice, asset.currency)}
-                          </p>
-                        )}
-                        {asset.currentPrice > 0 && (
-                          <span className={`inline-flex items-center gap-0.5 text-xs font-mono ${isPositive ? 'text-gain' : 'text-loss'}`}>
-                            {isPositive ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
-                            {formatPercent(asset.change24h)}
-                          </span>
-                        )}
-                      </div>
+                        );
+                      })}
                     </div>
-                    <div className="flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-3 text-muted-foreground">
-                        <span>{asset.quantity} un</span>
-                        <span>PM {formatCurrency(asset.avgPrice)}</span>
-                        <span>{asset.allocation}%</span>
-                      </div>
-                      {asset.currentPrice > 0 && (
-                        <span className={`font-mono font-medium ${isProfitable ? 'text-gain' : 'text-loss'}`}>
-                          {formatCurrency(profit)} ({formatPercent(profitPct)})
-                        </span>
-                      )}
-                    </div>
-                    {holdingRow && (
-                      <div className="flex items-center justify-end gap-1 mt-2" onClick={e => e.stopPropagation()}>
-                        <button
-                          onClick={() => handleSell(holdingRow, asset)}
-                          className="h-7 px-2 rounded flex items-center gap-1 text-[10px] font-semibold text-[hsl(var(--loss-foreground))] bg-[hsl(var(--loss)/0.1)] hover:bg-[hsl(var(--loss)/0.2)] transition-colors"
-                        >
-                          <ArrowDownRight className="h-3 w-3" />
-                          Vender
-                        </button>
-                        <button
-                          onClick={() => { setEditingHolding(holdingRow); setModalOpen(true); }}
-                          className="h-7 w-7 rounded flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(holdingRow.id)}
-                          className="h-7 w-7 rounded flex items-center justify-center text-muted-foreground hover:text-[hsl(var(--loss-foreground))] hover:bg-[hsl(var(--loss)/0.1)] transition-colors"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    )}
                   </div>
                 );
               })}

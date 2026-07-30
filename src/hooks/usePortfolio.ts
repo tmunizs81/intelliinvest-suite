@@ -167,6 +167,8 @@ export function usePortfolio() {
         const purchaseCurrency = (item.purchase_currency || 'BRL').toUpperCase();
         const avgPriceBRL = toBRL(item.avg_price, purchaseCurrency);
         return {
+          holdingId: item.id,
+          broker: item.broker || null,
           ticker: item.ticker,
           name: item.name,
           type: classifyAssetType(item.ticker, item.type) as Asset['type'],
@@ -198,6 +200,8 @@ export function usePortfolio() {
         const currentPricePerUnit = item.quantity > 0 ? result.currentValue / item.quantity : item.avg_price;
         totalValue += result.currentValue;
         return {
+          holdingId: item.id,
+          broker: item.broker || null,
           ticker: item.ticker,
           name: item.name,
           type: 'Renda Fixa' as Asset['type'],
@@ -251,6 +255,8 @@ export function usePortfolio() {
         const currentPricePerUnit = item.quantity > 0 ? currentValue / item.quantity : item.avg_price;
         totalValue += currentValue;
         return {
+          holdingId: item.id,
+          broker: item.broker || null,
           ticker: item.ticker,
           name: item.name,
           type: 'Imóvel' as Asset['type'],
@@ -443,6 +449,37 @@ export function usePortfolio() {
     }
   }, [user, refresh, holdings, auditLog]);
 
+  /**
+   * Exclusão em lote. Remove várias posições numa única chamada,
+   * com rollback total se o backend recusar.
+   */
+  const bulkDeleteHoldings = useCallback(async (ids: string[]) => {
+    if (!user || ids.length === 0) return;
+    const unique = Array.from(new Set(ids));
+    const previousHoldings = [...holdings];
+    const removed = holdings.filter(h => unique.includes(h.id));
+    setHoldings(prev => prev.filter(h => !unique.includes(h.id)));
+
+    try {
+      const { error } = await supabase
+        .from('holdings')
+        .delete()
+        .in('id', unique)
+        .eq('user_id', user.id);
+      if (error) throw error;
+      await auditLog('delete', 'holding', `bulk:${unique.length}`, {
+        count: unique.length,
+        tickers: removed.map(h => `${h.ticker}@${h.broker || 'sem corretora'}`),
+      });
+      await refresh();
+    } catch (err) {
+      setHoldings(previousHoldings);
+      throw err;
+    }
+  }, [user, refresh, holdings, auditLog]);
+
+
+
   const sellHolding = useCallback(async (holdingId: string, sellQty: number, sellPrice: number, fees: number = 0) => {
     if (!user) return;
     
@@ -550,5 +587,5 @@ export function usePortfolio() {
     return (data as any[]) || [];
   }, [user]);
 
-  return { assets, holdings, cashBalance, cashBalances, loading, error, lastUpdate, nextUpdate, refresh, addHolding, updateHolding, deleteHolding, sellHolding, updateCashBalance: updateCashBalanceBroker, loadCashMovements };
+  return { assets, holdings, cashBalance, cashBalances, loading, error, lastUpdate, nextUpdate, refresh, addHolding, updateHolding, deleteHolding, bulkDeleteHoldings, sellHolding, updateCashBalance: updateCashBalanceBroker, loadCashMovements };
 }

@@ -43,7 +43,9 @@ const TableRow = memo(({ asset, holdingRow, onEdit, onDelete, deletingId, naviga
   const profitPct = cost > 0 ? (profit / cost) * 100 : 0;
   const isPositive = asset.change24h >= 0;
   const isProfitable = profit >= 0;
-  const broker = holdingRow?.broker?.trim();
+  // A corretora vem SEMPRE do próprio lote (asset.broker), nunca de outro
+  // registro com o mesmo ticker — isso evitava a mistura entre corretoras.
+  const broker = (asset.broker || holdingRow?.broker || '').trim();
 
   return (
     <tr
@@ -146,8 +148,10 @@ export default function HoldingsTable({ assets, holdings, loading, onAdd, onEdit
   }, [onDelete]);
 
   const holdingsMap = useMemo(() => {
+    // Chave = id do lote. Chavear por ticker fazia lotes de corretoras
+    // diferentes se sobrescreverem (editar/excluir atingia a linha errada).
     const map = new Map<string, HoldingRow>();
-    holdings.forEach(h => map.set(h.ticker, h));
+    holdings.forEach(h => map.set(h.id, h));
     return map;
   }, [holdings]);
 
@@ -213,11 +217,11 @@ export default function HoldingsTable({ assets, holdings, loading, onAdd, onEdit
               </tr>
             </thead>
             <tbody>
-              {assets.map((asset) => (
+              {assets.map((asset, i) => (
                 <TableRow
-                  key={asset.ticker}
+                  key={asset.holdingId || `${asset.ticker}::${asset.broker || ''}::${i}`}
                   asset={asset}
-                  holdingRow={holdingsMap.get(asset.ticker)}
+                  holdingRow={asset.holdingId ? holdingsMap.get(asset.holdingId) : undefined}
                   onEdit={onEdit}
                   onDelete={handleDelete}
                   deletingId={deletingId}

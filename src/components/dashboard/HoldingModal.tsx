@@ -65,6 +65,8 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
   const [avgPrice, setAvgPrice] = useState('');
   const [sector, setSector] = useState('');
   const [broker, setBroker] = useState('');
+  /** Sugestão de corretora — NUNCA aplicada automaticamente (evita ligar o ativo à corretora errada). */
+  const [brokerSuggestion, setBrokerSuggestion] = useState<string | null>(null);
   const [yieldRate, setYieldRate] = useState('');
   const [indexerType, setIndexerType] = useState<string>('Pós-fixado');
   const [fixedIncomeSubtype, setFixedIncomeSubtype] = useState<string>('CDB');
@@ -121,6 +123,7 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
       setAvgPrice(editData?.avg_price?.toString() || '');
       setSector(editData?.sector || '');
       setBroker(editData?.broker || '');
+      setBrokerSuggestion(null);
       setYieldRate(editData?.yield_rate || '');
       setIndexerType(editData?.indexer_type || 'Pós-fixado');
       setFixedIncomeSubtype(editData?.sector && editData?.type === 'Renda Fixa' ? editData.sector : 'CDB');
@@ -198,10 +201,10 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
     const upper = value.toUpperCase();
     setTicker(upper);
     setUcitsAck(false);
-    // Auto-aplica regra aprendida (ticker → broker/type)
+    // Regra aprendida: o tipo é aplicado, a corretora vira apenas sugestão explícita
     const rule = getRule(upper);
     if (rule) {
-      if (rule.broker && !broker) setBroker(rule.broker);
+      if (rule.broker && !broker) setBrokerSuggestion(rule.broker);
       if (rule.type) setType(rule.type);
     }
     // Auto-classify type as user types
@@ -246,10 +249,9 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
     if (irishExchanges.includes(s.exchange)) {
       setSector('ETF Internacional');
     }
-    // Auto-set broker from unified broker catalogs (only if unambiguous or preferido)
+    // A corretora NUNCA é preenchida automaticamente — apenas sugerida para confirmação
     if (!broker) {
-      const inferred = inferBrokerFromTicker(s.symbol, { preferredBrokers });
-      if (inferred) setBroker(inferred);
+      setBrokerSuggestion(inferBrokerFromTicker(s.symbol, { preferredBrokers }) || null);
     }
     setShowSuggestions(false);
   };
@@ -593,7 +595,35 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
             )}
           </div>
 
-          <BrokerAutocomplete value={broker} onChange={setBroker} />
+          <BrokerAutocomplete value={broker} onChange={(v) => { setBroker(v); setBrokerSuggestion(null); }} />
+
+          {!broker && brokerSuggestion && (
+            <div className="flex items-center gap-2 rounded-md border border-border bg-muted/40 px-2.5 py-2 text-xs">
+              <span className="text-muted-foreground">Sugestão de corretora:</span>
+              <BrokerLogo broker={brokerSuggestion} size={16} />
+              <strong>{brokerSuggestion}</strong>
+              <button
+                type="button"
+                onClick={() => { setBroker(brokerSuggestion); setBrokerSuggestion(null); }}
+                className="ml-auto rounded border border-primary/40 px-2 py-0.5 text-[11px] font-medium text-primary hover:bg-primary/10 transition-colors"
+              >
+                Usar
+              </button>
+              <button
+                type="button"
+                onClick={() => setBrokerSuggestion(null)}
+                className="rounded px-2 py-0.5 text-[11px] text-muted-foreground hover:text-foreground"
+              >
+                Ignorar
+              </button>
+            </div>
+          )}
+
+          {!broker && type !== 'Imóvel' && (
+            <p className="text-[11px] text-muted-foreground">
+              Defina a corretora para manter os lotes separados — o mesmo ticker em corretoras diferentes é sempre uma posição independente.
+            </p>
+          )}
 
           {brokerMismatch && type !== 'Renda Fixa' && type !== 'Imóvel' && (
             <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-2.5 text-xs text-amber-500 dark:text-amber-400 space-y-1.5">
