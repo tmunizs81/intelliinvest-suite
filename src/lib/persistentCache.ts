@@ -25,12 +25,73 @@ export interface CacheScope {
 }
 
 /**
+ * Versão do esquema de chaves. Ao subir esta constante, todas as entradas
+ * gravadas por versões anteriores (inclusive as antigas, sem id de usuário)
+ * deixam de ser encontradas e são apagadas por `rotateCacheSchema()`.
+ */
+export const CACHE_SCHEMA = 'v2';
+
+/**
  * Monta uma chave de cache isolada por conta.
  * Use SEMPRE que o conteúdo derivar de dados da carteira do usuário.
  */
 export function userScopedKey(userId: string | null | undefined, key: string): string {
-  return `u:${userId ?? 'anon'}:${key}`;
+  return `${CACHE_SCHEMA}:u:${userId ?? 'anon'}:${key}`;
 }
+
+const SCHEMA_FLAG_KEY = 'cache_schema_version';
+
+/**
+ * Rotação de chaves: remove qualquer entrada gravada antes da versão atual
+ * (chaves sem escopo de usuário ou sem o campo `owner`), garantindo que nada
+ * do modelo antigo seja reaproveitado após a correção de isolamento.
+ * Idempotente — só faz varredura completa quando a versão muda.
+ */
+export async function rotateCacheSchema(): Promise<void> {
+  let previous: string | null = null;
+  try {
+    previous = localStorage.getItem(SCHEMA_FLAG_KEY);
+  } catch {
+    previous = null;
+  }
+  if (previous === CACHE_SCHEMA) return;
+
+  // IndexedDB: apaga tudo que não pertence ao esquema atual.
+  try {
+    const db = await openDB();
+    await new Promise<void>((resolve) => {
+      const tx = db.transaction(STORE_NAME, 'readwrite');
+      const store = tx.objectStore(STORE_NAME);
+      const req = store.getAll();
+      req.onsuccess = () => {
+        for (const raw of (req.result as CacheEntry[]) ?? []) {
+          const legacyKey = !String(raw.key).startsWith(`${CACHE_SCHEMA}:`);
+          const legacyEntry = !('owner' in raw);
+          if (legacyKey || legacyEntry) store.delete(raw.key);
+        }
+      };
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => resolve();
+    });
+  } catch {
+    /* cache é opcional */
+  }
+
+  // localStorage: derruba espelhos antigos de dados pessoais.
+  try {
+    const stale: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (!k) continue;
+      if (/^(dashboard_bootstrap|portfolio_|ai-|alerts:|quotes:|metrics:)/.test(k)) stale.push(k);
+    }
+    stale.forEach((k) => localStorage.removeItem(k));
+    localStorage.setItem(SCHEMA_FLAG_KEY, CACHE_SCHEMA);
+  } catch {
+    /* noop */
+  }
+}
+
 
 function openDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
