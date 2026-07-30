@@ -51,7 +51,9 @@ export default function Assets() {
   const [sellOpen, setSellOpen] = useState(false);
   const [sellingHolding, setSellingHolding] = useState<HoldingRow | null>(null);
   const [sellingPrice, setSellingPrice] = useState(0);
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState<string>(loadSearchQuery);
+  const debouncedSearch = useDebounce(search, 180);
+  useEffect(() => { saveSearchQuery(search); }, [search]);
   const [typeFilter, setTypeFilter] = useState<string>('');
   const [searchParams, setSearchParams] = useSearchParams();
   const brokerFilter = searchParams.get('broker') || '';
