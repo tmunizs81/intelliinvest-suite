@@ -7,6 +7,7 @@ import type { HoldingRow } from '@/hooks/usePortfolio';
 import { BrokerLogo } from '@/lib/brokerLogos';
 import { NO_BROKER } from '@/lib/holdingsIsolation';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { toast } from 'sonner';
 
 /* ------------------------------------------------------------------ *
  * Modelo de apresentação
@@ -103,6 +104,41 @@ export const SORT_LABELS: Record<SortKey, string> = {
   change24h: 'Variação 24h',
   ticker: 'Ticker',
 };
+
+/* ------------------------------------------------------------------ *
+ * Filtro de classe (Financeiros × Imóveis) — persistido
+ * ------------------------------------------------------------------ */
+
+export type AssetClassFilter = 'all' | 'financial' | 'property';
+
+const CLASS_STORAGE_KEY = 'assets:classFilter:v1';
+
+export const CLASS_FILTER_LABELS: Record<AssetClassFilter, string> = {
+  all: 'Tudo',
+  financial: 'Financeiros',
+  property: 'Imóveis',
+};
+
+export function loadClassFilter(): AssetClassFilter {
+  try {
+    const raw = typeof window !== 'undefined' ? localStorage.getItem(CLASS_STORAGE_KEY) : null;
+    return raw === 'financial' || raw === 'property' ? raw : 'all';
+  } catch {
+    return 'all';
+  }
+}
+
+/** Aplica o filtro de classe sobre ativos brutos, preservando a ordenação. */
+export function filterByClass<T extends { ticker: string; type: string }>(
+  list: T[],
+  filter: AssetClassFilter,
+): T[] {
+  if (filter === 'all') return list;
+  const wantProperty = filter === 'property';
+  return list.filter((a) => isPropertyAsset(a) === wantProperty);
+}
+
+
 
 export function sortAggregates(list: TickerAggregate[], sort: SortState): TickerAggregate[] {
   const mult = sort.dir === 'asc' ? 1 : -1;
@@ -351,6 +387,64 @@ interface RowProps {
   showBrokerColumn: boolean;
 }
 
+/**
+ * Tooltips exclusivos de imóveis: deixam explícito que o cálculo é POR
+ * POSIÇÃO (bem individual), nunca agregado por ticker como nos financeiros.
+ */
+function PropertyTip({ agg, metric }: { agg: TickerAggregate; metric: 'avgPrice' | 'profit' | 'allocation' | 'quantity' }) {
+  const base = (
+    <p className="text-muted-foreground">
+      Imóvel é bem único: os números abaixo são desta posição isolada, sem soma com outros imóveis de código igual.
+    </p>
+  );
+  if (metric === 'avgPrice') {
+    return (
+      <div className="space-y-1">
+        <p className="font-semibold">Custo de aquisição (por imóvel)</p>
+        <p className="font-mono tabular-nums">
+          {formatCurrency(agg.cost)} ÷ {num(agg.quantity, 6)} = {formatCurrency(agg.avgPrice)}
+        </p>
+        <p>Inclui o valor pago registrado nesta posição. Reformas e custos extras devem ser lançados na edição do imóvel.</p>
+        {base}
+      </div>
+    );
+  }
+  if (metric === 'profit') {
+    return (
+      <div className="space-y-1">
+        <p className="font-semibold">Valorização do imóvel</p>
+        <p className="font-mono tabular-nums">Avaliação atual {formatCurrency(agg.value)}</p>
+        <p className="font-mono tabular-nums">Aquisição {formatCurrency(agg.cost)}</p>
+        <p className="font-mono tabular-nums">
+          Resultado {formatCurrency(agg.profit)} ({formatPercent(agg.profitPct)})
+        </p>
+        <p>Não considera aluguéis recebidos, IPTU, condomínio nem custos de venda.</p>
+        {base}
+      </div>
+    );
+  }
+  if (metric === 'allocation') {
+    return (
+      <div className="space-y-1">
+        <p className="font-semibold">Peso deste imóvel no patrimônio</p>
+        <p className="font-mono tabular-nums">
+          {formatCurrency(agg.value)} = {pctLabel(agg.allocation)} do total.
+        </p>
+        <p>Cada imóvel entra com seu próprio percentual — imóveis homônimos não somam entre si.</p>
+        {base}
+      </div>
+    );
+  }
+  return (
+    <div className="space-y-1">
+      <p className="font-semibold">Quantidade</p>
+      <p>Imóveis usam 1 unidade por bem (ou fração de propriedade, se cadastrada).</p>
+      {base}
+    </div>
+  );
+}
+
+
 const TickerRow = memo(function TickerRow({
   agg, expanded, onToggleExpand, selected, onToggleIds, onOpen, onEdit, onSell, onDelete, showBrokerColumn,
 }: RowProps) {
@@ -359,6 +453,7 @@ const TickerRow = memo(function TickerRow({
   const multi = agg.lots.length > 1;
   const single = agg.lots[0];
   const hasPrice = agg.currentPrice > 0;
+  const isProp = isPropertyAsset(agg);
 
   const onKeyDown = useRowKeys({
     onOpen: () => onOpen(single.asset),
@@ -426,7 +521,9 @@ const TickerRow = memo(function TickerRow({
 
         {/* qtd */}
         <div className="truncate text-right font-mono text-[12px] tabular-nums">
-          {multi ? (
+          {isProp ? (
+            <Info tip={<PropertyTip agg={agg} metric="quantity" />}>{num(agg.quantity)}</Info>
+          ) : multi ? (
             <Info tip={<BrokerBreakdownTip agg={agg} />}>{num(agg.quantity)}</Info>
           ) : (
             <span title={num(agg.quantity)}>{num(agg.quantity)}</span>
@@ -437,18 +534,23 @@ const TickerRow = memo(function TickerRow({
         <div className="text-right font-mono text-[12px] tabular-nums text-muted-foreground">
           <Info
             tip={
-              <div className="space-y-1">
-                <p className="font-semibold">Preço médio ponderado</p>
-                <p>Custo total ÷ quantidade total{multi ? ', somando todos os lotes/corretoras.' : '.'}</p>
-                <p className="font-mono tabular-nums">
-                  {formatCurrency(agg.cost)} ÷ {num(agg.quantity, 6)} = {formatCurrency(agg.avgPrice)}
-                </p>
-              </div>
+              isProp ? (
+                <PropertyTip agg={agg} metric="avgPrice" />
+              ) : (
+                <div className="space-y-1">
+                  <p className="font-semibold">Preço médio ponderado</p>
+                  <p>Custo total ÷ quantidade total{multi ? ', somando todos os lotes/corretoras.' : '.'}</p>
+                  <p className="font-mono tabular-nums">
+                    {formatCurrency(agg.cost)} ÷ {num(agg.quantity, 6)} = {formatCurrency(agg.avgPrice)}
+                  </p>
+                </div>
+              )
             }
           >
             {formatCurrency(agg.avgPrice)}
           </Info>
         </div>
+
 
         {/* atual */}
         <div className="text-right">
@@ -497,15 +599,19 @@ const TickerRow = memo(function TickerRow({
           {hasPrice ? (
             <Info
               tip={
-                <div className="space-y-1">
-                  <p className="font-semibold">Lucro não realizado</p>
-                  <p className="font-mono tabular-nums">Valor atual {formatCurrency(agg.value)}</p>
-                  <p className="font-mono tabular-nums">Custo total {formatCurrency(agg.cost)}</p>
-                  <p className="font-mono tabular-nums">
-                    Resultado {formatCurrency(agg.profit)} ({formatPercent(agg.profitPct)})
-                  </p>
-                  <p className="text-muted-foreground">Não inclui proventos nem custos operacionais.</p>
-                </div>
+                isProp ? (
+                  <PropertyTip agg={agg} metric="profit" />
+                ) : (
+                  <div className="space-y-1">
+                    <p className="font-semibold">Lucro não realizado</p>
+                    <p className="font-mono tabular-nums">Valor atual {formatCurrency(agg.value)}</p>
+                    <p className="font-mono tabular-nums">Custo total {formatCurrency(agg.cost)}</p>
+                    <p className="font-mono tabular-nums">
+                      Resultado {formatCurrency(agg.profit)} ({formatPercent(agg.profitPct)})
+                    </p>
+                    <p className="text-muted-foreground">Não inclui proventos nem custos operacionais.</p>
+                  </div>
+                )
               }
             >
               <span className="font-medium">{formatCurrency(agg.profit)}</span>
@@ -521,16 +627,21 @@ const TickerRow = memo(function TickerRow({
           <AllocationCell
             pct={agg.allocation}
             tip={
-              <div className="space-y-1">
-                <p className="font-semibold">Alocação na carteira</p>
-                <p className="font-mono tabular-nums">
-                  {formatCurrency(agg.value)} = {pctLabel(agg.allocation)} do patrimônio investido.
-                </p>
-                {multi && <BrokerBreakdownTip agg={agg} />}
-              </div>
+              isProp ? (
+                <PropertyTip agg={agg} metric="allocation" />
+              ) : (
+                <div className="space-y-1">
+                  <p className="font-semibold">Alocação na carteira</p>
+                  <p className="font-mono tabular-nums">
+                    {formatCurrency(agg.value)} = {pctLabel(agg.allocation)} do patrimônio investido.
+                  </p>
+                  {multi && <BrokerBreakdownTip agg={agg} />}
+                </div>
+              )
             }
           />
         </div>
+
 
         {/* ações — só para lote único; multi-lote age nas sub-linhas */}
         <div>
@@ -696,7 +807,13 @@ function MobileCard({
             <p className="font-mono text-[13px] font-semibold tabular-nums">{hasPrice ? formatCurrency(agg.value) : '—'}</p>
             {hasPrice && (
               <p className={`font-mono text-[11px] tabular-nums ${agg.profit >= 0 ? 'text-gain' : 'text-loss'}`}>
-                {formatCurrency(agg.profit)} ({formatPercent(agg.profitPct)})
+                {isPropertyAsset(agg) ? (
+                  <Info tip={<PropertyTip agg={agg} metric="profit" />}>
+                    {formatCurrency(agg.profit)} ({formatPercent(agg.profitPct)})
+                  </Info>
+                ) : (
+                  <>{formatCurrency(agg.profit)} ({formatPercent(agg.profitPct)})</>
+                )}
               </p>
             )}
           </div>
@@ -704,18 +821,25 @@ function MobileCard({
 
         {/* linha 2 — grade compacta de métricas (table-like) */}
         <dl className="mt-2.5 grid grid-cols-4 gap-x-2 gap-y-1 pl-6 text-[10px]">
-          {[
-            { k: 'Qtd', v: num(agg.quantity, 4) },
-            { k: 'PM', v: formatCurrency(agg.avgPrice) },
-            { k: 'Atual', v: hasPrice ? formatCurrency(agg.currentPrice) : '—' },
-            { k: 'Aloc.', v: pctLabel(agg.allocation) },
-          ].map((m) => (
+          {([
+            { k: 'Qtd', v: num(agg.quantity, 4), m: 'quantity' as const },
+            { k: 'PM', v: formatCurrency(agg.avgPrice), m: 'avgPrice' as const },
+            { k: 'Atual', v: hasPrice ? formatCurrency(agg.currentPrice) : '—', m: null },
+            { k: 'Aloc.', v: pctLabel(agg.allocation), m: 'allocation' as const },
+          ]).map((m) => (
             <div key={m.k} className="min-w-0">
               <dt className="uppercase tracking-wide text-muted-foreground/70">{m.k}</dt>
-              <dd className="truncate font-mono text-[11px] tabular-nums">{m.v}</dd>
+              <dd className="truncate font-mono text-[11px] tabular-nums">
+                {isPropertyAsset(agg) && m.m ? (
+                  <Info tip={<PropertyTip agg={agg} metric={m.m} />}>{m.v}</Info>
+                ) : (
+                  m.v
+                )}
+              </dd>
             </div>
           ))}
         </dl>
+
 
         {/* linha 3 — 24h + corretoras + ações */}
         <div className="mt-2 flex items-center gap-2 pl-6">
@@ -827,6 +951,18 @@ export function aggregationKeyFor(
   return `${ticker}::${a.holdingId ?? `${broker}::${a.name}`}`;
 }
 
+/**
+ * Detecta (sem lançar) imóveis que teriam sido unificados. Usado na UI para
+ * exibir um aviso amigável em vez de quebrar a tela.
+ */
+export interface PropertyMergeIssue { ticker: string; lots: number }
+
+export function detectPropertyMergeIssues(list: TickerAggregate[]): PropertyMergeIssue[] {
+  return list
+    .filter((agg) => isPropertyAsset(agg) && agg.lots.length > 1)
+    .map((agg) => ({ ticker: agg.ticker, lots: agg.lots.length }));
+}
+
 /** Invariante: nenhuma linha de imóvel pode conter mais de um lote. */
 export function assertNoPropertyMerge(list: TickerAggregate[]): TickerAggregate[] {
   list.forEach((agg) => {
@@ -902,7 +1038,8 @@ export function aggregateByTicker(assets: Asset[], holdings: HoldingRow[]): Tick
   });
 
   map.forEach((agg) => agg.lots.sort((x, y) => y.value - x.value));
-  return assertNoPropertyMerge(Array.from(map.values()));
+  // Não lança: a UI avisa o usuário de forma amigável via toast.
+  return Array.from(map.values());
 }
 
 /* ------------------------------------------------------------------ *
@@ -931,10 +1068,15 @@ export default function UnifiedHoldings({
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [collapsedBrokers, setCollapsedBrokers] = useState<Set<string>>(new Set());
   const [sort, setSort] = useState<SortState>(loadSortState);
+  const [classFilter, setClassFilter] = useState<AssetClassFilter>(loadClassFilter);
 
   useEffect(() => {
     try { localStorage.setItem(SORT_STORAGE_KEY, JSON.stringify(sort)); } catch { /* storage indisponível */ }
   }, [sort]);
+
+  useEffect(() => {
+    try { localStorage.setItem(CLASS_STORAGE_KEY, classFilter); } catch { /* storage indisponível */ }
+  }, [classFilter]);
 
   const applySort = useCallback((key: SortKey) => {
     setSort((prev) =>
@@ -951,15 +1093,38 @@ export default function UnifiedHoldings({
       return next;
     });
 
-  const aggregates = useMemo(
-    () => sortAggregates(aggregateByTicker(assets, holdings), sort),
-    [assets, holdings, sort],
+  const visibleAssets = useMemo(
+    () => filterByClass(assets, classFilter),
+    [assets, classFilter],
   );
+
+  const counts = useMemo(() => {
+    let property = 0;
+    assets.forEach((a) => { if (isPropertyAsset(a)) property += 1; });
+    return { all: assets.length, property, financial: assets.length - property };
+  }, [assets]);
+
+  const aggregates = useMemo(
+    () => sortAggregates(aggregateByTicker(visibleAssets, holdings), sort),
+    [visibleAssets, holdings, sort],
+  );
+
+  /* Aviso amigável: imóveis homônimos jamais podem compartilhar uma linha. */
+  const mergeIssues = useMemo(() => detectPropertyMergeIssues(aggregates), [aggregates]);
+  useEffect(() => {
+    if (mergeIssues.length === 0) return;
+    const list = mergeIssues.map((i) => `${i.ticker} (${i.lots})`).join(', ');
+    toast.warning('Imóveis com o mesmo código detectados', {
+      id: 'property-merge-warning',
+      description: `${list}. Cada imóvel é um bem único — renomeie o código para mantê-los separados nos relatórios.`,
+      duration: 8000,
+    });
+  }, [mergeIssues]);
 
   const brokerGroups = useMemo(() => {
     if (viewMode !== 'broker') return [];
     const map = new Map<string, Asset[]>();
-    assets.forEach((a) => {
+    visibleAssets.forEach((a) => {
       const key = (a.broker || '').trim() || NO_BROKER;
       const arr = map.get(key);
       if (arr) arr.push(a); else map.set(key, [a]);
@@ -980,7 +1145,32 @@ export default function UnifiedHoldings({
         };
       })
       .sort((a, b) => (a.broker === NO_BROKER ? 1 : b.broker === NO_BROKER ? -1 : b.value - a.value));
-  }, [assets, holdings, viewMode, sort]);
+  }, [visibleAssets, holdings, viewMode, sort]);
+
+  /* ---------- filtro de classe (desktop + mobile) ---------- */
+  const classFilterBar = (
+    <div className="flex items-center gap-1.5 overflow-x-auto border-b border-border bg-card/95 px-3 py-2 no-scrollbar md:px-4">
+      <span className="shrink-0 text-[10px] uppercase tracking-wider text-muted-foreground">Classe</span>
+      {(['all', 'financial', 'property'] as AssetClassFilter[]).map((k) => {
+        const active = classFilter === k;
+        return (
+          <button
+            key={k}
+            onClick={() => setClassFilter(k)}
+            aria-pressed={active}
+            data-class-filter={k}
+            aria-label={`Filtrar por ${CLASS_FILTER_LABELS[k]}`}
+            className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors ${FOCUS_RING} ${
+              active ? 'border-primary/40 bg-primary/15 text-primary' : 'border-border text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            {CLASS_FILTER_LABELS[k]}
+            <span className="font-mono text-[10px] tabular-nums opacity-70">{counts[k]}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
 
   const SortHeader = ({ label, sortKey, align = 'right' }: { label: string; sortKey?: SortKey; align?: 'left' | 'right' }) => {
     if (!sortKey) return <div className={align === 'right' ? 'text-right' : ''}>{label}</div>;
@@ -1098,6 +1288,12 @@ export default function UnifiedHoldings({
 
   return (
     <div data-holdings-root role="grid" aria-label="Carteira de ativos">
+      {classFilterBar}
+      {aggregates.length === 0 && (
+        <p className="px-4 py-6 text-center text-[12px] text-muted-foreground">
+          Nenhum {classFilter === 'property' ? 'imóvel' : 'ativo financeiro'} nesta visão.
+        </p>
+      )}
       {/* --------- Desktop: grade densa --------- */}
       <div className="hidden overflow-x-auto md:block">
         <div className="min-w-[1100px]">

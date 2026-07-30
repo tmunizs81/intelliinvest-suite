@@ -6,6 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import type { HoldingRow } from '@/hooks/usePortfolio';
 import { type Asset } from '@/lib/mockData';
 import { classifyAssetType } from '@/lib/assetClassification';
+import { searchBrokers } from '@/lib/brokerDirectory';
 import AICopilotSignal from './AICopilotSignal';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
@@ -885,25 +886,11 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
   );
 }
 
-const BROKERS = [
-  'XP Investimentos', 'Clear Corretora', 'Rico Investimentos', 'BTG Pactual',
-  'Itaú Corretora', 'Bradesco Corretora', 'Banco do Brasil Investimentos',
-  'NuInvest', 'Genial Investimentos', 'Modal Mais', 'Ágora Investimentos',
-  'Toro Investimentos', 'Guide Investimentos', 'Órama', 'Warren',
-  'Mercado Bitcoin', 'Binance', 'Foxbit', 'NovaDAX', 'Coinbase',
-  'Terra Investimentos', 'Safra Corretora', 'Santander Corretora',
-  'Avenue Securities', 'Nomad', 'Stake', 'Passfolio',
-  'Interactive Brokers', 'Charles Schwab', 'TD Ameritrade',
-  'XTB', 'Webull', 'eToro', 'DEGIRO', 'Trading 212',
-];
-
 function BrokerAutocomplete({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
-  const filtered = value.trim()
-    ? BROKERS.filter(b => b.toLowerCase().includes(value.toLowerCase()))
-    : BROKERS;
+  const filtered = searchBrokers(value);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
