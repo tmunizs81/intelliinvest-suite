@@ -65,8 +65,16 @@ export async function getUser(req: Request): Promise<AuthedUser | null> {
   });
 
   try {
-    const { data, error } = await supabase.auth.getClaims(token);
+    // `getClaims` valida a assinatura localmente via JWKS (mais barato que um
+    // round-trip). O cast existe porque a tipagem do SDK 2.49 ainda não a expõe.
+    const auth = supabase.auth as unknown as {
+      getClaims?: (jwt: string) => Promise<{ data: unknown; error: unknown }>;
+    };
+    const { data, error } = auth.getClaims
+      ? await auth.getClaims(token)
+      : { data: null, error: new Error("getClaims indisponível") };
     const claims = (data as { claims?: Record<string, unknown> } | null)?.claims;
+
     if (!error && claims?.sub) {
       return {
         id: String(claims.sub),
