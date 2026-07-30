@@ -146,3 +146,17 @@ export function requireTelegramSecret(req: Request): Response | null {
   if (provided && constantTimeEqual(provided, expected)) return null;
   return unauthorized("Update do Telegram rejeitado: secret token inválido.");
 }
+
+/**
+ * Gate genérico para funções que podem ser chamadas:
+ *  - pelo frontend com um JWT de usuário válido, OU
+ *  - internamente (função → função / cron) com x-cron-secret ou service role.
+ *
+ * Retorna Response 401 quando nenhuma das duas condições é satisfeita.
+ */
+export async function requireCaller(req: Request): Promise<Response | null> {
+  if (requireCron(req) === null) return null;
+  const user = await getUser(req);
+  if (user) return null;
+  return unauthorized("Endpoint restrito: autentique-se para usar este recurso.");
+}
