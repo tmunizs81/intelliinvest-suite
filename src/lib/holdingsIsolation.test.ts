@@ -114,9 +114,9 @@ describe('reconciliação', () => {
   });
 
   it('bloqueia reatribuição que colidiria com lote existente', () => {
-    const res = validateReassignment(holdings, 'h3', 'Clear');
+    const res = validateReassignment(holdings, 'h3', 'Clear') as { ok: boolean; reason?: string };
     expect(res.ok).toBe(false);
-    if (!res.ok) expect(res.reason).toContain('PETR4');
+    expect(res.reason).toContain('PETR4');
   });
 
   it('bloqueia reatribuição para a mesma corretora', () => {
