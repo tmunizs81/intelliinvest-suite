@@ -52,6 +52,10 @@ async function dumpUserScopedStorage(page: Page) {
 }
 
 test.describe('data isolation between accounts', () => {
+  // Os cenários compartilham a MESMA aba/sessão e dependem da ordem
+  // (login A -> logout -> login B). Serial mesmo quando o CI paraleliza arquivos.
+  test.describe.configure({ mode: 'serial' });
+
   test.skip(!USER_A.email || !USER_B.email, 'set TEST_USER_A/B env vars');
 
   test('logout purges all per-user caches', async ({ page }) => {
