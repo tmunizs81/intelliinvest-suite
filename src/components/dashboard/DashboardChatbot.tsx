@@ -122,7 +122,7 @@ export default function DashboardChatbot({ assets }: { assets: Asset[] }) {
     const { data: sessionData } = await supabase.auth.getSession();
     const accessToken = sessionData.session?.access_token;
     if (!accessToken) {
-      setLoading(false);
+      setIsLoading(false);
       return;
     }
 
