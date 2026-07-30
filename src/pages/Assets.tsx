@@ -93,11 +93,22 @@ export default function Assets() {
     [holdings],
   );
 
-  const handleSell = (holdingRow: HoldingRow, asset: Asset) => {
+  /* Handlers estáveis: alimentam linhas memoizadas em UnifiedHoldings. */
+  const handleSell = useCallback((holdingRow: HoldingRow, asset: Asset) => {
     setSellingHolding(holdingRow);
     setSellingPrice(asset.currentPrice);
     setSellOpen(true);
-  };
+  }, []);
+
+  const handleOpenAsset = useCallback(
+    (a: Asset) => navigate(assetRoute(a.ticker, a.broker, a.holdingId)),
+    [navigate],
+  );
+
+  const handleEditHolding = useCallback((h: HoldingRow) => {
+    setEditingHolding(h);
+    setModalOpen(true);
+  }, []);
 
   // Corretoras únicas presentes na carteira (contagem para exibir no chip)
   const brokerFacets = useMemo(() => {
@@ -166,13 +177,13 @@ export default function Assets() {
   );
 
   /** Seleção em massa por ids reais de lote — nunca por ticker. */
-  const toggleIds = (ids: string[], select: boolean) => {
+  const toggleIds = useCallback((ids: string[], select: boolean) => {
     setSelected(prev => {
       const next = new Set(prev);
       ids.forEach(id => { if (select) next.add(id); else next.delete(id); });
       return next;
     });
-  };
+  }, []);
 
 
 
@@ -223,10 +234,10 @@ export default function Assets() {
   const cost = assets.reduce((s, a) => s + a.avgPrice * a.quantity, 0);
   const gain = total - cost;
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = useCallback(async (id: string) => {
     if (!confirm('Remover este ativo da carteira?')) return;
     await deleteHolding(id);
-  };
+  }, [deleteHolding]);
 
 
   const handleCSVImport = async () => {
@@ -622,8 +633,8 @@ export default function Assets() {
               viewMode={viewMode}
               selected={selected}
               onToggleIds={toggleIds}
-              onOpen={(a) => navigate(assetRoute(a.ticker, a.broker, a.holdingId))}
-              onEdit={(h) => { setEditingHolding(h); setModalOpen(true); }}
+              onOpen={handleOpenAsset}
+              onEdit={handleEditHolding}
               onSell={handleSell}
               onDelete={handleDelete}
               brokerFilter={brokerFilter}
