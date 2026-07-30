@@ -666,7 +666,7 @@ function MobileCard({
   });
 
   return (
-    <div className={`border-b border-border/50 ${allSelected || someSelected ? 'bg-primary/[0.06]' : ''}`}>
+    <div className={`border-b border-border/50 ${allSelected || someSelected ? 'bg-primary/[0.06]' : ''}`} data-holdings-card data-agg-key={agg.key}>
       <div
         data-holdings-row
         role="row"
