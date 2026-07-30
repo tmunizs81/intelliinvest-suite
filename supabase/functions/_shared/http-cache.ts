@@ -131,3 +131,121 @@ export function cacheHeaders(hit: boolean, ttl: number): Record<string, string> 
     "Cache-Control": `private, max-age=${Math.max(30, Math.floor(ttl / 3))}`,
   };
 }
+
+/**
+ * Leitura "stale": devolve o payload mesmo se o TTL já venceu.
+ * Usada como rede de segurança quando a origem externa está fora/lenta.
+ */
+export async function cacheGetStale<T>(
+  namespace: string,
+  key: string,
+  maxAgeSeconds = 24 * 60 * 60,
+): Promise<{ value: T; ageSeconds: number } | null> {
+  try {
+    const { data, error } = await admin()
+      .from("http_cache")
+      .select("payload, updated_at, created_at")
+      .eq("namespace", namespace)
+      .eq("cache_key", key)
+      .maybeSingle();
+
+    if (error || !data) return null;
+
+    const stampedAt = new Date((data as any).updated_at ?? (data as any).created_at).getTime();
+    const ageSeconds = Math.max(0, Math.round((Date.now() - stampedAt) / 1000));
+    if (ageSeconds > maxAgeSeconds) return null;
+
+    return { value: (data as any).payload as T, ageSeconds };
+  } catch (e) {
+    console.warn("[http-cache] stale read falhou:", (e as Error).message);
+    return null;
+  }
+}
+
+export interface ResilientResult<T> {
+  value: T;
+  /** fresh = cache válido; live = origem; stale = cache vencido (degradado). */
+  source: "fresh" | "live" | "stale";
+  cacheHit: boolean;
+  stale: boolean;
+  ageSeconds?: number;
+  circuitState?: string;
+  degradedReason?: string;
+}
+
+/**
+ * Cache + circuit breaker + stale-while-revalidate em uma chamada.
+ *
+ * Ordem: cache fresco → (circuito fechado) origem → cache vencido → erro.
+ * É o caminho recomendado para qualquer integração externa instável.
+ */
+export async function withResilientCache<T>(
+  opts: {
+    namespace: string;
+    key: string;
+    ttl: number;
+    bypass?: boolean;
+    breaker: string;
+    /** Idade máxima aceita para servir dado vencido (padrão 24h). */
+    maxStaleSeconds?: number;
+    breakerOptions?: import("./circuit-breaker.ts").BreakerOptions;
+  },
+  loader: (signal: AbortSignal) => Promise<T>,
+): Promise<ResilientResult<T>> {
+  const { withCircuitBreaker } = await import("./circuit-breaker.ts");
+
+  if (!opts.bypass) {
+    const fresh = await cacheGet<T>(opts.namespace, opts.key);
+    if (fresh !== null && fresh !== undefined) {
+      return { value: fresh, source: "fresh", cacheHit: true, stale: false };
+    }
+  }
+
+  let staleAge: number | undefined;
+  const fallback = async (): Promise<T | null> => {
+    const stale = await cacheGetStale<T>(
+      opts.namespace,
+      opts.key,
+      opts.maxStaleSeconds ?? 24 * 60 * 60,
+    );
+    if (!stale) return null;
+    staleAge = stale.ageSeconds;
+    return stale.value;
+  };
+
+  const result = await withCircuitBreaker<T>(opts.breaker, loader, fallback, opts.breakerOptions);
+
+  if (result.live) {
+    cacheSet(opts.namespace, opts.key, result.value, opts.ttl);
+    return {
+      value: result.value,
+      source: "live",
+      cacheHit: false,
+      stale: false,
+      circuitState: result.state,
+      degradedReason: result.degradedReason,
+    };
+  }
+
+  return {
+    value: result.value,
+    source: "stale",
+    cacheHit: true,
+    stale: true,
+    ageSeconds: staleAge,
+    circuitState: result.state,
+    degradedReason: result.degradedReason,
+  };
+}
+
+/** Cabeçalhos completos de diagnóstico (cache + disjuntor). */
+export function resilientHeaders(r: ResilientResult<unknown>, ttl: number): Record<string, string> {
+  return {
+    "x-cache": r.cacheHit ? (r.stale ? "STALE" : "HIT") : "MISS",
+    "x-data-source": r.source,
+    ...(r.circuitState ? { "x-circuit-state": r.circuitState } : {}),
+    ...(r.degradedReason ? { "x-degraded-reason": r.degradedReason } : {}),
+    ...(r.ageSeconds !== undefined ? { "x-cache-age": String(r.ageSeconds) } : {}),
+    "Cache-Control": `private, max-age=${Math.max(30, Math.floor(ttl / 3))}`,
+  };
+}

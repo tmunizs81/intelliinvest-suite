@@ -1,6 +1,7 @@
 import { resolveCaller } from "../_shared/auth.ts";
 import { enforceRateLimit } from "../_shared/rate-limit.ts";
-import { withHttpCache, cacheKey, cacheHeaders, CACHE_TTL } from "../_shared/http-cache.ts";
+import { withResilientCache, resilientHeaders, cacheKey, CACHE_TTL } from "../_shared/http-cache.ts";
+import { startRequestTrace } from "../_shared/otel.ts";
 import { logMetric } from "../_telemetry.ts";
 
 const NS = "yahoo-history";
@@ -141,6 +142,9 @@ Deno.serve(async (req) => {
   }
 
   const started = performance.now();
+  const tracer = startRequestTrace(req, "yahoo-finance-history", caller.user?.id ?? null, {
+    "peer.service": "yahoo-finance",
+  });
 
   try {
     const body = await req.json();
@@ -158,9 +162,20 @@ Deno.serve(async (req) => {
       : CACHE_TTL.historyIntraday;
     const key = cacheKey(ticker, range, interval);
 
-    const { value: payload, hit } = await withHttpCache<any>(
-      { namespace: NS, key, ttl, bypass: refresh === true },
-      async () => {
+    tracer.root.setAttributes({ "asset.ticker": ticker, "market.range": range, "market.interval": interval });
+
+    const cached = await withResilientCache<any>(
+      {
+        namespace: NS,
+        key,
+        ttl,
+        bypass: refresh === true,
+        breaker: "yahoo-finance",
+        // Preço histórico de até 6h atrás ainda é melhor que erro na tela.
+        maxStaleSeconds: 6 * 60 * 60,
+        breakerOptions: { failureThreshold: 4, cooldownSeconds: 45, slowCallMs: 4500, timeoutMs: 10000 },
+      },
+      async (signal) => {
         const isCrypto = CRYPTO_SET.has(ticker.toUpperCase());
         const isOndoGM = ONDO_GM_SET.has(ticker) || !!(await getDynamicOndoUnderlying(ticker));
         const yahooTicker = await mapToYahooTicker(ticker);
@@ -170,7 +185,7 @@ Deno.serve(async (req) => {
           headers: {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
           },
-          signal: AbortSignal.timeout(10000),
+          signal,
         });
 
         if (!resp.ok) throw new Error(`Yahoo Finance HTTP ${resp.status}`);
@@ -211,19 +226,44 @@ Deno.serve(async (req) => {
       },
     );
 
+    const payload = cached.value;
+    const hit = cached.cacheHit;
+
+    tracer.root.setAttributes({
+      "cache.hit": hit,
+      "cache.state": cached.source,
+      "cache.age_seconds": cached.ageSeconds ?? 0,
+      "circuit.state": cached.circuitState ?? "closed",
+      "http.status_code": 200,
+    });
+    tracer.root.end("OK");
+    tracer.flush();
+
     logMetric({
       function_name: "yahoo-finance-history",
       duration_ms: performance.now() - started,
       status_code: 200,
       user_id: caller.user?.id ?? null,
       cache_hit: hit,
-      meta: { cold_start: COLD_START, ticker, range, interval },
+      trace_id: tracer.traceId,
+      meta: {
+        cold_start: COLD_START, ticker, range, interval,
+        data_source: cached.source,
+        circuit_state: cached.circuitState ?? "closed",
+        degraded_reason: cached.degradedReason ?? null,
+      },
     });
     COLD_START = false;
 
     return new Response(
-      JSON.stringify({ ...payload, _cached: hit }),
-      { headers: { ...corsHeaders, ...cacheHeaders(hit, ttl), "Content-Type": "application/json" } }
+      JSON.stringify({
+        ...payload,
+        _cached: hit,
+        _stale: cached.stale,
+        _source: cached.source,
+        _traceId: tracer.traceId,
+      }),
+      { headers: { ...corsHeaders, ...resilientHeaders(cached, ttl), "Content-Type": "application/json" } }
     );
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
@@ -234,8 +274,12 @@ Deno.serve(async (req) => {
       status_code: 500,
       user_id: caller.user?.id ?? null,
       error_message: message,
+      trace_id: tracer.traceId,
       meta: { cold_start: COLD_START },
     });
+    tracer.root.setError(err).setAttributes({ "http.status_code": 500 });
+    tracer.root.end("ERROR");
+    tracer.flush();
     COLD_START = false;
     return new Response(
       JSON.stringify({ error: message }),

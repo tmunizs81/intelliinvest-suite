@@ -30,6 +30,7 @@ const Manual = lazy(() => import("./pages/Manual"));
 const Comparator = lazy(() => import("./pages/Comparator"));
 const AIDiagnostics = lazy(() => import("./pages/AIDiagnostics"));
 const Telemetry = lazy(() => import("./pages/Telemetry"));
+const Jobs = lazy(() => import("./pages/Jobs"));
 
 const PageLoader = () => (
   <div className="min-h-screen bg-background flex items-center justify-center">
@@ -116,6 +117,7 @@ const App = () => (
               <Route path="/manual" element={<Suspense fallback={<PageLoader />}><Manual /></Suspense>} />
               <Route path="/asset/:ticker" element={<Suspense fallback={<PageLoader />}><Analysis /></Suspense>} />
               <Route path="/ai-diagnostics" element={<Suspense fallback={<PageLoader />}><AIDiagnostics /></Suspense>} />
+              <Route path="/jobs" element={<Suspense fallback={<PageLoader />}><Jobs /></Suspense>} />
               <Route path="/telemetry" element={<Suspense fallback={<PageLoader />}><Telemetry /></Suspense>} />
             </Route>
 
