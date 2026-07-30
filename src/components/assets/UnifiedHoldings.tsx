@@ -605,6 +605,7 @@ const TickerRow = memo(function TickerRow({
         aria-expanded={multi ? expanded : undefined}
         aria-label={`${agg.ticker}, ${agg.name}, total ${formatCurrency(agg.value)}`}
         onKeyDown={onKeyDown}
+        style={ROW_CV}
         className={`group ${GRID} ${FOCUS_RING} cursor-pointer border-b border-border/40 px-4 py-2.5 transition-colors hover:bg-accent/40 ${
           allSelected || someSelected ? 'bg-primary/[0.06]' : ''
         }`}
@@ -909,7 +910,12 @@ const MobileCard = memo(function MobileCard({
   });
 
   return (
-    <div className={`border-b border-border/50 ${allSelected || someSelected ? 'bg-primary/[0.06]' : ''}`} data-holdings-card data-agg-key={agg.key}>
+    <div
+      style={expanded ? undefined : CARD_CV}
+      className={`border-b border-border/50 ${allSelected || someSelected ? 'bg-primary/[0.06]' : ''}`}
+      data-holdings-card
+      data-agg-key={agg.key}
+    >
       <div
         data-holdings-row
         role="row"
