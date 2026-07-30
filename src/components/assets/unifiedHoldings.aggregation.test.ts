@@ -3,6 +3,8 @@ import {
   aggregateByTicker,
   aggregationKeyFor,
   assertNoPropertyMerge,
+  detectPropertyMergeIssues,
+  filterByClass,
   isPropertyAsset,
   sortAggregates,
   type TickerAggregate,
@@ -114,5 +116,31 @@ describe('ordenação com imóveis separados', () => {
     const b = sortAggregates([...tied].reverse(), { key: 'value', dir: 'desc' }).map((r) => r.key);
     expect(a).toEqual(b);
     expect(new Set(a).size).toBe(3);
+  });
+});
+
+describe('filtro de classe e aviso de fusão', () => {
+  const mixed: Asset[] = [
+    ...properties,
+    asset({ holdingId: 'f1', ticker: 'PETR4', type: 'Ação' }),
+    asset({ holdingId: 'f2', ticker: 'HGLG11', type: 'FII' }),
+  ];
+
+  it('separa imóveis de ativos financeiros', () => {
+    expect(filterByClass(mixed, 'all')).toHaveLength(5);
+    expect(filterByClass(mixed, 'property').map((a) => a.holdingId)).toEqual(['p1', 'p2', 'p3']);
+    expect(filterByClass(mixed, 'financial').map((a) => a.holdingId)).toEqual(['f1', 'f2']);
+  });
+
+  it('não reporta problema quando imóveis estão separados', () => {
+    expect(detectPropertyMergeIssues(aggregateByTicker(mixed, []))).toEqual([]);
+  });
+
+  it('detecta (sem lançar) imóveis unificados', () => {
+    const bad = [{ ...aggregateByTicker(properties, [])[0] }] as TickerAggregate[];
+    bad[0].lots = [bad[0].lots[0], bad[0].lots[0]];
+    const issues = detectPropertyMergeIssues(bad);
+    expect(issues).toEqual([{ ticker: 'IMOVEL-TERRASALP', lots: 2 }]);
+    expect(() => detectPropertyMergeIssues(bad)).not.toThrow();
   });
 });
