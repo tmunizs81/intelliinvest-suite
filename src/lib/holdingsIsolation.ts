@@ -131,7 +131,7 @@ export function validateReassignment<T extends HoldingLike>(
   holdings: T[],
   holdingId: string,
   targetBroker: string | null,
-): { ok: true } | { ok: false; reason: string } {
+): ReassignCheck {
   const current = holdings.find(h => h.id === holdingId);
   if (!current) return { ok: false, reason: 'Posição não encontrada.' };
   const target = normalizeBroker(targetBroker);
