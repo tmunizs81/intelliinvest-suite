@@ -1,3 +1,5 @@
+import { resolveCaller } from "../_shared/auth.ts";
+import { enforceRateLimit } from "../_shared/rate-limit.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
@@ -44,6 +46,18 @@ const CACHE_TTL = 6 * 60 * 60 * 1000; // 6 hours
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
+  }
+
+  // Proxy de dados de mercado: exige sessão válida (ou chamada interna) para não
+  // servir de gateway anônimo em cima da nossa cota de Yahoo/Brapi/BCB.
+  const caller = await resolveCaller(req);
+  if (caller instanceof Response) return caller;
+
+  if (!caller.isInternal) {
+    const limited = await enforceRateLimit(req, caller.subjectId, {
+      resource: "bcb-rates", max: 30, windowSeconds: 60,
+    });
+    if (limited) return limited;
   }
 
   try {
