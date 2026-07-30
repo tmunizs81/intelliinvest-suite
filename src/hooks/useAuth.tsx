@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { clearCache } from '@/lib/persistentCache';
+import { clearCache, rotateCacheSchema } from '@/lib/persistentCache';
 import type { User, Session } from '@supabase/supabase-js';
 
 /**
@@ -54,6 +54,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const lastUidRef = useRef<string | null>(
     typeof window !== 'undefined' ? localStorage.getItem(LAST_UID_KEY) : null
   );
+
+  useEffect(() => {
+    // Rotação de esquema: entradas gravadas antes do isolamento por conta
+    // (sem id do usuário na chave) são descartadas antes de qualquer leitura.
+    void rotateCacheSchema();
+  }, []);
 
   useEffect(() => {
     // Defensive: if a different account signs in (or user signs out), purge every

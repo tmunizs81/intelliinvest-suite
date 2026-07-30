@@ -14,6 +14,8 @@ import {
   clearCache,
   userScopedKey,
   CACHE_TTL,
+  CACHE_SCHEMA,
+  rotateCacheSchema,
 } from "./persistentCache";
 
 const USER_A = "11111111-1111-1111-1111-111111111111";
@@ -77,5 +79,48 @@ describe("persistentCache — isolamento por conta", () => {
     await clearCache();
     expect(await getCached(userScopedKey(USER_A, "k1"), { owner: USER_A })).toBeNull();
     expect(await getCached(userScopedKey(USER_B, "k1"), { owner: USER_B })).toBeNull();
+  });
+});
+
+describe("persistentCache — rotação de esquema", () => {
+  beforeEach(async () => {
+    await clearCache();
+    localStorage.clear();
+  });
+
+  it("prefixa toda chave com a versão de esquema atual", () => {
+    expect(userScopedKey(USER_A, "dashboard_bootstrap")).toMatch(
+      new RegExp(`^${CACHE_SCHEMA}:u:${USER_A}:`),
+    );
+  });
+
+  it("descarta entradas legadas (sem id do usuário) na rotação", async () => {
+    // Entrada no formato antigo: chave global e sem dono.
+    await setCache("ai-insights:PETR4", { summary: "legado" }, CACHE_TTL.AI_RESPONSE);
+    await rotateCacheSchema();
+    expect(await getCached("ai-insights:PETR4")).toBeNull();
+  });
+
+  it("preserva entradas já gravadas no esquema atual", async () => {
+    const key = userScopedKey(USER_A, "dashboard_bootstrap");
+    await setCache(key, { total: 10 }, CACHE_TTL.SNAPSHOTS, { owner: USER_A });
+    await rotateCacheSchema();
+    expect(await getCached(key, { owner: USER_A })).toEqual({ total: 10 });
+  });
+
+  it("é idempotente: não repete a varredura na mesma versão", async () => {
+    await rotateCacheSchema();
+    const key = userScopedKey(USER_B, "portfolio_metrics");
+    await setCache(key, { v: 1 }, CACHE_TTL.SNAPSHOTS, { owner: USER_B });
+    await rotateCacheSchema();
+    expect(await getCached(key, { owner: USER_B })).toEqual({ v: 1 });
+  });
+
+  it("limpa espelhos pessoais em localStorage e mantém preferências públicas", async () => {
+    localStorage.setItem("dashboard_bootstrap:x", "{}");
+    localStorage.setItem("display_currency_v1", "USD");
+    await rotateCacheSchema();
+    expect(localStorage.getItem("dashboard_bootstrap:x")).toBeNull();
+    expect(localStorage.getItem("display_currency_v1")).toBe("USD");
   });
 });

@@ -39,7 +39,11 @@ export const DEFAULT_EVENT_PREFS: EventPrefs = {
 };
 
 export interface TelegramSettings {
-  bot_token: string | null;
+  /**
+   * O token do bot NUNCA trafega para o cliente: só sabemos se existe.
+   * Gravação é write-only via `saveTelegramSettings(settings, botToken)`.
+   */
+  has_bot_token: boolean;
   chat_id: string | null;
   enabled: boolean;
   notify_email: boolean;
@@ -65,7 +69,7 @@ export function useAlerts() {
   const { user } = useAuth();
   const [alerts, setAlerts] = useState<AlertRow[]>([]);
   const [telegramSettings, setTelegramSettings] = useState<TelegramSettings>({
-    bot_token: null, chat_id: null, enabled: false,
+    has_bot_token: false, chat_id: null, enabled: false,
     notify_email: false, email_address: null, event_prefs: DEFAULT_EVENT_PREFS,
   });
   const [loading, setLoading] = useState(true);
@@ -82,14 +86,12 @@ export function useAlerts() {
 
   const loadTelegramSettings = useCallback(async () => {
     if (!user) return;
-    const { data } = await (supabase as any)
-      .from('telegram_settings')
-      .select('*')
-      .eq('user_id', user.id)
-      .maybeSingle();
+    // RPC auditada que devolve apenas metadados (sem bot_token).
+    const { data: rows } = await (supabase as any).rpc('get_my_telegram_settings');
+    const data = Array.isArray(rows) ? rows[0] : rows;
     if (data) {
       setTelegramSettings({
-        bot_token: data.bot_token,
+        has_bot_token: !!data.has_bot_token,
         chat_id: data.chat_id,
         enabled: data.enabled,
         notify_email: data.notify_email ?? false,
@@ -160,7 +162,12 @@ export function useAlerts() {
     await loadAlerts();
   }, [user, loadAlerts]);
 
-  const saveTelegramSettings = useCallback(async (settings: TelegramSettings) => {
+  /**
+   * `botToken` é opcional e write-only: quando informado, é gravado e
+   * imediatamente descartado da memória do cliente (nunca volta em leituras,
+   * nunca é persistido em cache/localStorage).
+   */
+  const saveTelegramSettings = useCallback(async (settings: TelegramSettings, botToken?: string) => {
     if (!user) return;
     const { data: existing } = await (supabase as any)
       .from('telegram_settings')
@@ -168,21 +175,22 @@ export function useAlerts() {
       .eq('user_id', user.id)
       .maybeSingle();
 
+    const token = typeof botToken === 'string' ? botToken.trim() : '';
     const payload: any = {
-      bot_token: settings.bot_token,
       chat_id: settings.chat_id,
       enabled: settings.enabled,
       notify_email: settings.notify_email,
       email_address: settings.email_address,
       event_prefs: settings.event_prefs,
     };
+    if (token) payload.bot_token = token;
 
     if (existing) {
       await (supabase as any).from('telegram_settings').update(payload).eq('user_id', user.id);
     } else {
       await (supabase as any).from('telegram_settings').insert({ user_id: user.id, ...payload });
     }
-    setTelegramSettings(settings);
+    setTelegramSettings({ ...settings, has_bot_token: settings.has_bot_token || !!token });
   }, [user]);
 
   return {

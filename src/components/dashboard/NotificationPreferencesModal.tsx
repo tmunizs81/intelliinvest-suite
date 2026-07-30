@@ -7,7 +7,7 @@ interface Props {
   open: boolean;
   onClose: () => void;
   settings: TelegramSettings;
-  onSave: (s: TelegramSettings) => Promise<void> | void;
+  onSave: (s: TelegramSettings, botToken?: string) => Promise<void> | void;
 }
 
 const EVENTS: { key: EventKey; label: string; desc: string }[] = [
@@ -22,8 +22,10 @@ const EVENTS: { key: EventKey; label: string; desc: string }[] = [
 export default function NotificationPreferencesModal({ open, onClose, settings, onSave }: Props) {
   const [local, setLocal] = useState<TelegramSettings>(settings);
   const [saving, setSaving] = useState(false);
+  /** Token digitado: vive só neste estado, nunca é persistido nem relido. */
+  const [botToken, setBotToken] = useState('');
 
-  useEffect(() => { if (open) setLocal(settings); }, [open, settings]);
+  useEffect(() => { if (open) { setLocal(settings); setBotToken(''); } }, [open, settings]);
 
   if (!open) return null;
 
@@ -38,11 +40,15 @@ export default function NotificationPreferencesModal({ open, onClose, settings, 
 
   const handleSave = async () => {
     setSaving(true);
-    try { await onSave(local); onClose(); }
-    finally { setSaving(false); }
+    try {
+      await onSave(local, botToken.trim() || undefined);
+      // O token existe apenas neste estado local e é descartado após salvar.
+      setBotToken('');
+      onClose();
+    } finally { setSaving(false); }
   };
 
-  const telegramReady = local.enabled && !!local.bot_token && !!local.chat_id;
+  const telegramReady = local.enabled && (local.has_bot_token || !!botToken.trim()) && !!local.chat_id;
   const emailReady = local.notify_email && !!local.email_address;
 
   return (
@@ -87,9 +93,11 @@ export default function NotificationPreferencesModal({ open, onClose, settings, 
               {local.enabled && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <input
-                    value={local.bot_token ?? ''}
-                    onChange={(e) => setLocal((s) => ({ ...s, bot_token: e.target.value }))}
-                    placeholder="Bot Token"
+                    type="password"
+                    autoComplete="off"
+                    value={botToken}
+                    onChange={(e) => setBotToken(e.target.value)}
+                    placeholder={local.has_bot_token ? 'Bot Token (já configurado)' : 'Bot Token'}
                     className="rounded-md border border-input bg-background px-2.5 py-1.5 text-xs font-mono"
                   />
                   <input
