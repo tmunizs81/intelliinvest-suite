@@ -105,6 +105,41 @@ export const SORT_LABELS: Record<SortKey, string> = {
   ticker: 'Ticker',
 };
 
+/* ------------------------------------------------------------------ *
+ * Filtro de classe (Financeiros × Imóveis) — persistido
+ * ------------------------------------------------------------------ */
+
+export type AssetClassFilter = 'all' | 'financial' | 'property';
+
+const CLASS_STORAGE_KEY = 'assets:classFilter:v1';
+
+export const CLASS_FILTER_LABELS: Record<AssetClassFilter, string> = {
+  all: 'Tudo',
+  financial: 'Financeiros',
+  property: 'Imóveis',
+};
+
+export function loadClassFilter(): AssetClassFilter {
+  try {
+    const raw = typeof window !== 'undefined' ? localStorage.getItem(CLASS_STORAGE_KEY) : null;
+    return raw === 'financial' || raw === 'property' ? raw : 'all';
+  } catch {
+    return 'all';
+  }
+}
+
+/** Aplica o filtro de classe sobre ativos brutos, preservando a ordenação. */
+export function filterByClass<T extends { ticker: string; type: string }>(
+  list: T[],
+  filter: AssetClassFilter,
+): T[] {
+  if (filter === 'all') return list;
+  const wantProperty = filter === 'property';
+  return list.filter((a) => isPropertyAsset(a) === wantProperty);
+}
+
+
+
 export function sortAggregates(list: TickerAggregate[], sort: SortState): TickerAggregate[] {
   const mult = sort.dir === 'asc' ? 1 : -1;
   return [...list].sort((a, b) => {
