@@ -2,12 +2,18 @@
 // Returns which rules would fire and the message that would be dispatched.
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { requireCaller } from "../_shared/auth.ts";
 
 const brl = (n: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
 const pct = (n: number) => `${n >= 0 ? "+" : ""}${n.toFixed(2)}%`;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+
+  // Somente sessão válida (ou chamada interna cron/service): evita uso do endpoint
+  // como proxy gratuito de LLM e vazamento de dados entre contas.
+  const denied = await requireCaller(req);
+  if (denied) return denied;
   try {
     const authHeader = req.headers.get("Authorization") ?? "";
     const jwt = authHeader.replace("Bearer ", "");

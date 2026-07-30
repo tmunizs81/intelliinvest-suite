@@ -3,6 +3,7 @@
 // clients can invalidate caches deterministically.
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 import { Image, decode } from 'https://deno.land/x/imagescript@1.2.17/mod.ts';
+import { requireCaller } from "../_shared/auth.ts";
 
 const MAX_DIM = 128;
 const MAX_INPUT_BYTES = 2 * 1024 * 1024;
@@ -36,6 +37,11 @@ function toDataUrl(bytes: Uint8Array, mime: string): string {
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+
+  // Somente sessão válida (ou chamada interna cron/service): evita uso do endpoint
+  // como proxy gratuito de LLM e vazamento de dados entre contas.
+  const denied = await requireCaller(req);
+  if (denied) return denied;
 
   try {
     const { dataUrl } = await req.json();

@@ -1,3 +1,4 @@
+import { requireCaller } from "../_shared/auth.ts";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -102,6 +103,11 @@ function formatBrapiContext(brapi: any, ticker: string): string {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+
+  // Somente sessão válida (ou chamada interna cron/service): evita uso do endpoint
+  // como proxy gratuito de LLM e vazamento de dados entre contas.
+  const denied = await requireCaller(req);
+  if (denied) return denied;
 
   try {
     const { ticker, type, name } = await req.json();

@@ -1,3 +1,4 @@
+import { requireCaller } from "../_shared/auth.ts";
 // AI Tax Chat - Q&A conversacional sobre IRPF de investimentos
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -23,6 +24,11 @@ function checkRateLimit(req: Request): Response | null {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+
+  // Somente sessão válida (ou chamada interna cron/service): evita uso do endpoint
+  // como proxy gratuito de LLM e vazamento de dados entre contas.
+  const denied = await requireCaller(req);
+  if (denied) return denied;
   const rl = checkRateLimit(req); if (rl) return rl;
 
   try {
