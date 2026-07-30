@@ -496,6 +496,83 @@ function PropertyTip({ agg, metric }: { agg: TickerAggregate; metric: 'avgPrice'
 }
 
 
+/* ------------------------------------------------------------------ *
+ * Totais por corretora — explicação das regras de agregação
+ * ------------------------------------------------------------------ */
+
+export interface BrokerTotals {
+  label: string;
+  value: number;
+  cost: number;
+  gain: number;
+  share: number;
+  totalVisible: number;
+  rows: TickerAggregate[];
+  propertyCount: number;
+  propertyValue: number;
+  financialCount: number;
+  financialValue: number;
+  lotCount: number;
+}
+
+/**
+ * Deixa explícito que o total da corretora mistura duas regras distintas:
+ * financeiros somados por ticker (fungíveis) e imóveis contados por posição.
+ */
+function BrokerTotalsTip({ g, metric }: { g: BrokerTotals; metric: 'value' | 'gain' | 'share' }) {
+  const rule = (
+    <div className="space-y-0.5 border-t border-border/50 pt-1 text-muted-foreground">
+      <p className="font-mono tabular-nums">
+        Financeiros: {g.financialCount} {g.financialCount === 1 ? 'ticker' : 'tickers'} • {formatCurrency(g.financialValue)}
+      </p>
+      <p className="font-mono tabular-nums">
+        Imóveis: {g.propertyCount} {g.propertyCount === 1 ? 'posição' : 'posições'} • {formatCurrency(g.propertyValue)}
+      </p>
+      <p>Financeiros são somados por ticker (lotes fungíveis); imóveis entram um a um, sem fusão entre bens de código igual.</p>
+    </div>
+  );
+
+  if (metric === 'gain') {
+    return (
+      <div className="space-y-1">
+        <p className="font-semibold">Resultado em {g.label}</p>
+        <p className="font-mono tabular-nums">Valor atual {formatCurrency(g.value)}</p>
+        <p className="font-mono tabular-nums">Custo {formatCurrency(g.cost)}</p>
+        <p className="font-mono tabular-nums">
+          Lucro {formatCurrency(g.gain)} ({formatPercent(g.cost > 0 ? (g.gain / g.cost) * 100 : 0)})
+        </p>
+        <p className="text-muted-foreground">Percentual calculado sobre o custo desta corretora, não sobre a carteira inteira.</p>
+        {rule}
+      </div>
+    );
+  }
+
+  if (metric === 'share') {
+    return (
+      <div className="space-y-1">
+        <p className="font-semibold">Peso de {g.label}</p>
+        <p className="font-mono tabular-nums">
+          {formatCurrency(g.value)} ÷ {formatCurrency(g.totalVisible)} = {pctLabel(g.share)}
+        </p>
+        <p className="text-muted-foreground">
+          Base = total visível na classe filtrada. Ao alternar Tudo/Financeiros/Imóveis o denominador muda junto.
+        </p>
+        {rule}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-1">
+      <p className="font-semibold">Total custodiado em {g.label}</p>
+      <p className="font-mono tabular-nums">
+        {g.rows.length} {g.rows.length === 1 ? 'linha' : 'linhas'} • {g.lotCount} {g.lotCount === 1 ? 'lote' : 'lotes'} = {formatCurrency(g.value)}
+      </p>
+      {rule}
+    </div>
+  );
+}
+
 const TickerRow = memo(function TickerRow({
   agg, expanded, onToggleExpand, selected, onToggleIds, onOpen, onEdit, onSell, onDelete, showBrokerColumn,
 }: RowProps) {
