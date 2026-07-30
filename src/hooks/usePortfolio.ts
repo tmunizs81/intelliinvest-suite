@@ -587,5 +587,5 @@ export function usePortfolio() {
     return (data as any[]) || [];
   }, [user]);
 
-  return { assets, holdings, cashBalance, cashBalances, loading, error, lastUpdate, nextUpdate, refresh, addHolding, updateHolding, deleteHolding, sellHolding, updateCashBalance: updateCashBalanceBroker, loadCashMovements };
+  return { assets, holdings, cashBalance, cashBalances, loading, error, lastUpdate, nextUpdate, refresh, addHolding, updateHolding, deleteHolding, bulkDeleteHoldings, sellHolding, updateCashBalance: updateCashBalanceBroker, loadCashMovements };
 }
