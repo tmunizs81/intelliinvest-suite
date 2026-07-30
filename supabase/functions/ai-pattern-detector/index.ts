@@ -1,25 +1,15 @@
-import { requireCaller } from "../_shared/auth.ts";
+import { resolveCaller } from "../_shared/auth.ts";
+import { enforceRateLimit } from "../_shared/rate-limit.ts";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
   "Access-Control-Expose-Headers": "x-ai-provider",
 };
 
-const userCalls = new Map<string, number[]>();
-const MAX_CALLS_PER_MIN = 10;
+// Cota persistida por usuário verificado (o contador antigo usava atob(jwt)).
+const RATE_RULE = { resource: "ai-pattern-detector", max: 10, windowSeconds: 60 };
 
-function isRateLimited(req: Request): boolean {
-  const auth = req.headers.get("authorization") || "";
-  const parts = auth.replace("Bearer ", "").split(".");
-  let userId = "anon";
-  try { if (parts[1]) { const p = JSON.parse(atob(parts[1])); userId = p.sub || "anon"; } } catch {}
-  const now = Date.now();
-  const calls = (userCalls.get(userId) || []).filter(t => now - t < 60000);
-  if (calls.length >= MAX_CALLS_PER_MIN) return true;
-  calls.push(now);
-  userCalls.set(userId, calls);
-  return false;
-}
 
 async function callAI(body) {
   const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
