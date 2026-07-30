@@ -20,6 +20,8 @@ import { BrokerLogo, preloadBrokers } from '@/lib/brokerLogos';
 import { useBrokerLogoSettings, setLogoDensity } from '@/lib/brokerLogoSettings';
 import BrokerReconciliationModal from '@/components/dashboard/BrokerReconciliationModal';
 import { reconciliationGroups, assetRoute, NO_BROKER, brokerLabel } from '@/lib/holdingsIsolation';
+import UnifiedHoldings, { type AssetsViewMode } from '@/components/assets/UnifiedHoldings';
+
 
 
 const typeBadgeClass: Record<string, string> = {
@@ -81,6 +83,13 @@ export default function Assets() {
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [reconcileOpen, setReconcileOpen] = useState(false);
+  /** Visão da carteira: tickers unificados (padrão) ou agrupada por corretora. */
+  const [viewMode, setViewMode] = useState<AssetsViewMode>(() => {
+    const saved = typeof window !== 'undefined' ? localStorage.getItem('assets:viewMode') : null;
+    return saved === 'broker' ? 'broker' : 'ticker';
+  });
+  useEffect(() => { localStorage.setItem('assets:viewMode', viewMode); }, [viewMode]);
+
 
   /** Lotes que exigem decisão manual de corretora (duplicados ou sem corretora). */
   const reconcilePending = useMemo(
@@ -172,7 +181,23 @@ export default function Assets() {
     });
   }, [visibleIds]);
 
+  /** Quantidade de tickers distintos visíveis (após unificação). */
+  const tickerCount = useMemo(
+    () => new Set(filtered.map(a => a.ticker.trim().toUpperCase())).size,
+    [filtered],
+  );
+
+  /** Seleção em massa por ids reais de lote — nunca por ticker. */
+  const toggleIds = (ids: string[], select: boolean) => {
+    setSelected(prev => {
+      const next = new Set(prev);
+      ids.forEach(id => { if (select) next.add(id); else next.delete(id); });
+      return next;
+    });
+  };
+
   const toggleOne = (id?: string) => {
+
     if (!id) return;
     setSelected(prev => {
       const next = new Set(prev);
@@ -524,18 +549,14 @@ export default function Assets() {
 
 
 
-      {/* B3 Integration Banner */}
-      <div className="mb-6 rounded-lg border border-primary/20 bg-primary/5 p-4 flex items-start gap-3">
-        <AlertTriangle className="h-5 w-5 text-primary shrink-0 mt-0.5" />
-        <div>
-          <h3 className="text-sm font-semibold">Integração B3 / CEI</h3>
-          <p className="text-xs text-muted-foreground mt-1">
-            A B3 não disponibiliza API pública gratuita para sincronização automática. Para importar sua carteira,
-            acesse o <a href="https://cei.b3.com.br" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Portal CEI da B3</a>,
-            exporte seu extrato em CSV e use o botão "Importar CSV" acima. Formato esperado: <code className="text-[10px] bg-muted px-1 py-0.5 rounded">Ticker;Nome;Tipo;Quantidade;Preço Médio;Setor</code>
-          </p>
-        </div>
-      </div>
+      {/* Nota B3/CEI — discreta, sem roubar atenção da carteira */}
+      <p className="mb-4 flex items-center gap-2 text-[11px] text-muted-foreground/70">
+        <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-muted-foreground/60" />
+        A B3 não oferece API pública gratuita. Exporte o extrato no{' '}
+        <a href="https://cei.b3.com.br" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Portal CEI</a>{' '}
+        e use “Importar CSV” (<code className="rounded bg-muted px-1 py-px text-[10px]">Ticker;Nome;Tipo;Quantidade;Preço Médio;Setor</code>).
+      </p>
+
 
       {/* Table */}
       <div className="rounded-lg border border-border bg-card overflow-hidden">
@@ -560,204 +581,76 @@ export default function Assets() {
           </div>
         ) : (
           <>
-            {/* Barra de ação em lote */}
-            <div className="flex flex-wrap items-center gap-3 border-b border-border bg-muted/30 px-4 py-2.5 text-xs">
-              <label className="inline-flex items-center gap-2 cursor-pointer text-muted-foreground hover:text-foreground">
+            {/* Barra de controle: modo de visão + seleção contextual */}
+            <div className="flex flex-wrap items-center gap-3 border-b border-border bg-muted/20 px-4 py-2 text-xs">
+              <div className="inline-flex rounded-lg border border-border bg-background p-0.5">
+                {([
+                  { id: 'ticker', label: 'Por ativo' },
+                  { id: 'broker', label: 'Por corretora' },
+                ] as const).map((opt) => (
+                  <button
+                    key={opt.id}
+                    onClick={() => setViewMode(opt.id)}
+                    className={`rounded-[6px] px-2.5 py-1 text-[11px] font-medium transition-colors ${
+                      viewMode === opt.id
+                        ? 'bg-primary/15 text-primary'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+
+              <span className="text-[11px] text-muted-foreground">
+                {tickerCount} {tickerCount === 1 ? 'ticker' : 'tickers'} • {visibleIds.length} {visibleIds.length === 1 ? 'posição' : 'posições'}
+              </span>
+
+              <label className="ml-auto inline-flex cursor-pointer items-center gap-2 text-[11px] text-muted-foreground transition-colors hover:text-foreground">
                 <RowCheckbox checked={allVisibleSelected} onChange={toggleAllVisible} label="Selecionar todos os ativos visíveis" />
-                Selecionar todos ({visibleIds.length})
+                Selecionar tudo
               </label>
+
               {selected.size > 0 && (
-                <>
-                  <span className="text-primary font-medium">{selected.size} selecionado{selected.size > 1 ? 's' : ''}</span>
+                <div className="flex items-center gap-2 rounded-lg border border-primary/25 bg-primary/10 px-2 py-1">
+                  <span className="text-[11px] font-medium text-primary">
+                    {selected.size} selecionado{selected.size > 1 ? 's' : ''}
+                  </span>
                   <button
                     onClick={() => setSelected(new Set())}
-                    className="rounded-full border border-border px-2 py-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+                    className="text-[11px] text-muted-foreground transition-colors hover:text-foreground"
                   >
-                    Limpar seleção
+                    Limpar
                   </button>
                   <button
                     onClick={handleBulkDelete}
                     disabled={bulkDeleting}
-                    className="ml-auto inline-flex items-center gap-1.5 rounded-lg bg-[hsl(var(--loss)/0.12)] border border-[hsl(var(--loss)/0.35)] px-3 py-1.5 text-[11px] font-semibold text-[hsl(var(--loss-foreground))] hover:bg-[hsl(var(--loss)/0.2)] transition-colors disabled:opacity-50"
+                    className="inline-flex items-center gap-1 rounded-md bg-[hsl(var(--loss)/0.15)] px-2 py-1 text-[11px] font-semibold text-[hsl(var(--loss-foreground))] transition-colors hover:bg-[hsl(var(--loss)/0.25)] disabled:opacity-50"
                   >
-                    {bulkDeleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
-                    Excluir selecionados
+                    {bulkDeleting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
+                    Excluir
                   </button>
-                </>
+                </div>
               )}
             </div>
 
-            {/* Desktop Table — agrupado por corretora */}
-            <div className="hidden md:block overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border text-muted-foreground">
-                    <th className="w-10 p-4"></th>
-                    <th className="text-left p-4 font-medium">Ativo</th>
-                    <th className="text-left p-4 font-medium">Tipo</th>
-                    <th className="text-right p-4 font-medium">Qtd</th>
-                    <th className="text-right p-4 font-medium">PM</th>
-                    <th className="text-right p-4 font-medium">Atual</th>
-                    <th className="text-right p-4 font-medium">24h</th>
-                    <th className="text-right p-4 font-medium">Total</th>
-                    <th className="text-right p-4 font-medium">Lucro</th>
-                    <th className="text-right p-4 font-medium">Alocação</th>
-                    <th className="text-right p-4 font-medium w-24"></th>
-                  </tr>
-                </thead>
-                {groups.map((g) => {
-                  const ids = g.items.map(a => a.holdingId).filter(Boolean) as string[];
-                  const groupSelected = ids.length > 0 && ids.every(id => selected.has(id));
-                  const isCollapsed = collapsed.has(g.broker);
-                  const label = g.broker === NO_BROKER ? 'Sem corretora' : g.broker;
-                  return (
-                    <tbody key={g.broker}>
-                      <tr className="bg-muted/40 border-y border-border">
-                        <td className="p-3 pl-4">
-                          <RowCheckbox checked={groupSelected} onChange={() => toggleGroup(g.items)} label={`Selecionar todos de ${label}`} />
-                        </td>
-                        <td colSpan={10} className="p-3 pr-4">
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => setCollapsed(prev => {
-                                const next = new Set(prev);
-                                if (next.has(g.broker)) next.delete(g.broker); else next.add(g.broker);
-                                return next;
-                              })}
-                              className="inline-flex items-center gap-2 text-sm font-semibold hover:text-primary transition-colors"
-                            >
-                              <ChevronDown className={`h-4 w-4 transition-transform ${isCollapsed ? '-rotate-90' : ''}`} />
-                              {g.broker !== NO_BROKER && <BrokerLogo broker={g.broker} size={18} />}
-                              {label}
-                              <span className="text-[11px] font-normal text-muted-foreground">
-                                ({g.items.length} {g.items.length === 1 ? 'ativo' : 'ativos'})
-                              </span>
-                            </button>
-                            <div className="ml-auto flex items-center gap-3 font-mono text-xs">
-                              <span className="text-muted-foreground">{formatCurrency(g.value)}</span>
-                              <span className={g.gain >= 0 ? 'text-gain' : 'text-loss'}>
-                                {formatCurrency(g.gain)} ({formatPercent(g.cost > 0 ? (g.gain / g.cost) * 100 : 0)})
-                              </span>
-                              {g.broker !== NO_BROKER && (
-                                <button
-                                  onClick={() => setBrokerFilter(brokerFilter === g.broker ? '' : g.broker)}
-                                  className="rounded-full border border-border px-2 py-0.5 text-[10px] font-sans text-muted-foreground hover:text-primary hover:border-primary/50 transition-colors"
-                                >
-                                  {brokerFilter === g.broker ? 'Limpar' : 'Ver só esta'}
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        </td>
-                      </tr>
-
-                      {!isCollapsed && g.items.map((asset) => {
-                        const assetTotal = asset.currentPrice * asset.quantity;
-                        const assetCost = asset.avgPrice * asset.quantity;
-                        const profit = assetTotal - assetCost;
-                        const profitPct = assetCost > 0 ? (profit / assetCost) * 100 : 0;
-                        const isPositive = asset.change24h >= 0;
-                        const isProfitable = profit >= 0;
-                        const holdingRow = holdings.find(h => h.id === asset.holdingId);
-                        const isSelected = !!asset.holdingId && selected.has(asset.holdingId);
-
-                        return (
-                          <tr
-                            key={asset.holdingId || `${asset.ticker}::${g.broker}`}
-                            className={`border-b border-border/50 hover:bg-accent/50 transition-colors cursor-pointer ${isSelected ? 'bg-primary/5' : ''}`}
-                            onClick={() => navigate(assetRoute(asset.ticker, asset.broker, asset.holdingId))}
-                          >
-                            <td className="p-4" onClick={e => e.stopPropagation()}>
-                              <RowCheckbox
-                                checked={isSelected}
-                                onChange={() => toggleOne(asset.holdingId)}
-                                label={`Selecionar ${asset.ticker} em ${label}`}
-                              />
-                            </td>
-                            <td className="p-4">
-                              <div className="min-w-0">
-                                <div className="flex items-center gap-1.5">
-                                  <span className="font-semibold font-mono">{asset.ticker}</span>
-                                  <ChevronRight className="h-3 w-3 text-muted-foreground" />
-                                </div>
-                                <p className="text-xs text-muted-foreground truncate">{asset.name}</p>
-                              </div>
-                            </td>
-                            <td className="p-4">
-                              <span className={`text-xs px-2 py-1 rounded-full font-medium ${typeBadgeClass[asset.type] || ''}`}>
-                                {asset.type}
-                              </span>
-                            </td>
-                            <td className="text-right p-4 font-mono">{asset.quantity}</td>
-                            <td className="text-right p-4 font-mono text-muted-foreground">{formatCurrency(asset.avgPrice)}</td>
-                            <td className="text-right p-4 font-mono font-medium">
-                              {asset.currentPrice > 0 ? (
-                                <div>
-                                  <span>{formatCurrency(asset.currentPrice)}</span>
-                                  {asset.currency && asset.currency !== 'BRL' && asset.originalPrice && asset.originalPrice > 0 && (
-                                    <p className="text-[10px] text-muted-foreground">
-                                      {formatCurrency(asset.originalPrice, asset.currency)}
-                                    </p>
-                                  )}
-                                </div>
-                              ) : '—'}
-                            </td>
-                            <td className="text-right p-4">
-                              {asset.currentPrice > 0 ? (
-                                <span className={`inline-flex items-center gap-1 font-mono text-sm ${isPositive ? 'text-gain' : 'text-loss'}`}>
-                                  {isPositive ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
-                                  {formatPercent(asset.change24h)}
-                                </span>
-                              ) : '—'}
-                            </td>
-                            <td className="text-right p-4 font-mono font-medium">
-                              {asset.currentPrice > 0 ? formatCurrency(assetTotal) : '—'}
-                            </td>
-                            <td className="text-right p-4">
-                              {asset.currentPrice > 0 ? (
-                                <div className={`font-mono ${isProfitable ? 'text-gain' : 'text-loss'}`}>
-                                  <span className="font-medium">{formatCurrency(profit)}</span>
-                                  <p className="text-xs">{formatPercent(profitPct)}</p>
-                                </div>
-                              ) : '—'}
-                            </td>
-                            <td className="text-right p-4 font-mono text-muted-foreground">{asset.allocation}%</td>
-                            <td className="text-right p-4" onClick={e => e.stopPropagation()}>
-                              <div className="flex items-center justify-end gap-1">
-                                {holdingRow && (
-                                  <>
-                                    <button
-                                      onClick={() => handleSell(holdingRow, asset)}
-                                      className="h-7 px-2 rounded flex items-center justify-center gap-1 text-[10px] font-semibold text-[hsl(var(--loss-foreground))] bg-[hsl(var(--loss)/0.1)] hover:bg-[hsl(var(--loss)/0.2)] transition-colors"
-                                      title="Vender"
-                                    >
-                                      <ArrowDownRight className="h-3 w-3" />
-                                      Vender
-                                    </button>
-                                    <button
-                                      onClick={() => { setEditingHolding(holdingRow); setModalOpen(true); }}
-                                      className="h-7 w-7 rounded flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                                    >
-                                      <Pencil className="h-3.5 w-3.5" />
-                                    </button>
-                                    <button
-                                      onClick={() => handleDelete(holdingRow.id)}
-                                      className="h-7 w-7 rounded flex items-center justify-center text-muted-foreground hover:text-[hsl(var(--loss-foreground))] hover:bg-[hsl(var(--loss)/0.1)] transition-colors"
-                                    >
-                                      <Trash2 className="h-3.5 w-3.5" />
-                                    </button>
-                                  </>
-                                )}
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  );
-                })}
-              </table>
+            {/* Grade unificada por ticker (desktop) */}
+            <div className="hidden overflow-x-auto md:block">
+              <UnifiedHoldings
+                assets={filtered}
+                holdings={holdings}
+                viewMode={viewMode}
+                selected={selected}
+                onToggleIds={toggleIds}
+                onOpen={(a) => navigate(assetRoute(a.ticker, a.broker, a.holdingId))}
+                onEdit={(h) => { setEditingHolding(h); setModalOpen(true); }}
+                onSell={handleSell}
+                onDelete={handleDelete}
+                brokerFilter={brokerFilter}
+                onBrokerFilter={setBrokerFilter}
+              />
             </div>
+
 
             {/* Mobile Card View — agrupado por corretora */}
             <div className="md:hidden">
