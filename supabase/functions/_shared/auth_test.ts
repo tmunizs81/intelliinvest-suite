@@ -85,11 +85,18 @@ Deno.test("rotas de usuário não aceitam apenas o cron secret", async () => {
   }
 });
 
+/** Remove comentários para não acusar menções em documentação. */
+function stripComments(src: string): string {
+  return src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|\s)\/\/[^\n]*/g, "");
+}
+
 Deno.test("nenhuma função deriva identidade de JWT não verificado (atob)", async () => {
   const fns = await listFunctions();
   const offenders = fns
-    .filter((f) => /atob\s*\([^)]*\)/.test(f.source) && /sub\b/.test(f.source))
+    .map((f) => ({ name: f.name, code: stripComments(f.source) }))
+    .filter((f) => /atob\s*\([^)]*\)/.test(f.code) && /\bsub\b/.test(f.code))
     .map((f) => f.name);
+
 
   assertEquals(
     offenders,
