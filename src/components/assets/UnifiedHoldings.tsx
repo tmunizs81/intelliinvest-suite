@@ -863,6 +863,18 @@ export function aggregationKeyFor(
   return `${ticker}::${a.holdingId ?? `${broker}::${a.name}`}`;
 }
 
+/**
+ * Detecta (sem lançar) imóveis que teriam sido unificados. Usado na UI para
+ * exibir um aviso amigável em vez de quebrar a tela.
+ */
+export interface PropertyMergeIssue { ticker: string; lots: number }
+
+export function detectPropertyMergeIssues(list: TickerAggregate[]): PropertyMergeIssue[] {
+  return list
+    .filter((agg) => isPropertyAsset(agg) && agg.lots.length > 1)
+    .map((agg) => ({ ticker: agg.ticker, lots: agg.lots.length }));
+}
+
 /** Invariante: nenhuma linha de imóvel pode conter mais de um lote. */
 export function assertNoPropertyMerge(list: TickerAggregate[]): TickerAggregate[] {
   list.forEach((agg) => {
