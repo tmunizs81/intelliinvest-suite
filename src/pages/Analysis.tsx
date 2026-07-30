@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { classifyAssetType } from '@/lib/assetClassification';
+import { findHolding } from '@/lib/holdingsIsolation';
 import { useSearchParams, useParams } from 'react-router-dom';
 import { Search, Loader2, RefreshCw, ArrowUpRight, ArrowDownRight, BarChart3, TrendingUp } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
