@@ -76,6 +76,50 @@ const GRID =
 const FOCUS_RING =
   'focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background';
 
+/**
+ * `content-visibility: auto` faz o browser pular layout/paint das linhas fora
+ * da viewport. `contain-intrinsic-size` reserva a altura estimada, evitando
+ * saltos na barra de rolagem — chave para scroll suave em carteiras grandes.
+ */
+const ROW_CV: CSSProperties = { contentVisibility: 'auto', containIntrinsicSize: 'auto 44px' } as CSSProperties;
+const CARD_CV: CSSProperties = { contentVisibility: 'auto', containIntrinsicSize: 'auto 96px' } as CSSProperties;
+
+/** Quantidade inicial de linhas e tamanho de cada lote incremental. */
+const PAGE_SIZE = 40;
+
+/**
+ * Renderização progressiva: monta as primeiras `PAGE_SIZE` linhas na hora e
+ * adiciona os lotes seguintes conforme o sentinela entra na viewport. Mantém o
+ * primeiro paint barato sem quebrar Ctrl+F/scroll (nada é desmontado depois).
+ */
+function useProgressiveList(total: number, deps: unknown[]) {
+  const [limit, setLimit] = useState(PAGE_SIZE);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+
+  // Reinicia ao trocar filtro/ordenação/visão.
+  useEffect(() => { setLimit(PAGE_SIZE); }, deps); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (limit >= total) return;
+    const el = sentinelRef.current;
+    if (!el || typeof IntersectionObserver === 'undefined') { setLimit(total); return; }
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setLimit((prev) => Math.min(prev + PAGE_SIZE, total));
+        }
+      },
+      { rootMargin: '600px 0px' },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [limit, total]);
+
+  return { limit, sentinelRef, hasMore: limit < total };
+}
+
+
+
 /* ------------------------------------------------------------------ *
  * Ordenação persistida
  * ------------------------------------------------------------------ */
