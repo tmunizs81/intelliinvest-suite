@@ -41,9 +41,7 @@ function BrokerAutocomplete({ value, onChange }: { value: string; onChange: (v: 
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
-  const filtered = value.trim()
-    ? BROKERS.filter(b => b.toLowerCase().includes(value.toLowerCase()))
-    : BROKERS;
+  const filtered = searchBrokers(value);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
