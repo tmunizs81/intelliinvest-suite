@@ -70,6 +70,7 @@ NOTA FINAL: Média ponderada (Valuation 30%, Momento 25%, Dividendos 25%, Risco 
     const cacheResult = await withAICache({
       functionName: "ai-scoring",
       prompt: cachePrompt,
+      userId: caller.isInternal ? undefined : caller.subjectId,
       ttlMinutes: 60, // Scoring valid for 1 hour
       callAI: async () => {
         const { response, provider } = await callAI({

@@ -105,6 +105,8 @@ Deno.serve(async (req) => {
     const result = await withAICache({
       functionName: `ai-router:${task}`,
       prompt: spec.cacheKey,
+      // Prompts do router carregam dados da carteira: cache isolado por conta.
+      userId: userId ?? undefined,
       ttlMinutes: spec.ttlMinutes,
       callAI: async () => {
         const { response, provider } = await callDeepSeek({
