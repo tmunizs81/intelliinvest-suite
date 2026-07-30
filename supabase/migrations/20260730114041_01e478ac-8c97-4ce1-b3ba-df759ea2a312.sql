@@ -1,0 +1,1 @@
+DROP INDEX IF EXISTS public.holdings_user_ticker_broker_uidx;
