@@ -80,6 +80,13 @@ export default function Assets() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const [reconcileOpen, setReconcileOpen] = useState(false);
+
+  /** Lotes que exigem decisão manual de corretora (duplicados ou sem corretora). */
+  const reconcilePending = useMemo(
+    () => reconciliationGroups(holdings).reduce((s, g) => s + g.lots.length, 0),
+    [holdings],
+  );
 
   const handleSell = (holdingRow: HoldingRow, asset: Asset) => {
     setSellingHolding(holdingRow);
