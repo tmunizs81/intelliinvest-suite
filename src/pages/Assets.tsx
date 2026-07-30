@@ -206,15 +206,8 @@ export default function Assets() {
     });
   };
 
-  const toggleGroup = (items: Asset[]) => {
-    const ids = items.map(a => a.holdingId).filter(Boolean) as string[];
-    const allSelected = ids.length > 0 && ids.every(id => selected.has(id));
-    setSelected(prev => {
-      const next = new Set(prev);
-      ids.forEach(id => { if (allSelected) next.delete(id); else next.add(id); });
-      return next;
-    });
-  };
+
+
 
   const allVisibleSelected = visibleIds.length > 0 && visibleIds.every(id => selected.has(id));
   const toggleAllVisible = () => {
