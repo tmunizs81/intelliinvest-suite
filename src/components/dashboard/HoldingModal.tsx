@@ -201,10 +201,10 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
     const upper = value.toUpperCase();
     setTicker(upper);
     setUcitsAck(false);
-    // Auto-aplica regra aprendida (ticker → broker/type)
+    // Regra aprendida: o tipo é aplicado, a corretora vira apenas sugestão explícita
     const rule = getRule(upper);
     if (rule) {
-      if (rule.broker && !broker) setBroker(rule.broker);
+      if (rule.broker && !broker) setBrokerSuggestion(rule.broker);
       if (rule.type) setType(rule.type);
     }
     // Auto-classify type as user types
