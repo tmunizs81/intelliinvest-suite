@@ -950,7 +950,8 @@ export function aggregateByTicker(assets: Asset[], holdings: HoldingRow[]): Tick
   });
 
   map.forEach((agg) => agg.lots.sort((x, y) => y.value - x.value));
-  return assertNoPropertyMerge(Array.from(map.values()));
+  // Não lança: a UI avisa o usuário de forma amigável via toast.
+  return Array.from(map.values());
 }
 
 /* ------------------------------------------------------------------ *
