@@ -1693,11 +1693,31 @@ export default function UnifiedHoldings({
 
   /* Um único layout montado por vez: metade dos nós no DOM e zero trabalho duplicado. */
   const isMobile = useIsMobile();
+  /* Carteiras grandes usam virtualização real; as pequenas seguem com o
+     carregamento progressivo (mais simples e sem custo de medição). */
+  const virtualized = viewMode === 'ticker' && aggregates.length > VIRTUALIZE_THRESHOLD;
   const { limit, sentinelRef, hasMore } = useProgressiveList(
-    viewMode === 'ticker' ? aggregates.length : 0,
+    viewMode === 'ticker' && !virtualized ? aggregates.length : 0,
     [classFilter, sort.key, sort.dir, viewMode, isMobile],
   );
   const visibleRows = useMemo(() => aggregates.slice(0, limit), [aggregates, limit]);
+
+  /* Grupos de corretora também entram progressivamente, com skeleton no lugar
+     dos que ainda não montaram — nada de tela em branco por corretora. */
+  const {
+    limit: brokerLimit,
+    sentinelRef: brokerSentinelRef,
+    hasMore: hasMoreBrokers,
+  } = useProgressiveList(viewMode === 'broker' ? brokerGroups.length : 0, [classFilter, viewMode, isMobile]);
+  const visibleBrokerGroups = useMemo(
+    () => brokerGroups.slice(0, brokerLimit),
+    [brokerGroups, brokerLimit],
+  );
+  const pendingBrokerGroups = useMemo(
+    () => brokerGroups.slice(brokerLimit, brokerLimit + 2),
+    [brokerGroups, brokerLimit],
+  );
+
 
   /* ---------- barra de ordenação (mobile) ---------- */
   const mobileSortBar = (
