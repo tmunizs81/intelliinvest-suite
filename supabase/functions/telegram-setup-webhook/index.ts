@@ -1,4 +1,4 @@
-
+import { requireUser } from "../_shared/auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -10,6 +10,10 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+
+  // Reconfigurar o webhook do bot é operação sensível: exige sessão válida.
+  const authed = await requireUser(req);
+  if (authed instanceof Response) return authed;
 
   try {
     const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN");
@@ -23,10 +27,23 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const webhookUrl = `${supabaseUrl}/functions/v1/telegram-webhook`;
 
+    const secretToken = Deno.env.get("TELEGRAM_WEBHOOK_SECRET");
+    if (!secretToken) {
+      return new Response(JSON.stringify({ error: "TELEGRAM_WEBHOOK_SECRET não configurado" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const resp = await fetch(`https://api.telegram.org/bot${botToken}/setWebhook`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url: webhookUrl }),
+      body: JSON.stringify({
+        url: webhookUrl,
+        // O Telegram passa a enviar X-Telegram-Bot-Api-Secret-Token em cada update.
+        secret_token: secretToken,
+        drop_pending_updates: true,
+      }),
     });
 
     const data = await resp.json();
