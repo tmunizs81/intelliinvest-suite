@@ -115,18 +115,19 @@ Deno.serve(async (req) => {
 
   // Somente sessão válida (ou chamada interna cron/service): evita uso do endpoint
   // como proxy gratuito de LLM e vazamento de dados entre contas.
-  const denied = await requireCaller(req);
-  if (denied) return denied;
+  const caller = await resolveCaller(req);
+  if (caller instanceof Response) return caller;
 
   const emptyFallback = (reason: string) => new Response(
     JSON.stringify({ patterns: [], _provider: "local", _fallback: true, _reason: reason }),
     { headers: { ...corsHeaders, "Content-Type": "application/json" } }
   );
 
-  if (isRateLimited(req)) {
-    console.warn("Rate limited, returning empty patterns");
-    return emptyFallback("limite de chamadas");
+  if (!caller.isInternal) {
+    const limited = await enforceRateLimit(req, caller.subjectId, RATE_RULE);
+    if (limited) return emptyFallback("limite de chamadas");
   }
+
 
   try {
     const { tickers, assets } = await req.json();
