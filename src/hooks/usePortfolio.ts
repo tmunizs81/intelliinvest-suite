@@ -200,6 +200,8 @@ export function usePortfolio() {
         const currentPricePerUnit = item.quantity > 0 ? result.currentValue / item.quantity : item.avg_price;
         totalValue += result.currentValue;
         return {
+          holdingId: item.id,
+          broker: item.broker || null,
           ticker: item.ticker,
           name: item.name,
           type: 'Renda Fixa' as Asset['type'],
