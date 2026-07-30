@@ -12,41 +12,136 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  # Preview local usado pelos testes E2E.
-  E2E_BASE_URL: http://localhost:8080
+  E2E_BASE_URL: http://127.0.0.1:8080
 
 jobs:
   # ---------------------------------------------------------------------------
-  # 1) Checagens estáticas: token/segredo do Telegram, escopo de cache por conta,
-  #    guardas de autenticação nas Edge Functions. Sempre obrigatório.
+  # 0) Dependências: instala uma vez, com cache, e publica o hash para os demais
+  #    jobs reaproveitarem o cache do bun sem reinstalar do zero.
   # ---------------------------------------------------------------------------
-  static-security:
-    name: Checagens estáticas de token e isolamento
+  setup:
+    name: Dependências (cache)
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 8
+    outputs:
+      lock-hash: ${{ steps.hash.outputs.value }}
     steps:
       - uses: actions/checkout@v4
-
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
 
+      - id: hash
+        run: echo "value=${{ hashFiles('bun.lockb', 'bun.lock', 'package-lock.json') }}" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-cache-${{ runner.os }}-${{ steps.hash.outputs.value }}
+          restore-keys: bun-cache-${{ runner.os }}-
+
       - name: Instalar dependências
         run: bun install --frozen-lockfile
 
+  # ---------------------------------------------------------------------------
+  # 1) Build de produção, cacheado por conteúdo de src/. Reaproveitado pelo E2E,
+  #    evitando um segundo `vite build` no mesmo PR.
+  # ---------------------------------------------------------------------------
+  build:
+    name: Build (cacheado)
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    needs: setup
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-cache-${{ runner.os }}-${{ needs.setup.outputs.lock-hash }}
+          restore-keys: bun-cache-${{ runner.os }}-
+
+      - name: Cache do dist por conteúdo do código
+        id: dist-cache
+        uses: actions/cache@v4
+        with:
+          path: dist
+          key: dist-${{ runner.os }}-${{ hashFiles('src/**', 'index.html', 'vite.config.ts', 'tailwind.config.ts', 'bun.lockb', 'bun.lock') }}
+
+      - name: Instalar dependências
+        if: steps.dist-cache.outputs.cache-hit != 'true'
+        run: bun install --frozen-lockfile
+
+      - name: Cache do transform do Vite
+        if: steps.dist-cache.outputs.cache-hit != 'true'
+        uses: actions/cache@v4
+        with:
+          path: node_modules/.vite
+          key: vite-${{ runner.os }}-${{ hashFiles('src/**') }}
+          restore-keys: vite-${{ runner.os }}-
+
+      - name: Build de produção
+        if: steps.dist-cache.outputs.cache-hit != 'true'
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+          VITE_SUPABASE_PROJECT_ID: ${{ secrets.VITE_SUPABASE_PROJECT_ID }}
+        run: bun run build
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist
+          retention-days: 1
+
+  # ---------------------------------------------------------------------------
+  # 2) Checagens estáticas — três frentes em paralelo (matrix), todas rápidas.
+  #    Rodam ao mesmo tempo que o build.
+  # ---------------------------------------------------------------------------
+  static-security:
+    name: Estático (${{ matrix.check }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: setup
+    strategy:
+      fail-fast: false
+      matrix:
+        check: [typecheck, security-tests, unit-tests, secret-scan]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-cache-${{ runner.os }}-${{ needs.setup.outputs.lock-hash }}
+          restore-keys: bun-cache-${{ runner.os }}-
+
+      - name: Instalar dependências
+        if: matrix.check != 'secret-scan'
+        run: bun install --frozen-lockfile
+
       - name: Typecheck
+        if: matrix.check == 'typecheck'
         run: bunx tsc --noEmit
 
       - name: Suíte de segurança (multi-tenancy + cache escopado)
+        if: matrix.check == 'security-tests'
         run: bun run test:security
 
       - name: Suíte completa de testes unitários
+        if: matrix.check == 'unit-tests'
         run: bun run test
 
-      - name: Varredura extra por segredos hardcoded
+      - name: Varredura por segredos hardcoded
+        if: matrix.check == 'secret-scan'
         run: |
           set -euo pipefail
-          # Nenhum bot token do Telegram (formato 123456789:AA...) pode entrar no repo.
           if grep -rInE '[0-9]{8,10}:[A-Za-z0-9_-]{30,}' \
                --include='*.ts' --include='*.tsx' --include='*.json' \
                --include='*.yml' --include='*.sh' \
@@ -54,7 +149,6 @@ jobs:
             echo "::error::Possível bot token do Telegram commitado."
             exit 1
           fi
-          # A publishable key nunca pode ser usada como bearer de sessão.
           if grep -rIn 'Authorization.*PUBLISHABLE' --include='*.ts' --include='*.tsx' src; then
             echo "::error::Publishable key usada como token de sessão."
             exit 1
@@ -62,17 +156,16 @@ jobs:
           echo "Nenhum segredo detectado."
 
   # ---------------------------------------------------------------------------
-  # 2) E2E sequencial com duas contas reais: UI, endpoints e cache não podem
-  #    misturar dados entre usuários.
+  # 3) E2E sequencial com duas contas. Depende só do build (roda em paralelo com
+  #    as checagens estáticas). Playwright com 1 worker: a ordem login A ->
+  #    logout -> login B é parte da verificação e não pode ser paralelizada.
   # ---------------------------------------------------------------------------
   e2e-isolation:
     name: E2E de isolamento sequencial (2 contas)
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    needs: static-security
+    needs: [setup, build]
     steps:
-      - uses: actions/checkout@v4
-
       - name: Exigir contas de teste configuradas
         env:
           TEST_USER_A: ${{ secrets.TEST_USER_A }}
@@ -84,40 +177,65 @@ jobs:
             exit 1
           fi
 
+      - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
 
+      - uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-cache-${{ runner.os }}-${{ needs.setup.outputs.lock-hash }}
+          restore-keys: bun-cache-${{ runner.os }}-
+
       - name: Instalar dependências
         run: bun install --frozen-lockfile
 
-      - name: Instalar Chromium do Playwright
+      - name: Versão do Playwright (chave de cache do browser)
+        id: pw
+        run: |
+          v=$(bunx playwright --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+
+      - name: Cache do Chromium do Playwright
+        id: pw-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}
+
+      - name: Instalar Chromium (só em cache miss)
+        if: steps.pw-cache.outputs.cache-hit != 'true'
         run: bunx playwright install --with-deps chromium
 
-      - name: Build de produção
-        env:
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
-          VITE_SUPABASE_PROJECT_ID: ${{ secrets.VITE_SUPABASE_PROJECT_ID }}
-        run: bun run build
+      - name: Dependências de sistema (cache hit)
+        if: steps.pw-cache.outputs.cache-hit == 'true'
+        run: bunx playwright install-deps chromium
 
-      - name: Subir preview e aguardar
+      - name: Baixar build do job anterior
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+
+      - name: Servir build estático e aguardar
         run: |
-          bunx vite preview --port 8080 --host 127.0.0.1 &
+          bunx --yes serve -s dist -l 8080 > /tmp/preview.log 2>&1 &
           for i in $(seq 1 40); do
             curl -sf -o /dev/null "$E2E_BASE_URL" && exit 0
             sleep 2
           done
           echo "::error::Preview não respondeu em 80s."
+          cat /tmp/preview.log
           exit 1
 
-      - name: E2E de isolamento (falha bloqueia o merge)
+      - name: E2E de isolamento (serial, falha bloqueia o merge)
         env:
           TEST_USER_A: ${{ secrets.TEST_USER_A }}
           TEST_PASS_A: ${{ secrets.TEST_PASS_A }}
           TEST_USER_B: ${{ secrets.TEST_USER_B }}
           TEST_PASS_B: ${{ secrets.TEST_PASS_B }}
-        run: bun run test:e2e:isolation
+        run: bun run test:e2e:isolation -- --workers=1 --project=chromium
 
       - name: Publicar relatório em caso de falha
         if: failure()
@@ -130,7 +248,7 @@ jobs:
           retention-days: 7
 
   # ---------------------------------------------------------------------------
-  # 3) Gate único para o branch protection: exige os dois jobs verdes.
+  # 4) Gate único para o branch protection.
   # ---------------------------------------------------------------------------
   isolation-gate:
     name: Gate de isolamento
