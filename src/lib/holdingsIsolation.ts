@@ -13,8 +13,9 @@ export interface HoldingLike {
   id: string;
   ticker: string;
   broker?: string | null;
-  [k: string]: unknown;
 }
+
+export type ReassignCheck = { ok: boolean; reason?: string };
 
 /** Normaliza a corretora: trim + string vazia/null viram `null`. */
 export function normalizeBroker(broker?: string | null): string | null {
