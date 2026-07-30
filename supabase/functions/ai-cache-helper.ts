@@ -18,6 +18,13 @@ async function sha256(text: string): Promise<string> {
 interface CacheOptions {
   functionName: string;
   prompt: string;
+  /**
+   * Isolamento por conta. Quando informado, a entrada de cache pertence
+   * exclusivamente a este usuário — nunca é servida a outra conta, mesmo que
+   * o prompt seja byte-a-byte idêntico. Obrigatório para qualquer prompt que
+   * contenha dados da carteira do usuário.
+   */
+  userId?: string;
   ttlMinutes?: number;
   callAI: () => Promise<{ text: string; provider: string; tokensUsed?: number }>;
 }
@@ -30,8 +37,10 @@ interface CacheResult {
 }
 
 export async function withAICache(options: CacheOptions): Promise<CacheResult> {
-  const { functionName, prompt, ttlMinutes = 60, callAI } = options;
-  const hash = await sha256(prompt);
+  const { functionName, prompt, userId, ttlMinutes = 60, callAI } = options;
+  // O escopo entra no material do hash: contas diferentes nunca colidem.
+  const scope = userId ? `u:${userId}` : "shared";
+  const hash = await sha256(`${scope}\n${functionName}\n${prompt}`);
 
   const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
   const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
