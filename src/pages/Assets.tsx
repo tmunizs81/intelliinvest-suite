@@ -21,7 +21,7 @@ import { BrokerLogo, preloadBrokers } from '@/lib/brokerLogos';
 import { useBrokerLogoSettings, setLogoDensity } from '@/lib/brokerLogoSettings';
 import BrokerReconciliationModal from '@/components/dashboard/BrokerReconciliationModal';
 import { reconciliationGroups, assetRoute, NO_BROKER, brokerLabel } from '@/lib/holdingsIsolation';
-import UnifiedHoldings, { aggregationKeyFor, matchesQuery, loadSearchQuery, saveSearchQuery, type AssetsViewMode } from '@/components/assets/UnifiedHoldings';
+import UnifiedHoldings, { HoldingsSkeleton, aggregationKeyFor, matchesQuery, loadSearchQuery, saveSearchQuery, type AssetsViewMode } from '@/components/assets/UnifiedHoldings';
 import { useDebounce } from '@/hooks/useDebounce';
 
 
@@ -553,10 +553,7 @@ export default function Assets() {
       {/* Table */}
       <div className="rounded-lg border border-border bg-card overflow-hidden">
         {loading && assets.length === 0 ? (
-          <div className="flex items-center justify-center py-16 gap-3">
-            <Loader2 className="h-6 w-6 animate-spin text-primary" />
-            <span className="text-muted-foreground">Carregando ativos...</span>
-          </div>
+          <HoldingsSkeleton rows={8} />
         ) : filtered.length === 0 ? (
           <div className="p-12 text-center">
             <p className="text-muted-foreground mb-4">

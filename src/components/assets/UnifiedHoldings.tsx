@@ -1,4 +1,5 @@
-import { useMemo, useState, useEffect, useCallback, useRef, memo, forwardRef, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
+import { useMemo, useState, useEffect, useLayoutEffect, useCallback, useRef, memo, forwardRef, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
+import { useWindowVirtualizer } from '@tanstack/react-virtual';
 import {
   ChevronRight, ChevronDown, Pencil, Trash2, ArrowUpRight, ArrowDownRight, ArrowUp, ArrowDown,
   AlertTriangle,
@@ -89,19 +90,83 @@ const NOOP = () => {};
 
 /** Quantidade inicial de linhas e tamanho de cada lote incremental. */
 const PAGE_SIZE = 40;
+/** A partir daqui vale a pena virtualizar de verdade (desmontar off-screen). */
+export const VIRTUALIZE_THRESHOLD = 60;
+/** Alturas estimadas usadas pelo virtualizador antes da medição real. */
+const ROW_EST = 44;
+const CARD_EST = 96;
 
 /**
  * Renderização progressiva: monta as primeiras `PAGE_SIZE` linhas na hora e
  * adiciona os lotes seguintes conforme o sentinela entra na viewport. Mantém o
  * primeiro paint barato sem quebrar Ctrl+F/scroll (nada é desmontado depois).
  */
-const ListSentinel = forwardRef<HTMLDivElement, { remaining: number }>(function ListSentinel({ remaining }, ref) {
+const ListSentinel = forwardRef<HTMLDivElement, { remaining: number; rowHeight?: number }>(
+  function ListSentinel({ remaining, rowHeight = 44 }, ref) {
+    const ghosts = Math.min(remaining, 4);
+    return (
+      <div ref={ref} aria-hidden>
+        {Array.from({ length: ghosts }).map((_, i) => (
+          <SkeletonRow key={i} height={rowHeight} opacity={1 - i * 0.2} />
+        ))}
+      </div>
+    );
+  },
+);
+
+/** Linha fantasma usada enquanto o lote seguinte é montado. */
+function SkeletonRow({ height, opacity = 1 }: { height: number; opacity?: number }) {
   return (
-    <div ref={ref} className="px-4 py-3 text-center text-[11px] text-muted-foreground" aria-hidden>
-      Carregando mais {remaining} {remaining === 1 ? 'linha' : 'linhas'}…
+    <div
+      className="flex items-center gap-3 border-b border-border/40 px-3 md:px-4"
+      style={{ height, opacity }}
+    >
+      <div className="h-3.5 w-3.5 shrink-0 animate-pulse rounded bg-muted" />
+      <div className="h-3 w-24 animate-pulse rounded bg-muted" />
+      <div className="ml-auto flex items-center gap-3">
+        <div className="h-3 w-16 animate-pulse rounded bg-muted" />
+        <div className="hidden h-3 w-20 animate-pulse rounded bg-muted md:block" />
+        <div className="hidden h-3 w-12 animate-pulse rounded bg-muted md:block" />
+      </div>
     </div>
   );
-});
+}
+
+/**
+ * Skeleton público da lista — usado pela página enquanto a carteira carrega,
+ * para não trocar um spinner genérico por um salto de layout.
+ */
+export function HoldingsSkeleton({ rows = 8, mobile = false }: { rows?: number; mobile?: boolean }) {
+  return (
+    <div aria-busy="true" aria-label="Carregando carteira">
+      <div className="flex items-center gap-3 border-b border-border bg-muted/30 px-3 py-2 md:px-4">
+        <div className="h-3 w-28 animate-pulse rounded bg-muted" />
+        <div className="ml-auto h-3 w-40 animate-pulse rounded bg-muted" />
+      </div>
+      {Array.from({ length: rows }).map((_, i) => (
+        <SkeletonRow key={i} height={mobile ? CARD_EST : ROW_EST} />
+      ))}
+    </div>
+  );
+}
+
+/** Placeholder de um grupo de corretora ainda não montado. */
+function BrokerGroupSkeleton({ label, rows }: { label: string; rows: number }) {
+  return (
+    <div aria-busy="true">
+      <div className="flex items-center gap-2.5 border-y border-border/60 bg-muted/40 px-3 py-2 md:px-4">
+        <div className="h-4 w-4 animate-pulse rounded bg-muted" />
+        <span className="text-[12px] font-semibold text-muted-foreground">{label}</span>
+        <span className="text-[10px] text-muted-foreground/70">
+          montando {rows} {rows === 1 ? 'posição' : 'posições'}…
+        </span>
+      </div>
+      {Array.from({ length: Math.min(rows, 3) }).map((_, i) => (
+        <SkeletonRow key={i} height={ROW_EST} opacity={1 - i * 0.25} />
+      ))}
+    </div>
+  );
+}
 
 function useProgressiveList(total: number, deps: unknown[]) {
   const [limit, setLimit] = useState(PAGE_SIZE);
@@ -120,14 +185,95 @@ function useProgressiveList(total: number, deps: unknown[]) {
           setLimit((prev) => Math.min(prev + PAGE_SIZE, total));
         }
       },
-      { rootMargin: '600px 0px' },
+      // Margem generosa: o lote seguinte já começa a montar bem antes de
+      // aparecer, então o scroll nunca encontra o sentinela vazio.
+      { rootMargin: '1200px 0px' },
     );
     io.observe(el);
     return () => io.disconnect();
   }, [limit, total]);
 
+  /* Pré-fetch em tempo ocioso: mesmo parado, o browser adianta um lote extra
+     enquanto não há trabalho na main thread. Evita travadas no primeiro flick. */
+  useEffect(() => {
+    if (limit >= total) return;
+    const w = window as Window & {
+      requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
+      cancelIdleCallback?: (id: number) => void;
+    };
+    if (typeof w.requestIdleCallback !== 'function') return;
+    const id = w.requestIdleCallback(
+      () => setLimit((prev) => (prev >= total ? prev : Math.min(prev + PAGE_SIZE, total))),
+      { timeout: 1200 },
+    );
+    return () => w.cancelIdleCallback?.(id);
+  }, [limit, total]);
+
   return { limit, sentinelRef, hasMore: limit < total };
 }
+
+/**
+ * Virtualização real (janela do documento): apenas as linhas visíveis ficam
+ * montadas. Alturas são medidas de verdade, então linhas expandidas continuam
+ * funcionando. `overscan` alto = pré-render das próximas linhas antes do scroll.
+ */
+function VirtualRows<T>({
+  items,
+  estimateSize,
+  overscan = 12,
+  getKey,
+  renderItem,
+}: {
+  items: T[];
+  estimateSize: number;
+  overscan?: number;
+  getKey: (item: T, index: number) => string;
+  renderItem: (item: T) => ReactNode;
+}) {
+  const parentRef = useRef<HTMLDivElement | null>(null);
+  const [scrollMargin, setScrollMargin] = useState(0);
+
+  useLayoutEffect(() => {
+    const el = parentRef.current;
+    if (!el) return;
+    const update = () => setScrollMargin(el.getBoundingClientRect().top + window.scrollY);
+    update();
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, [items.length]);
+
+  const virtualizer = useWindowVirtualizer({
+    count: items.length,
+    estimateSize: () => estimateSize,
+    overscan,
+    scrollMargin,
+    getItemKey: (index) => getKey(items[index], index),
+  });
+
+  const virtualItems = virtualizer.getVirtualItems();
+
+  return (
+    <div ref={parentRef} style={{ height: virtualizer.getTotalSize(), position: 'relative' }}>
+      {virtualItems.map((vi) => (
+        <div
+          key={vi.key}
+          data-index={vi.index}
+          ref={virtualizer.measureElement}
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            transform: `translateY(${vi.start - scrollMargin}px)`,
+          }}
+        >
+          {renderItem(items[vi.index])}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 
 
 
@@ -1547,11 +1693,31 @@ export default function UnifiedHoldings({
 
   /* Um único layout montado por vez: metade dos nós no DOM e zero trabalho duplicado. */
   const isMobile = useIsMobile();
+  /* Carteiras grandes usam virtualização real; as pequenas seguem com o
+     carregamento progressivo (mais simples e sem custo de medição). */
+  const virtualized = viewMode === 'ticker' && aggregates.length > VIRTUALIZE_THRESHOLD;
   const { limit, sentinelRef, hasMore } = useProgressiveList(
-    viewMode === 'ticker' ? aggregates.length : 0,
+    viewMode === 'ticker' && !virtualized ? aggregates.length : 0,
     [classFilter, sort.key, sort.dir, viewMode, isMobile],
   );
   const visibleRows = useMemo(() => aggregates.slice(0, limit), [aggregates, limit]);
+
+  /* Grupos de corretora também entram progressivamente, com skeleton no lugar
+     dos que ainda não montaram — nada de tela em branco por corretora. */
+  const {
+    limit: brokerLimit,
+    sentinelRef: brokerSentinelRef,
+    hasMore: hasMoreBrokers,
+  } = useProgressiveList(viewMode === 'broker' ? brokerGroups.length : 0, [classFilter, viewMode, isMobile]);
+  const visibleBrokerGroups = useMemo(
+    () => brokerGroups.slice(0, brokerLimit),
+    [brokerGroups, brokerLimit],
+  );
+  const pendingBrokerGroups = useMemo(
+    () => brokerGroups.slice(brokerLimit, brokerLimit + 2),
+    [brokerGroups, brokerLimit],
+  );
+
 
   /* ---------- barra de ordenação (mobile) ---------- */
   const mobileSortBar = (
@@ -1668,7 +1834,23 @@ export default function UnifiedHoldings({
         <div className="overflow-x-auto">
           <div className="min-w-[1100px]">
             {header}
-            {viewMode === 'ticker' && (
+            {viewMode === 'ticker' && (virtualized ? (
+              <VirtualRows
+                items={aggregates}
+                estimateSize={ROW_EST}
+                overscan={14}
+                getKey={(agg) => agg.key}
+                renderItem={(agg) => (
+                  <TickerRow
+                    agg={agg}
+                    expanded={expanded.has(agg.key)}
+                    onToggleExpand={toggleExpand}
+                    showBrokerColumn
+                    {...rowProps}
+                  />
+                )}
+              />
+            ) : (
               <>
                 {visibleRows.map((agg) => (
                   <TickerRow
@@ -1680,27 +1862,39 @@ export default function UnifiedHoldings({
                     {...rowProps}
                   />
                 ))}
-                {hasMore && <ListSentinel ref={sentinelRef} remaining={aggregates.length - visibleRows.length} />}
+                {hasMore && (
+                  <ListSentinel ref={sentinelRef} rowHeight={ROW_EST} remaining={aggregates.length - visibleRows.length} />
+                )}
+              </>
+            ))}
+
+            {viewMode === 'broker' && (
+              <>
+                {visibleBrokerGroups.map((g) => (
+                  <div key={g.broker}>
+                    {brokerHeader(g)}
+                    {!collapsedBrokers.has(g.broker) &&
+                      g.rows.map((agg) => (
+                        <TickerRow
+                          key={`${g.broker}::${agg.key}`}
+                          agg={agg}
+                          expanded={false}
+                          onToggleExpand={NOOP}
+                          showBrokerColumn={false}
+                          {...rowProps}
+                        />
+                      ))}
+                  </div>
+                ))}
+                {hasMoreBrokers && (
+                  <div ref={brokerSentinelRef}>
+                    {pendingBrokerGroups.map((g) => (
+                      <BrokerGroupSkeleton key={g.broker} label={g.label} rows={g.rows.length} />
+                    ))}
+                  </div>
+                )}
               </>
             )}
-
-            {viewMode === 'broker' &&
-              brokerGroups.map((g) => (
-                <div key={g.broker}>
-                  {brokerHeader(g)}
-                  {!collapsedBrokers.has(g.broker) &&
-                    g.rows.map((agg) => (
-                      <TickerRow
-                        key={`${g.broker}::${agg.key}`}
-                        agg={agg}
-                        expanded={false}
-                        onToggleExpand={NOOP}
-                        showBrokerColumn={false}
-                        {...rowProps}
-                      />
-                    ))}
-                </div>
-              ))}
           </div>
         </div>
       )}
@@ -1709,7 +1903,24 @@ export default function UnifiedHoldings({
       {isMobile && (
         <div>
           {mobileSortBar}
-          {viewMode === 'ticker' && (
+          {viewMode === 'ticker' && (virtualized ? (
+            <VirtualRows
+              items={aggregates}
+              estimateSize={CARD_EST}
+              overscan={8}
+              getKey={(agg) => agg.key}
+              renderItem={(agg) => (
+                <MobileCard
+                  agg={agg}
+                  expanded={expanded.has(agg.key)}
+                  onToggleExpand={toggleExpand}
+                  showBrokerColumn
+                  showBrokers
+                  {...rowProps}
+                />
+              )}
+            />
+          ) : (
             <>
               {visibleRows.map((agg) => (
                 <MobileCard
@@ -1722,30 +1933,43 @@ export default function UnifiedHoldings({
                   {...rowProps}
                 />
               ))}
-              {hasMore && <ListSentinel ref={sentinelRef} remaining={aggregates.length - visibleRows.length} />}
+              {hasMore && (
+                <ListSentinel ref={sentinelRef} rowHeight={CARD_EST} remaining={aggregates.length - visibleRows.length} />
+              )}
+            </>
+          ))}
+
+          {viewMode === 'broker' && (
+            <>
+              {visibleBrokerGroups.map((g) => (
+                <div key={g.broker}>
+                  {brokerHeader(g, true)}
+                  {!collapsedBrokers.has(g.broker) &&
+                    g.rows.map((agg) => (
+                      <MobileCard
+                        key={`${g.broker}::${agg.key}`}
+                        agg={agg}
+                        expanded={false}
+                        onToggleExpand={NOOP}
+                        showBrokerColumn={false}
+                        showBrokers={false}
+                        {...rowProps}
+                      />
+                    ))}
+                </div>
+              ))}
+              {hasMoreBrokers && (
+                <div ref={brokerSentinelRef}>
+                  {pendingBrokerGroups.map((g) => (
+                    <BrokerGroupSkeleton key={g.broker} label={g.label} rows={g.rows.length} />
+                  ))}
+                </div>
+              )}
             </>
           )}
-
-          {viewMode === 'broker' &&
-            brokerGroups.map((g) => (
-              <div key={g.broker}>
-                {brokerHeader(g, true)}
-                {!collapsedBrokers.has(g.broker) &&
-                  g.rows.map((agg) => (
-                    <MobileCard
-                      key={`${g.broker}::${agg.key}`}
-                      agg={agg}
-                      expanded={false}
-                      onToggleExpand={NOOP}
-                      showBrokerColumn={false}
-                      showBrokers={false}
-                      {...rowProps}
-                    />
-                  ))}
-              </div>
-            ))}
         </div>
       )}
     </div>
+
   );
 }
