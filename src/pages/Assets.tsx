@@ -156,9 +156,9 @@ export default function Assets() {
     });
   }, [visibleIds]);
 
-  /** Quantidade de tickers distintos visíveis (após unificação). */
+  /** Quantidade de linhas distintas visíveis (imóveis nunca são unificados). */
   const tickerCount = useMemo(
-    () => new Set(filtered.map(a => a.ticker.trim().toUpperCase())).size,
+    () => new Set(filtered.map(a => aggregationKeyFor(a))).size,
     [filtered],
   );
 
