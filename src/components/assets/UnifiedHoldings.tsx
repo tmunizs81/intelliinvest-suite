@@ -980,10 +980,15 @@ export default function UnifiedHoldings({
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [collapsedBrokers, setCollapsedBrokers] = useState<Set<string>>(new Set());
   const [sort, setSort] = useState<SortState>(loadSortState);
+  const [classFilter, setClassFilter] = useState<AssetClassFilter>(loadClassFilter);
 
   useEffect(() => {
     try { localStorage.setItem(SORT_STORAGE_KEY, JSON.stringify(sort)); } catch { /* storage indisponível */ }
   }, [sort]);
+
+  useEffect(() => {
+    try { localStorage.setItem(CLASS_STORAGE_KEY, classFilter); } catch { /* storage indisponível */ }
+  }, [classFilter]);
 
   const applySort = useCallback((key: SortKey) => {
     setSort((prev) =>
@@ -1000,15 +1005,38 @@ export default function UnifiedHoldings({
       return next;
     });
 
-  const aggregates = useMemo(
-    () => sortAggregates(aggregateByTicker(assets, holdings), sort),
-    [assets, holdings, sort],
+  const visibleAssets = useMemo(
+    () => filterByClass(assets, classFilter),
+    [assets, classFilter],
   );
+
+  const counts = useMemo(() => {
+    let property = 0;
+    assets.forEach((a) => { if (isPropertyAsset(a)) property += 1; });
+    return { all: assets.length, property, financial: assets.length - property };
+  }, [assets]);
+
+  const aggregates = useMemo(
+    () => sortAggregates(aggregateByTicker(visibleAssets, holdings), sort),
+    [visibleAssets, holdings, sort],
+  );
+
+  /* Aviso amigável: imóveis homônimos jamais podem compartilhar uma linha. */
+  const mergeIssues = useMemo(() => detectPropertyMergeIssues(aggregates), [aggregates]);
+  useEffect(() => {
+    if (mergeIssues.length === 0) return;
+    const list = mergeIssues.map((i) => `${i.ticker} (${i.lots})`).join(', ');
+    toast.warning('Imóveis com o mesmo código detectados', {
+      id: 'property-merge-warning',
+      description: `${list}. Cada imóvel é um bem único — renomeie o código para mantê-los separados nos relatórios.`,
+      duration: 8000,
+    });
+  }, [mergeIssues]);
 
   const brokerGroups = useMemo(() => {
     if (viewMode !== 'broker') return [];
     const map = new Map<string, Asset[]>();
-    assets.forEach((a) => {
+    visibleAssets.forEach((a) => {
       const key = (a.broker || '').trim() || NO_BROKER;
       const arr = map.get(key);
       if (arr) arr.push(a); else map.set(key, [a]);
