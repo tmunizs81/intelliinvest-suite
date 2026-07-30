@@ -1895,9 +1895,81 @@ export default function UnifiedHoldings({
                 )}
               </>
             )}
+          </div>
+        </div>
+      )}
 
+      {/* --------- Mobile: cartões table-like --------- */}
+      {isMobile && (
+        <div>
+          {mobileSortBar}
+          {viewMode === 'ticker' && (virtualized ? (
+            <VirtualRows
+              items={aggregates}
+              estimateSize={CARD_EST}
+              overscan={8}
+              getKey={(agg) => agg.key}
+              renderItem={(agg) => (
+                <MobileCard
+                  agg={agg}
+                  expanded={expanded.has(agg.key)}
+                  onToggleExpand={toggleExpand}
+                  showBrokerColumn
+                  showBrokers
+                  {...rowProps}
+                />
+              )}
+            />
+          ) : (
+            <>
+              {visibleRows.map((agg) => (
+                <MobileCard
+                  key={agg.key}
+                  agg={agg}
+                  expanded={expanded.has(agg.key)}
+                  onToggleExpand={toggleExpand}
+                  showBrokerColumn
+                  showBrokers
+                  {...rowProps}
+                />
+              ))}
+              {hasMore && (
+                <ListSentinel ref={sentinelRef} rowHeight={CARD_EST} remaining={aggregates.length - visibleRows.length} />
+              )}
+            </>
+          ))}
+
+          {viewMode === 'broker' && (
+            <>
+              {visibleBrokerGroups.map((g) => (
+                <div key={g.broker}>
+                  {brokerHeader(g, true)}
+                  {!collapsedBrokers.has(g.broker) &&
+                    g.rows.map((agg) => (
+                      <MobileCard
+                        key={`${g.broker}::${agg.key}`}
+                        agg={agg}
+                        expanded={false}
+                        onToggleExpand={NOOP}
+                        showBrokerColumn={false}
+                        showBrokers={false}
+                        {...rowProps}
+                      />
+                    ))}
+                </div>
+              ))}
+              {hasMoreBrokers && (
+                <div ref={brokerSentinelRef}>
+                  {pendingBrokerGroups.map((g) => (
+                    <BrokerGroupSkeleton key={g.broker} label={g.label} rows={g.rows.length} />
+                  ))}
+                </div>
+              )}
+            </>
+          )}
         </div>
       )}
     </div>
+
   );
 }
