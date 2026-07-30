@@ -12,7 +12,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:security": "vitest run src/test/tenant-isolation.test.ts src/lib/persistentCache.test.ts",
-    "test:e2e:isolation": "playwright test src/test/e2e/user-isolation.e2e.ts"
+    "test:e2e:isolation": "playwright test src/test/e2e/user-isolation.e2e.ts",
+    "test:e2e:holdings": "playwright test src/test/e2e/holdings-property-grouping.e2e.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

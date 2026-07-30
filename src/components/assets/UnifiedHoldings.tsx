@@ -104,13 +104,20 @@ export const SORT_LABELS: Record<SortKey, string> = {
   ticker: 'Ticker',
 };
 
-function sortAggregates(list: TickerAggregate[], sort: SortState): TickerAggregate[] {
+export function sortAggregates(list: TickerAggregate[], sort: SortState): TickerAggregate[] {
   const mult = sort.dir === 'asc' ? 1 : -1;
   return [...list].sort((a, b) => {
-    if (sort.key === 'ticker') return a.ticker.localeCompare(b.ticker) * mult;
+    if (sort.key === 'ticker') {
+      const t = a.ticker.localeCompare(b.ticker) * mult;
+      return t !== 0 ? t : a.key.localeCompare(b.key);
+    }
     const va = a[sort.key] as number;
     const vb = b[sort.key] as number;
-    if (va === vb) return a.ticker.localeCompare(b.ticker);
+    if (va === vb) {
+      // Imóveis homônimos: desempate estável e determinístico pela chave única.
+      const t = a.ticker.localeCompare(b.ticker);
+      return t !== 0 ? t : a.key.localeCompare(b.key);
+    }
     return (va - vb) * mult;
   });
 }
@@ -364,6 +371,7 @@ const TickerRow = memo(function TickerRow({
     <>
       <div
         data-holdings-row
+        data-agg-key={agg.key}
         role="row"
         tabIndex={0}
         aria-selected={allSelected}
@@ -658,7 +666,7 @@ function MobileCard({
   });
 
   return (
-    <div className={`border-b border-border/50 ${allSelected || someSelected ? 'bg-primary/[0.06]' : ''}`}>
+    <div className={`border-b border-border/50 ${allSelected || someSelected ? 'bg-primary/[0.06]' : ''}`} data-holdings-card data-agg-key={agg.key}>
       <div
         data-holdings-row
         role="row"
@@ -800,6 +808,37 @@ function MobileCard({
  * Agregação
  * ------------------------------------------------------------------ */
 
+/**
+ * Imóveis são bens únicos e indivisíveis: dois imóveis podem compartilhar o
+ * mesmo "ticker" (ex.: IMOVEL-TERRASALP) sem serem o mesmo bem. Só ativos
+ * financeiros (fungíveis) podem ser unificados por ticker.
+ */
+export function isPropertyAsset(a: { ticker: string; type: string }): boolean {
+  return a.type === 'Imóvel' || a.ticker.trim().toUpperCase().startsWith('IMOVEL');
+}
+
+/** Chave de agrupamento. Imóveis recebem chave exclusiva por posição. */
+export function aggregationKeyFor(
+  a: { ticker: string; type: string; name?: string; broker?: string | null; holdingId?: string | null },
+): string {
+  const ticker = a.ticker.trim().toUpperCase();
+  if (!isPropertyAsset(a)) return ticker;
+  const broker = (a.broker || '').trim() || NO_BROKER;
+  return `${ticker}::${a.holdingId ?? `${broker}::${a.name}`}`;
+}
+
+/** Invariante: nenhuma linha de imóvel pode conter mais de um lote. */
+export function assertNoPropertyMerge(list: TickerAggregate[]): TickerAggregate[] {
+  list.forEach((agg) => {
+    if (isPropertyAsset(agg) && agg.lots.length > 1) {
+      throw new Error(
+        `Agregação inválida: imóvel ${agg.ticker} unificou ${agg.lots.length} posições distintas.`,
+      );
+    }
+  });
+  return list;
+}
+
 export function aggregateByTicker(assets: Asset[], holdings: HoldingRow[]): TickerAggregate[] {
   const byId = new Map(holdings.map((h) => [h.id, h]));
   const map = new Map<string, TickerAggregate>();
@@ -807,10 +846,7 @@ export function aggregateByTicker(assets: Asset[], holdings: HoldingRow[]): Tick
   assets.forEach((a) => {
     const ticker = a.ticker.trim().toUpperCase();
     const broker = (a.broker || '').trim() || NO_BROKER;
-    // Imóveis são bens únicos: mesmo com ticker igual, cada posição é um
-    // imóvel distinto e NUNCA deve ser fundido com outro.
-    const isProperty = a.type === 'Imóvel' || ticker.startsWith('IMOVEL');
-    const key = isProperty ? `${ticker}::${a.holdingId ?? `${broker}::${a.name}`}` : ticker;
+    const key = aggregationKeyFor(a);
     const value = a.currentPrice * a.quantity;
     const cost = a.avgPrice * a.quantity;
     const lot: TickerLot = {
@@ -866,7 +902,7 @@ export function aggregateByTicker(assets: Asset[], holdings: HoldingRow[]): Tick
   });
 
   map.forEach((agg) => agg.lots.sort((x, y) => y.value - x.value));
-  return Array.from(map.values());
+  return assertNoPropertyMerge(Array.from(map.values()));
 }
 
 /* ------------------------------------------------------------------ *
