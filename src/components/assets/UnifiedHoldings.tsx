@@ -1,12 +1,16 @@
 import { useMemo, useState, useEffect, useCallback, memo, type KeyboardEvent, type ReactNode } from 'react';
 import {
   ChevronRight, ChevronDown, Pencil, Trash2, ArrowUpRight, ArrowDownRight, ArrowUp, ArrowDown,
+  AlertTriangle,
 } from 'lucide-react';
 import { type Asset, formatCurrency, formatPercent } from '@/lib/mockData';
 import type { HoldingRow } from '@/hooks/usePortfolio';
 import { BrokerLogo } from '@/lib/brokerLogos';
 import { NO_BROKER } from '@/lib/holdingsIsolation';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
+} from '@/components/ui/dialog';
 import { toast } from 'sonner';
 
 /* ------------------------------------------------------------------ *
