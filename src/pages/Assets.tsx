@@ -83,6 +83,13 @@ export default function Assets() {
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [reconcileOpen, setReconcileOpen] = useState(false);
+  /** Visão da carteira: tickers unificados (padrão) ou agrupada por corretora. */
+  const [viewMode, setViewMode] = useState<AssetsViewMode>(() => {
+    const saved = typeof window !== 'undefined' ? localStorage.getItem('assets:viewMode') : null;
+    return saved === 'broker' ? 'broker' : 'ticker';
+  });
+  useEffect(() => { localStorage.setItem('assets:viewMode', viewMode); }, [viewMode]);
+
 
   /** Lotes que exigem decisão manual de corretora (duplicados ou sem corretora). */
   const reconcilePending = useMemo(
