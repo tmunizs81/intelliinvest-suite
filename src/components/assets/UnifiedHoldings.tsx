@@ -599,15 +599,19 @@ const TickerRow = memo(function TickerRow({
           {hasPrice ? (
             <Info
               tip={
-                <div className="space-y-1">
-                  <p className="font-semibold">Lucro não realizado</p>
-                  <p className="font-mono tabular-nums">Valor atual {formatCurrency(agg.value)}</p>
-                  <p className="font-mono tabular-nums">Custo total {formatCurrency(agg.cost)}</p>
-                  <p className="font-mono tabular-nums">
-                    Resultado {formatCurrency(agg.profit)} ({formatPercent(agg.profitPct)})
-                  </p>
-                  <p className="text-muted-foreground">Não inclui proventos nem custos operacionais.</p>
-                </div>
+                isProp ? (
+                  <PropertyTip agg={agg} metric="profit" />
+                ) : (
+                  <div className="space-y-1">
+                    <p className="font-semibold">Lucro não realizado</p>
+                    <p className="font-mono tabular-nums">Valor atual {formatCurrency(agg.value)}</p>
+                    <p className="font-mono tabular-nums">Custo total {formatCurrency(agg.cost)}</p>
+                    <p className="font-mono tabular-nums">
+                      Resultado {formatCurrency(agg.profit)} ({formatPercent(agg.profitPct)})
+                    </p>
+                    <p className="text-muted-foreground">Não inclui proventos nem custos operacionais.</p>
+                  </div>
+                )
               }
             >
               <span className="font-medium">{formatCurrency(agg.profit)}</span>
@@ -623,16 +627,21 @@ const TickerRow = memo(function TickerRow({
           <AllocationCell
             pct={agg.allocation}
             tip={
-              <div className="space-y-1">
-                <p className="font-semibold">Alocação na carteira</p>
-                <p className="font-mono tabular-nums">
-                  {formatCurrency(agg.value)} = {pctLabel(agg.allocation)} do patrimônio investido.
-                </p>
-                {multi && <BrokerBreakdownTip agg={agg} />}
-              </div>
+              isProp ? (
+                <PropertyTip agg={agg} metric="allocation" />
+              ) : (
+                <div className="space-y-1">
+                  <p className="font-semibold">Alocação na carteira</p>
+                  <p className="font-mono tabular-nums">
+                    {formatCurrency(agg.value)} = {pctLabel(agg.allocation)} do patrimônio investido.
+                  </p>
+                  {multi && <BrokerBreakdownTip agg={agg} />}
+                </div>
+              )
             }
           />
         </div>
+
 
         {/* ações — só para lote único; multi-lote age nas sub-linhas */}
         <div>
