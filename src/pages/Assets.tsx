@@ -665,7 +665,7 @@ export default function Assets() {
                           <tr
                             key={asset.holdingId || `${asset.ticker}::${g.broker}`}
                             className={`border-b border-border/50 hover:bg-accent/50 transition-colors cursor-pointer ${isSelected ? 'bg-primary/5' : ''}`}
-                            onClick={() => navigate(`/analysis?ticker=${asset.ticker}`)}
+                            onClick={() => navigate(assetRoute(asset.ticker, asset.broker, asset.holdingId))}
                           >
                             <td className="p-4" onClick={e => e.stopPropagation()}>
                               <RowCheckbox
@@ -789,7 +789,7 @@ export default function Assets() {
                           <div
                             key={asset.holdingId || `${asset.ticker}::${g.broker}`}
                             className={`p-4 hover:bg-accent/30 active:bg-accent/50 transition-colors cursor-pointer ${isSelected ? 'bg-primary/5' : ''}`}
-                            onClick={() => navigate(`/analysis?ticker=${asset.ticker}`)}
+                            onClick={() => navigate(assetRoute(asset.ticker, asset.broker, asset.holdingId))}
                           >
                             <div className="flex items-start justify-between mb-2">
                               <div className="flex items-start gap-2 min-w-0">
