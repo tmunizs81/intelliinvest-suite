@@ -1069,10 +1069,10 @@ export default function UnifiedHoldings({
           {viewMode === 'ticker' &&
             aggregates.map((agg) => (
               <TickerRow
-                key={agg.ticker}
+                key={agg.key}
                 agg={agg}
-                expanded={expanded.has(agg.ticker)}
-                onToggleExpand={() => toggleExpand(agg.ticker)}
+                expanded={expanded.has(agg.key)}
+                onToggleExpand={() => toggleExpand(agg.key)}
                 showBrokerColumn
                 {...rowProps}
               />
@@ -1085,7 +1085,7 @@ export default function UnifiedHoldings({
                 {!collapsedBrokers.has(g.broker) &&
                   g.rows.map((agg) => (
                     <TickerRow
-                      key={`${g.broker}::${agg.ticker}`}
+                      key={`${g.broker}::${agg.key}`}
                       agg={agg}
                       expanded={false}
                       onToggleExpand={() => {}}
@@ -1104,10 +1104,10 @@ export default function UnifiedHoldings({
         {viewMode === 'ticker' &&
           aggregates.map((agg) => (
             <MobileCard
-              key={agg.ticker}
+              key={agg.key}
               agg={agg}
-              expanded={expanded.has(agg.ticker)}
-              onToggleExpand={() => toggleExpand(agg.ticker)}
+              expanded={expanded.has(agg.key)}
+              onToggleExpand={() => toggleExpand(agg.key)}
               showBrokerColumn
               showBrokers
               {...rowProps}
@@ -1121,7 +1121,7 @@ export default function UnifiedHoldings({
               {!collapsedBrokers.has(g.broker) &&
                 g.rows.map((agg) => (
                   <MobileCard
-                    key={`${g.broker}::${agg.ticker}`}
+                    key={`${g.broker}::${agg.key}`}
                     agg={agg}
                     expanded={false}
                     onToggleExpand={() => {}}
