@@ -38,12 +38,15 @@ Deno.serve(async (req) => {
 
   // Somente sessão válida (ou chamada interna cron/service): evita uso do endpoint
   // como proxy gratuito de LLM e vazamento de dados entre contas.
-  const denied = await requireCaller(req);
-  if (denied) return denied;
+  const caller = await resolveCaller(req);
+  if (caller instanceof Response) return caller;
 
   const started = performance.now();
   let taskName = "unknown";
-  let userId: string | null = null;
+  // Identidade VERIFICADA (assinatura do JWT conferida) — base do rate limit
+  // e da telemetria. Nunca vem de atob(jwt).
+  let userId: string | null = caller.isInternal ? null : caller.subjectId;
+
 
   const finish = (status: number, extras: { cache_hit?: boolean; tokens_in?: number; tokens_out?: number; error?: string } = {}) => {
     logMetric({
