@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { classifyAssetType } from '@/lib/assetClassification';
+import { findHolding } from '@/lib/holdingsIsolation';
 import { useSearchParams, useParams } from 'react-router-dom';
 import { Search, Loader2, RefreshCw, ArrowUpRight, ArrowDownRight, BarChart3, TrendingUp } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -38,7 +39,24 @@ export default function Analysis() {
   const [previousClose, setPreviousClose] = useState(0);
   const [activeTab, setActiveTab] = useState<'tradingview' | 'custom'>('tradingview');
 
-  const asset = assets.find(a => a.ticker === ticker);
+  // Lote específico: ?holding=<id> (id real) ou ?broker=<corretora>.
+  // Sem esses parâmetros, cai no primeiro lote do ticker — nunca funde corretoras.
+  const holdingParam = searchParams.get('holding');
+  const brokerParam = searchParams.get('broker');
+
+  const holding = useMemo(() => {
+    if (holdingParam) return holdings.find(h => h.id === holdingParam) || null;
+    if (brokerParam) return findHolding(holdings, ticker, brokerParam);
+    return holdings.find(h => h.ticker === ticker) || null;
+  }, [holdings, holdingParam, brokerParam, ticker]);
+
+  const asset = useMemo(() => {
+    if (holding) {
+      const exact = assets.find(a => a.holdingId === holding.id);
+      if (exact) return exact;
+    }
+    return assets.find(a => a.ticker === ticker);
+  }, [assets, holding, ticker]);
 
   const fetchHistory = useCallback(async () => {
     if (!ticker) return;
@@ -181,18 +199,12 @@ export default function Analysis() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 rounded-lg border border-border bg-card p-4">
             <div>
               <div className="flex items-center gap-3">
-                {(() => {
-                  const h = holdings.find(x => x.ticker === ticker);
-                  return h?.broker ? <BrokerLogo broker={h.broker} size={22} /> : null;
-                })()}
+                {holding?.broker ? <BrokerLogo broker={holding.broker} size={22} /> : null}
                 <h2 className="text-xl font-bold font-mono">{ticker}</h2>
                 <span className="text-xs px-2 py-1 rounded-full font-medium bg-primary/10 text-primary">
                   {assetType}
                 </span>
-                {(() => {
-                  const h = holdings.find(x => x.ticker === ticker);
-                  return h?.broker ? <span className="text-xs text-muted-foreground">via {h.broker}</span> : null;
-                })()}
+                {holding?.broker ? <span className="text-xs text-muted-foreground">via {holding.broker}</span> : null}
               </div>
               <p className="text-sm text-muted-foreground">{assetName || ticker}</p>
             </div>

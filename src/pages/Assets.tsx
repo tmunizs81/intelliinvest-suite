@@ -18,9 +18,9 @@ import { type Asset, formatCurrency, formatPercent } from '@/lib/mockData';
 import CustodyModal from '@/components/dashboard/CustodyModal';
 import { BrokerLogo, preloadBrokers } from '@/lib/brokerLogos';
 import { useBrokerLogoSettings, setLogoDensity } from '@/lib/brokerLogoSettings';
+import BrokerReconciliationModal from '@/components/dashboard/BrokerReconciliationModal';
+import { reconciliationGroups, assetRoute, NO_BROKER, brokerLabel } from '@/lib/holdingsIsolation';
 
-/** Bucket para lotes sem corretora definida — nunca é fundido com outra corretora. */
-const NO_BROKER = '__SEM_CORRETORA__';
 
 const typeBadgeClass: Record<string, string> = {
   'Ação': 'bg-primary/10 text-primary',
@@ -49,7 +49,7 @@ function RowCheckbox({ checked, onChange, label }: { checked: boolean; onChange:
 export default function Assets() {
   const navigate = useNavigate();
   const { density } = useBrokerLogoSettings();
-  const { assets, holdings, cashBalance, cashBalances, loading, refresh, addHolding, updateHolding, deleteHolding, bulkDeleteHoldings, sellHolding, updateCashBalance, loadCashMovements } = usePortfolio();
+  const { assets, holdings, cashBalance, cashBalances, loading, refresh, addHolding, updateHolding, deleteHolding, bulkDeleteHoldings, restoreHoldings, reassignBroker, sellHolding, updateCashBalance, loadCashMovements } = usePortfolio();
   const [modalOpen, setModalOpen] = useState(false);
   const [editingHolding, setEditingHolding] = useState<HoldingRow | null>(null);
   const [sellOpen, setSellOpen] = useState(false);
@@ -80,6 +80,13 @@ export default function Assets() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const [reconcileOpen, setReconcileOpen] = useState(false);
+
+  /** Lotes que exigem decisão manual de corretora (duplicados ou sem corretora). */
+  const reconcilePending = useMemo(
+    () => reconciliationGroups(holdings).reduce((s, g) => s + g.lots.length, 0),
+    [holdings],
+  );
 
   const handleSell = (holdingRow: HoldingRow, asset: Asset) => {
     setSellingHolding(holdingRow);
@@ -192,12 +199,32 @@ export default function Assets() {
   const handleBulkDelete = async () => {
     const ids = Array.from(selected);
     if (ids.length === 0) return;
-    if (!confirm(`Remover ${ids.length} ${ids.length === 1 ? 'ativo' : 'ativos'} da carteira? Esta ação não pode ser desfeita.`)) return;
     setBulkDeleting(true);
     try {
-      await bulkDeleteHoldings(ids);
+      const removed = await bulkDeleteHoldings(ids);
       setSelected(new Set());
-      toast.success(`${ids.length} ${ids.length === 1 ? 'ativo removido' : 'ativos removidos'}`);
+      const summary = removed
+        .slice(0, 3)
+        .map(h => `${h.ticker} (${brokerLabel(h.broker)})`)
+        .join(', ');
+      toast.success(
+        `${removed.length} ${removed.length === 1 ? 'posição removida' : 'posições removidas'}`,
+        {
+          description: summary + (removed.length > 3 ? ` +${removed.length - 3}` : ''),
+          duration: 10000,
+          action: {
+            label: 'Desfazer',
+            onClick: async () => {
+              try {
+                await restoreHoldings(removed);
+                toast.success('Exclusão desfeita');
+              } catch (e: any) {
+                toast.error(e?.message || 'Não foi possível desfazer');
+              }
+            },
+          },
+        },
+      );
     } catch (err: any) {
       toast.error(err?.message || 'Erro ao remover ativos');
     } finally {
@@ -321,6 +348,21 @@ export default function Assets() {
           )}
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={() => setReconcileOpen(true)}
+            className={`h-9 px-3 rounded-lg border text-sm flex items-center gap-2 transition-all ${
+              reconcilePending > 0
+                ? 'border-amber-500/40 bg-amber-500/10 text-amber-500 hover:bg-amber-500/20'
+                : 'border-border bg-card text-muted-foreground hover:text-foreground'
+            }`}
+            title="Revisar e reatribuir corretoras antes de unificar posições"
+          >
+            <AlertTriangle className="h-4 w-4" />
+            Reconciliar corretoras
+            {reconcilePending > 0 && (
+              <span className="rounded-full bg-amber-500/20 px-1.5 text-[10px] font-semibold">{reconcilePending}</span>
+            )}
+          </button>
           <button
             onClick={() => setCustodyOpen(true)}
             disabled={holdings.length === 0}
@@ -623,7 +665,7 @@ export default function Assets() {
                           <tr
                             key={asset.holdingId || `${asset.ticker}::${g.broker}`}
                             className={`border-b border-border/50 hover:bg-accent/50 transition-colors cursor-pointer ${isSelected ? 'bg-primary/5' : ''}`}
-                            onClick={() => navigate(`/analysis?ticker=${asset.ticker}`)}
+                            onClick={() => navigate(assetRoute(asset.ticker, asset.broker, asset.holdingId))}
                           >
                             <td className="p-4" onClick={e => e.stopPropagation()}>
                               <RowCheckbox
@@ -747,7 +789,7 @@ export default function Assets() {
                           <div
                             key={asset.holdingId || `${asset.ticker}::${g.broker}`}
                             className={`p-4 hover:bg-accent/30 active:bg-accent/50 transition-colors cursor-pointer ${isSelected ? 'bg-primary/5' : ''}`}
-                            onClick={() => navigate(`/analysis?ticker=${asset.ticker}`)}
+                            onClick={() => navigate(assetRoute(asset.ticker, asset.broker, asset.holdingId))}
                           >
                             <div className="flex items-start justify-between mb-2">
                               <div className="flex items-start gap-2 min-w-0">
@@ -967,6 +1009,14 @@ export default function Assets() {
 
       <BulkImportYahoo open={bulkYahooOpen} onClose={() => setBulkYahooOpen(false)} />
       <CsvBulkImportModal open={csvBulkOpen} onClose={() => setCsvBulkOpen(false)} />
+
+      <BrokerReconciliationModal
+        open={reconcileOpen}
+        onClose={() => setReconcileOpen(false)}
+        holdings={holdings}
+        knownBrokers={brokerFacets.map(([b]) => b)}
+        onReassign={reassignBroker}
+      />
     </div>
   );
 }

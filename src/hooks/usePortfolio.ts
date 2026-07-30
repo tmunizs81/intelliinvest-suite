@@ -8,6 +8,7 @@ import { calculateFixedIncomeValue, fetchReferenceRates } from '@/lib/fixedIncom
 import { fetchWithRetry, withCircuitBreaker, deduplicateRequest, checkRateLimit } from '@/lib/apiResilience';
 import { getCached, setCache, CACHE_TTL } from '@/lib/persistentCache';
 import { toast } from 'sonner';
+import { validateReassignment, normalizeBroker } from '@/lib/holdingsIsolation';
 
 const POLL_INTERVAL = 10 * 60 * 1000; // 10 minutes (server cron also refreshes alerts every 10min)
 
@@ -451,10 +452,11 @@ export function usePortfolio() {
 
   /**
    * Exclusão em lote. Remove várias posições numa única chamada,
-   * com rollback total se o backend recusar.
+   * com rollback total se o backend recusar. Devolve os registros
+   * removidos para permitir desfazer (undo).
    */
-  const bulkDeleteHoldings = useCallback(async (ids: string[]) => {
-    if (!user || ids.length === 0) return;
+  const bulkDeleteHoldings = useCallback(async (ids: string[]): Promise<HoldingRow[]> => {
+    if (!user || ids.length === 0) return [];
     const unique = Array.from(new Set(ids));
     const previousHoldings = [...holdings];
     const removed = holdings.filter(h => unique.includes(h.id));
@@ -472,11 +474,72 @@ export function usePortfolio() {
         tickers: removed.map(h => `${h.ticker}@${h.broker || 'sem corretora'}`),
       });
       await refresh();
+      return removed;
     } catch (err) {
       setHoldings(previousHoldings);
       throw err;
     }
   }, [user, refresh, holdings, auditLog]);
+
+  /**
+   * Desfaz uma exclusão: reinsere os lotes com o mesmo id, ticker e corretora,
+   * preservando o isolamento por (ticker, corretora).
+   */
+  const restoreHoldings = useCallback(async (rows: HoldingRow[]) => {
+    if (!user || rows.length === 0) return;
+    setHoldings(prev => [...prev, ...rows]);
+    try {
+      const { error } = await supabase.from('holdings').insert(
+        rows.map(r => ({
+          id: r.id,
+          user_id: user.id,
+          ticker: r.ticker,
+          name: r.name,
+          type: r.type,
+          quantity: r.quantity,
+          avg_price: r.avg_price,
+          sector: r.sector,
+          broker: r.broker,
+          purchase_currency: (r.purchase_currency || 'BRL').toUpperCase(),
+        })) as any,
+      );
+      if (error) throw error;
+      await auditLog('restore', 'holding', `bulk:${rows.length}`, {
+        count: rows.length,
+        tickers: rows.map(h => `${h.ticker}@${h.broker || 'sem corretora'}`),
+      });
+      await refresh();
+    } catch (err) {
+      setHoldings(prev => prev.filter(h => !rows.some(r => r.id === h.id)));
+      throw err;
+    }
+  }, [user, refresh, auditLog]);
+
+  /**
+   * Reatribui a corretora de um lote. Recusa se o destino já possui o mesmo
+   * ticker — nunca funde lotes automaticamente.
+   */
+  const reassignBroker = useCallback(async (holdingId: string, targetBroker: string | null) => {
+    if (!user) return;
+    const check = validateReassignment(holdings, holdingId, targetBroker);
+    if (!check.ok) throw new Error(check.reason);
+    const broker = normalizeBroker(targetBroker);
+    const previousHoldings = [...holdings];
+    setHoldings(prev => prev.map(h => (h.id === holdingId ? { ...h, broker } : h)));
+    try {
+      const { error } = await supabase
+        .from('holdings')
+        .update({ broker } as any)
+        .eq('id', holdingId)
+        .eq('user_id', user.id);
+      if (error) throw error;
+      await auditLog('update', 'holding', holdingId, { field: 'broker', to: broker });
+      await refresh();
+    } catch (err) {
+      setHoldings(previousHoldings);
+      throw err;
+    }
+  }, [user, holdings, refresh, auditLog]);
 
 
 
@@ -587,5 +650,5 @@ export function usePortfolio() {
     return (data as any[]) || [];
   }, [user]);
 
-  return { assets, holdings, cashBalance, cashBalances, loading, error, lastUpdate, nextUpdate, refresh, addHolding, updateHolding, deleteHolding, bulkDeleteHoldings, sellHolding, updateCashBalance: updateCashBalanceBroker, loadCashMovements };
+  return { assets, holdings, cashBalance, cashBalances, loading, error, lastUpdate, nextUpdate, refresh, addHolding, updateHolding, deleteHolding, bulkDeleteHoldings, restoreHoldings, reassignBroker, sellHolding, updateCashBalance: updateCashBalanceBroker, loadCashMovements };
 }
