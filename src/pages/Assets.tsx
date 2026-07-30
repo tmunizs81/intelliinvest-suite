@@ -1009,6 +1009,14 @@ export default function Assets() {
 
       <BulkImportYahoo open={bulkYahooOpen} onClose={() => setBulkYahooOpen(false)} />
       <CsvBulkImportModal open={csvBulkOpen} onClose={() => setCsvBulkOpen(false)} />
+
+      <BrokerReconciliationModal
+        open={reconcileOpen}
+        onClose={() => setReconcileOpen(false)}
+        holdings={holdings}
+        knownBrokers={brokerFacets.map(([b]) => b)}
+        onReassign={reassignBroker}
+      />
     </div>
   );
 }
