@@ -218,3 +218,49 @@ describe("isolamento — políticas de banco", () => {
     expect(settings).toContain("admin_list_telegram_overview");
   });
 });
+
+describe("isolamento — segredo do Telegram nunca chega ao cliente", () => {
+  it("nenhum componente lê ou guarda bot_token vindo do banco", () => {
+    const offenders: string[] = [];
+    for (const file of SRC_FILES) {
+      if (file.endsWith("integrations/supabase/types.ts")) continue;
+      for (const line of read(file).split("\n")) {
+        const reads =
+          /(data|settings|row|t)\.bot_token/.test(line) ||
+          /bot_token\s*:\s*(data|settings|local|s)\./.test(line);
+        if (reads) offenders.push(`${file}: ${line.trim()}`);
+      }
+    }
+    expect(offenders, "bot_token lido/propagado no cliente").toEqual([]);
+  });
+
+  it("o token nunca é persistido em localStorage ou cache", () => {
+    const offenders: string[] = [];
+    for (const file of SRC_FILES) {
+      for (const line of read(file).split("\n")) {
+        if (/(localStorage|sessionStorage|setCache)[^\n]*bot_?[Tt]oken/.test(line)) {
+          offenders.push(`${file}: ${line.trim()}`);
+        }
+      }
+    }
+    expect(offenders, "token persistido no navegador").toEqual([]);
+  });
+
+  it("as leituras de telegram_settings usam a RPC auditada", () => {
+    const offenders: string[] = [];
+    for (const file of SRC_FILES) {
+      const content = read(file);
+      if (/from\(['"]telegram_settings['"]\)[\s\S]{0,80}\.select\(/.test(content)) {
+        offenders.push(file);
+      }
+    }
+    expect(offenders, "leitura direta da tabela em vez de get_my_telegram_settings").toEqual([]);
+  });
+
+  it("o cache do navegador usa esquema versionado (rotação de chaves)", () => {
+    const cache = read("src/lib/persistentCache.ts");
+    expect(cache).toContain("export const CACHE_SCHEMA");
+    expect(cache).toContain("rotateCacheSchema");
+    expect(read("src/hooks/useAuth.tsx")).toContain("rotateCacheSchema");
+  });
+});
