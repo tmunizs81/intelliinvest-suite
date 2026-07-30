@@ -524,18 +524,14 @@ export default function Assets() {
 
 
 
-      {/* B3 Integration Banner */}
-      <div className="mb-6 rounded-lg border border-primary/20 bg-primary/5 p-4 flex items-start gap-3">
-        <AlertTriangle className="h-5 w-5 text-primary shrink-0 mt-0.5" />
-        <div>
-          <h3 className="text-sm font-semibold">Integração B3 / CEI</h3>
-          <p className="text-xs text-muted-foreground mt-1">
-            A B3 não disponibiliza API pública gratuita para sincronização automática. Para importar sua carteira,
-            acesse o <a href="https://cei.b3.com.br" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Portal CEI da B3</a>,
-            exporte seu extrato em CSV e use o botão "Importar CSV" acima. Formato esperado: <code className="text-[10px] bg-muted px-1 py-0.5 rounded">Ticker;Nome;Tipo;Quantidade;Preço Médio;Setor</code>
-          </p>
-        </div>
-      </div>
+      {/* Nota B3/CEI — discreta, sem roubar atenção da carteira */}
+      <p className="mb-4 flex items-center gap-2 text-[11px] text-muted-foreground/70">
+        <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-muted-foreground/60" />
+        A B3 não oferece API pública gratuita. Exporte o extrato no{' '}
+        <a href="https://cei.b3.com.br" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Portal CEI</a>{' '}
+        e use “Importar CSV” (<code className="rounded bg-muted px-1 py-px text-[10px]">Ticker;Nome;Tipo;Quantidade;Preço Médio;Setor</code>).
+      </p>
+
 
       {/* Table */}
       <div className="rounded-lg border border-border bg-card overflow-hidden">
