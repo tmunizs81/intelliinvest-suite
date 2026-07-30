@@ -29,6 +29,8 @@ export interface TickerLot {
 }
 
 export interface TickerAggregate {
+  /** Chave única do agrupamento (imóveis nunca são fundidos entre si). */
+  key: string;
   ticker: string;
   name: string;
   type: string;
