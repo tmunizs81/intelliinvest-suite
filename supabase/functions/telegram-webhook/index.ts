@@ -34,8 +34,10 @@ Deno.serve(async (req) => {
   }
 
   // Só o Telegram conhece este secret (configurado no setWebhook).
-  const forged = requireTelegramSecret(req);
-  if (forged) return forged;
+  // Dois slots aceitos: o atual e o anterior — assim a troca do valor no
+  // provedor não derruba o bot na janela entre salvar e rodar o setWebhook.
+  const telegramAuth = verifyTelegramSecret(req);
+  if (telegramAuth instanceof Response) return telegramAuth;
 
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -55,6 +57,38 @@ Deno.serve(async (req) => {
     const chatId = String(message.chat.id);
     const rawText = message.text.trim();
     const text = rawText.toLowerCase();
+
+    // Rate limit por chat: mesmo com o secret token válido, um chat não pode
+    // torrar a cota da DeepSeek em loop. 20 mensagens/min por chat_id.
+    const limited = await enforceRateLimit(req, `telegram:${chatId}`, {
+      resource: "telegram-webhook",
+      max: 20,
+      windowSeconds: 60,
+    });
+    if (limited) {
+      // Responde 200 para o Telegram não reenviar o update em retry infinito.
+      await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: chatId,
+          text: "⏳ Muitas mensagens seguidas. Aguarde um minuto e tente de novo.",
+        }),
+      }).catch(() => {});
+      return new Response(JSON.stringify({ ok: true, rate_limited: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    logSecurityEvent(req, {
+      function_name: "telegram-webhook",
+      outcome: "allowed",
+      reason: "valid_secret_token",
+      status_code: 200,
+      subject_id: `telegram:${chatId}`,
+      key_id: telegramAuth.keyId,
+    });
+
 
     const sendMsg = async (msg: string, parseMode = "Markdown") => {
       await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
