@@ -6,18 +6,8 @@ import { Label } from '@/components/ui/label';
 import { ArrowDownLeft, ArrowUpRight, History, TrendingUp } from 'lucide-react';
 import { formatCurrency } from '@/lib/mockData';
 import { type CashBalanceRow } from '@/hooks/usePortfolio';
+import { searchBrokers } from '@/lib/brokerDirectory';
 
-const BROKERS = [
-  'XP Investimentos', 'Clear Corretora', 'Rico Investimentos', 'BTG Pactual',
-  'Itaú Corretora', 'Bradesco Corretora', 'Banco do Brasil Investimentos',
-  'NuInvest', 'Genial Investimentos', 'Modal Mais', 'Ágora Investimentos',
-  'Toro Investimentos', 'Guide Investimentos', 'Órama', 'Warren',
-  'Mercado Bitcoin', 'Binance', 'Foxbit', 'NovaDAX', 'Coinbase',
-  'Terra Investimentos', 'Safra Corretora', 'Santander Corretora',
-  'Avenue Securities', 'Nomad', 'Stake', 'Passfolio',
-  'Interactive Brokers', 'Charles Schwab', 'TD Ameritrade',
-  'XTB', 'Webull', 'eToro', 'DEGIRO', 'Trading 212',
-];
 
 interface CashMovement {
   id: string;
