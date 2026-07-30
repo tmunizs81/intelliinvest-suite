@@ -158,3 +158,6 @@ verify_jwt = false
 
 [functions.observability-alerts]
 verify_jwt = false
+
+[functions.jobs-status]
+verify_jwt = false

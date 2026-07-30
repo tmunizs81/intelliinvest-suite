@@ -465,6 +465,45 @@ export type Database = {
         }
         Relationships: []
       }
+      circuit_breakers: {
+        Row: {
+          consecutive_failures: number
+          failures: number
+          last_error: string | null
+          last_latency_ms: number | null
+          name: string
+          next_probe_at: string | null
+          opened_at: string | null
+          state: string
+          successes: number
+          updated_at: string
+        }
+        Insert: {
+          consecutive_failures?: number
+          failures?: number
+          last_error?: string | null
+          last_latency_ms?: number | null
+          name: string
+          next_probe_at?: string | null
+          opened_at?: string | null
+          state?: string
+          successes?: number
+          updated_at?: string
+        }
+        Update: {
+          consecutive_failures?: number
+          failures?: number
+          last_error?: string | null
+          last_latency_ms?: number | null
+          name?: string
+          next_probe_at?: string | null
+          opened_at?: string | null
+          state?: string
+          successes?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       function_metrics: {
         Row: {
           cache_hit: boolean
@@ -474,9 +513,11 @@ export type Database = {
           function_name: string
           id: number
           meta: Json | null
+          span_id: string | null
           status_code: number
           tokens_in: number | null
           tokens_out: number | null
+          trace_id: string | null
           user_id: string | null
         }
         Insert: {
@@ -487,9 +528,11 @@ export type Database = {
           function_name: string
           id?: number
           meta?: Json | null
+          span_id?: string | null
           status_code: number
           tokens_in?: number | null
           tokens_out?: number | null
+          trace_id?: string | null
           user_id?: string | null
         }
         Update: {
@@ -500,9 +543,11 @@ export type Database = {
           function_name?: string
           id?: number
           meta?: Json | null
+          span_id?: string | null
           status_code?: number
           tokens_in?: number | null
           tokens_out?: number | null
+          trace_id?: string | null
           user_id?: string | null
         }
         Relationships: []
@@ -971,6 +1016,60 @@ export type Database = {
         }
         Relationships: []
       }
+      trace_spans: {
+        Row: {
+          attributes: Json
+          created_at: string
+          duration_ms: number | null
+          ended_at: string | null
+          error_message: string | null
+          id: number
+          kind: string
+          name: string
+          parent_span_id: string | null
+          service_name: string
+          span_id: string
+          started_at: string
+          status_code: string
+          trace_id: string
+          user_id: string | null
+        }
+        Insert: {
+          attributes?: Json
+          created_at?: string
+          duration_ms?: number | null
+          ended_at?: string | null
+          error_message?: string | null
+          id?: number
+          kind?: string
+          name: string
+          parent_span_id?: string | null
+          service_name?: string
+          span_id: string
+          started_at?: string
+          status_code?: string
+          trace_id: string
+          user_id?: string | null
+        }
+        Update: {
+          attributes?: Json
+          created_at?: string
+          duration_ms?: number | null
+          ended_at?: string | null
+          error_message?: string | null
+          id?: number
+          kind?: string
+          name?: string
+          parent_span_id?: string | null
+          service_name?: string
+          span_id?: string
+          started_at?: string
+          status_code?: string
+          trace_id?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       transactions: {
         Row: {
           created_at: string
@@ -1063,6 +1162,26 @@ export type Database = {
       }
     }
     Functions: {
+      cancel_my_job: { Args: { _job_id: string }; Returns: Json }
+      circuit_check: {
+        Args: { _cooldown_seconds?: number; _name: string }
+        Returns: {
+          allowed: boolean
+          consecutive_failures: number
+          state: string
+        }[]
+      }
+      circuit_record: {
+        Args: {
+          _cooldown_seconds?: number
+          _error?: string
+          _failure_threshold?: number
+          _latency_ms?: number
+          _name: string
+          _success: boolean
+        }
+        Returns: string
+      }
       claim_jobs: {
         Args: {
           _limit?: number
@@ -1134,6 +1253,32 @@ export type Database = {
       }
       get_dashboard_bootstrap: { Args: never; Returns: Json }
       get_observability_dashboard: { Args: { _hours?: number }; Returns: Json }
+      get_trace: {
+        Args: { _trace_id: string }
+        Returns: {
+          attributes: Json
+          created_at: string
+          duration_ms: number | null
+          ended_at: string | null
+          error_message: string | null
+          id: number
+          kind: string
+          name: string
+          parent_span_id: string | null
+          service_name: string
+          span_id: string
+          started_at: string
+          status_code: string
+          trace_id: string
+          user_id: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "trace_spans"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       get_user_email: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {
@@ -1160,6 +1305,24 @@ export type Database = {
         Returns: undefined
       }
       import_transactions_atomic: { Args: { _rows: Json }; Returns: Json }
+      list_my_jobs: {
+        Args: { _limit?: number; _status?: string }
+        Returns: {
+          attempts: number
+          created_at: string
+          duration_ms: number
+          finished_at: string
+          id: string
+          job_type: string
+          last_error: string
+          max_attempts: number
+          payload: Json
+          priority: number
+          result: Json
+          started_at: string
+          status: string
+        }[]
+      }
       list_pending_snapshot_failures: {
         Args: { _limit?: number }
         Returns: {

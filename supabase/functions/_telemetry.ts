@@ -20,6 +20,9 @@ export interface MetricRecord {
   tokens_out?: number;
   error_message?: string | null;
   meta?: Record<string, unknown>;
+  /** Correlação com o trace OpenTelemetry (W3C trace id / span id). */
+  trace_id?: string | null;
+  span_id?: string | null;
 }
 
 export function logMetric(rec: MetricRecord): void {
@@ -36,6 +39,8 @@ export function logMetric(rec: MetricRecord): void {
       tokens_out: rec.tokens_out ?? null,
       error_message: rec.error_message ?? null,
       meta: rec.meta ?? null,
+      trace_id: rec.trace_id ?? null,
+      span_id: rec.span_id ?? null,
     })
     .then(({ error }) => {
       if (error) console.error("[telemetry]", error.message);

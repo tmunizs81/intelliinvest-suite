@@ -8,6 +8,7 @@
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { corsHeaders, requireCron } from "../_shared/auth.ts";
+import { startRequestTrace, injectHeaders, type Span } from "../_shared/otel.ts";
 import { logMetric } from "../_telemetry.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -42,19 +43,21 @@ interface Job {
   attempts: number;
 }
 
-async function runJob(job: Job): Promise<unknown> {
+async function runJob(job: Job, span: Span): Promise<unknown> {
   const fn = HANDLERS[job.job_type];
   if (!fn) throw new Error(`job_type não suportado: ${job.job_type}`);
 
+  // O traceparent segue para a função pesada: o span da IA aparece no MESMO
+  // trace do enfileiramento, fechando a correlação rota → fila → worker → IA.
   const resp = await fetch(`${SUPABASE_URL}/functions/v1/${fn}`, {
     method: "POST",
-    headers: {
+    headers: injectHeaders(span, {
       "Content-Type": "application/json",
       "Authorization": `Bearer ${SERVICE_ROLE}`,
       "x-cron-secret": CRON_SECRET,
       "x-job-id": job.id,
       "x-job-user": job.user_id ?? "",
-    },
+    }),
     body: JSON.stringify({ ...job.payload, _jobId: job.id, _userId: job.user_id }),
     signal: AbortSignal.timeout(JOB_TIMEOUT_MS),
   });
@@ -76,6 +79,7 @@ Deno.serve(async (req) => {
   if (denied) return denied;
 
   const started = performance.now();
+  const tracer = startRequestTrace(req, "job-worker", null, { "messaging.system": "job_queue" });
   const url = new URL(req.url);
   const limit = Math.min(Number(url.searchParams.get("limit") ?? 5) || 5, 20);
   const maxPerUser = Math.min(Number(url.searchParams.get("perUser") ?? 1) || 1, 5);
@@ -98,16 +102,33 @@ Deno.serve(async (req) => {
   const results = await Promise.all(
     jobs.map(async (job) => {
       const jobStarted = performance.now();
+      const jobSpan = tracer.root.child(`job ${job.job_type}`, "CONSUMER", {
+        "messaging.operation": "process",
+        "messaging.message.id": job.id,
+        "job.type": job.job_type,
+        "enduser.id": job.user_id ?? "",
+        "job.attempts": job.attempts,
+      });
       try {
-        const result = await runJob(job);
+        // Job cancelado enquanto esperava na fila não deve consumir recurso.
+        const { data: current } = await admin
+          .from("job_queue").select("status").eq("id", job.id).maybeSingle();
+        if ((current as { status?: string } | null)?.status === "cancelled") {
+          jobSpan.setAttributes({ "job.skipped": "cancelled" }).end("OK");
+          return { id: job.id, type: job.job_type, ok: true, skipped: "cancelled" };
+        }
+
+        const result = await runJob(job, jobSpan);
         await admin.rpc("complete_job", { _job_id: job.id, _result: result, _error: null });
         logMetric({
           function_name: `job:${job.job_type}`,
           duration_ms: performance.now() - jobStarted,
           status_code: 200,
           user_id: job.user_id,
+          trace_id: tracer.traceId,
           meta: { attempts: job.attempts },
         });
+        jobSpan.end("OK");
         return { id: job.id, type: job.job_type, ok: true };
       } catch (e) {
         const message = (e as Error).message ?? "erro desconhecido";
@@ -118,15 +139,22 @@ Deno.serve(async (req) => {
           status_code: 500,
           user_id: job.user_id,
           error_message: message,
+          trace_id: tracer.traceId,
           meta: { attempts: job.attempts },
         });
+        jobSpan.setError(e).end("ERROR");
         return { id: job.id, type: job.job_type, ok: false, error: message };
       }
     }),
   );
 
+  tracer.root.setAttributes({ "messaging.batch.message_count": jobs.length, "http.status_code": 200 });
+  tracer.root.end("OK");
+  tracer.flush();
+
   return new Response(
     JSON.stringify({
+      trace_id: tracer.traceId,
       claimed: jobs.length,
       succeeded: results.filter((r) => r.ok).length,
       failed: results.filter((r) => !r.ok).length,
