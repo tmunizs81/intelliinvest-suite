@@ -1380,10 +1380,17 @@ export default function UnifiedHoldings({
           </span>
         </button>
         <div className="ml-auto flex shrink-0 items-center gap-2 font-mono text-[11px] tabular-nums md:gap-3">
-          <span className="text-muted-foreground">{formatCurrency(g.value)}</span>
-          <span className={g.gain >= 0 ? 'text-gain' : 'text-loss'}>
-            {formatCurrency(g.gain)} ({formatPercent(g.cost > 0 ? (g.gain / g.cost) * 100 : 0)})
-          </span>
+          <Info tip={<BrokerTotalsTip g={g} metric="value" />}>
+            <span className="text-muted-foreground">{formatCurrency(g.value)}</span>
+          </Info>
+          <Info tip={<BrokerTotalsTip g={g} metric="gain" />}>
+            <span className={g.gain >= 0 ? 'text-gain' : 'text-loss'}>
+              {formatCurrency(g.gain)} ({formatPercent(g.cost > 0 ? (g.gain / g.cost) * 100 : 0)})
+            </span>
+          </Info>
+          <Info tip={<BrokerTotalsTip g={g} metric="share" />}>
+            <span className="text-muted-foreground/70">{pctLabel(g.share)}</span>
+          </Info>
           {g.broker !== NO_BROKER && !compact && (
             <button
               onClick={() => onBrokerFilter(brokerFilter === g.broker ? '' : g.broker)}
