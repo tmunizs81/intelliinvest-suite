@@ -8,7 +8,7 @@ import { calculateFixedIncomeValue, fetchReferenceRates } from '@/lib/fixedIncom
 import { fetchWithRetry, withCircuitBreaker, deduplicateRequest, checkRateLimit } from '@/lib/apiResilience';
 import { getCached, setCache, CACHE_TTL } from '@/lib/persistentCache';
 import { toast } from 'sonner';
-import { validateReassignment, normalizeBroker } from '@/lib/holdingsIsolation';
+import { validateReassignment, normalizeBroker, holdingKey, brokerLabel } from '@/lib/holdingsIsolation';
 
 const POLL_INTERVAL = 10 * 60 * 1000; // 10 minutes (server cron also refreshes alerts every 10min)
 
@@ -348,9 +348,35 @@ export function usePortfolio() {
     await fetchQuotes(h);
   }, [loadHoldings, loadCashBalance, fetchQuotes]);
 
+  /**
+   * Traduz a violação do índice único (user_id, ticker, coalesce(broker)) do banco
+   * em uma mensagem acionável. É a última linha de defesa: o cliente também valida antes.
+   */
+  const mapHoldingError = (err: any, ticker: string, broker?: string | null): Error => {
+    const code = err?.code || '';
+    const msg = String(err?.message || '');
+    if (code === '23505' || msg.includes('holdings_user_ticker_broker_uidx')) {
+      return new Error(
+        `Já existe uma posição de ${ticker.toUpperCase()} em ${brokerLabel(broker)}. ` +
+        'Edite o lote existente em vez de criar outro (posições em corretoras diferentes são separadas).',
+      );
+    }
+    return err instanceof Error ? err : new Error(msg || 'Erro ao salvar posição');
+  };
+
   // CRUD operations with optimistic updates
   const addHolding = useCallback(async (holding: Omit<HoldingRow, 'id'>) => {
     if (!user) return;
+
+    // Guarda de colisão: mesmo (ticker, corretora) nunca duplica — espelha o índice único do banco
+    const key = holdingKey(holding.ticker, holding.broker);
+    const existing = holdings.find(h => holdingKey(h.ticker, h.broker) === key);
+    if (existing) {
+      throw new Error(
+        `Já existe uma posição de ${holding.ticker.toUpperCase()} em ${brokerLabel(holding.broker)}. ` +
+        'Edite o lote existente ou informe outra corretora.',
+      );
+    }
 
     // Optimistic: add to local state immediately
     const tempId = crypto.randomUUID();
@@ -396,12 +422,27 @@ export function usePortfolio() {
     } catch (err) {
       // Rollback on error
       setHoldings(prev => prev.filter(h => h.id !== tempId));
-      throw err;
+      throw mapHoldingError(err, holding.ticker, holding.broker);
     }
-  }, [user, refresh, auditLog]);
+  }, [user, refresh, auditLog, holdings]);
 
   const updateHolding = useCallback(async (id: string, updates: Partial<HoldingRow>) => {
     if (!user) return;
+
+    // Guarda de colisão ao alterar ticker/corretora do lote (identificado pelo holdingId real)
+    const current = holdings.find(h => h.id === id);
+    if (current && (updates.ticker !== undefined || updates.broker !== undefined)) {
+      const nextTicker = (updates.ticker ?? current.ticker);
+      const nextBroker = updates.broker !== undefined ? updates.broker : current.broker;
+      const nextKey = holdingKey(nextTicker, nextBroker);
+      const clash = holdings.find(h => h.id !== id && holdingKey(h.ticker, h.broker) === nextKey);
+      if (clash) {
+        throw new Error(
+          `Já existe uma posição de ${String(nextTicker).toUpperCase()} em ${brokerLabel(nextBroker)}. ` +
+          'Consolide os lotes antes de alterar este.',
+        );
+      }
+    }
 
     // Optimistic: apply update locally
     const previousHoldings = [...holdings];
@@ -426,7 +467,7 @@ export function usePortfolio() {
     } catch (err) {
       // Rollback on error
       setHoldings(previousHoldings);
-      throw err;
+      throw mapHoldingError(err, updates.ticker ?? current?.ticker ?? '', updates.broker !== undefined ? updates.broker : current?.broker);
     }
   }, [user, refresh, holdings]);
 
