@@ -38,7 +38,24 @@ export default function Analysis() {
   const [previousClose, setPreviousClose] = useState(0);
   const [activeTab, setActiveTab] = useState<'tradingview' | 'custom'>('tradingview');
 
-  const asset = assets.find(a => a.ticker === ticker);
+  // Lote específico: ?holding=<id> (id real) ou ?broker=<corretora>.
+  // Sem esses parâmetros, cai no primeiro lote do ticker — nunca funde corretoras.
+  const holdingParam = searchParams.get('holding');
+  const brokerParam = searchParams.get('broker');
+
+  const holding = useMemo(() => {
+    if (holdingParam) return holdings.find(h => h.id === holdingParam) || null;
+    if (brokerParam) return findHolding(holdings, ticker, brokerParam);
+    return holdings.find(h => h.ticker === ticker) || null;
+  }, [holdings, holdingParam, brokerParam, ticker]);
+
+  const asset = useMemo(() => {
+    if (holding) {
+      const exact = assets.find(a => a.holdingId === holding.id);
+      if (exact) return exact;
+    }
+    return assets.find(a => a.ticker === ticker);
+  }, [assets, holding, ticker]);
 
   const fetchHistory = useCallback(async () => {
     if (!ticker) return;
