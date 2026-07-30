@@ -897,7 +897,8 @@ function UsersTab() {
     const { data: profiles } = await supabase.from('profiles').select('*');
     const { data: roles } = await supabase.from('user_roles').select('*');
     const { data: keys } = await supabase.from('serial_keys').select('*').eq('status', 'used');
-    const { data: tgSettings } = await supabase.from('telegram_settings').select('*');
+    // Visão administrativa sem bot_token (RPC restrita a admin).
+    const { data: tgSettings } = await (supabase as any).rpc('admin_list_telegram_overview');
 
     const merged = (profiles || []).map(p => {
       const userRoles = (roles || []).filter((r: any) => r.user_id === p.user_id);

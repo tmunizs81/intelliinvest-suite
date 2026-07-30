@@ -202,7 +202,7 @@ export function useAITrader() {
     const { data: sessionData } = await supabase.auth.getSession();
     const accessToken = sessionData.session?.access_token;
     if (!accessToken) {
-      toast.error("Sessão expirada. Entre novamente.");
+      toast({ title: "Sessão expirada", description: "Entre novamente para usar o AI Trader.", variant: "destructive" });
       return;
     }
 
