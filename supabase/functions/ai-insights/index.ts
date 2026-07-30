@@ -178,6 +178,16 @@ Gere insights inteligentes, alertas e recomendações baseados nestes dados reai
       throw new Error("Failed to parse AI response");
     }
 
+    logMetric({
+      function_name: "ai-insights",
+      duration_ms: performance.now() - started,
+      status_code: 200,
+      user_id: caller.user?.id ?? null,
+      cache_hit: cacheResult.cached,
+      meta: { cold_start: COLD_START, assets: portfolio.length },
+    });
+    COLD_START = false;
+
     return new Response(JSON.stringify({
       insights: parsed.insights,
       summary: parsed.summary,
@@ -189,12 +199,20 @@ Gere insights inteligentes, alertas e recomendações baseados nestes dados reai
       headers: { ...corsHeaders, "Content-Type": "application/json", "x-ai-provider": cacheResult.provider },
     });
   } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    logMetric({
+      function_name: "ai-insights",
+      duration_ms: performance.now() - started,
+      status_code: message.startsWith("AI_RATE_LIMIT") ? 200 : 500,
+      user_id: caller.user?.id ?? null,
+      error_message: message,
+      meta: { cold_start: COLD_START },
+    });
+    COLD_START = false;
     // Handle rate limit errors that bubble up from cache miss
-    if (err instanceof Error && err.message.startsWith("AI_RATE_LIMIT")) {
-      const fallback = buildFallback("análise local");
-      return fallback;
-    }
+    if (message.startsWith("AI_RATE_LIMIT")) return buildFallback("análise local");
     console.error("ai-insights error:", err);
-    return new Response(JSON.stringify({ error: err instanceof Error ? err.message : "Unknown error" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ error: message }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
+
 });
