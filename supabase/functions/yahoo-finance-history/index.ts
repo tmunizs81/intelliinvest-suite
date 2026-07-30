@@ -1,5 +1,11 @@
 import { resolveCaller } from "../_shared/auth.ts";
 import { enforceRateLimit } from "../_shared/rate-limit.ts";
+import { withHttpCache, cacheKey, cacheHeaders, CACHE_TTL } from "../_shared/http-cache.ts";
+import { logMetric } from "../_telemetry.ts";
+
+const NS = "yahoo-history";
+let COLD_START = true;
+
 
 
 const corsHeaders = {
