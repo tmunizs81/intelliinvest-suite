@@ -181,7 +181,23 @@ export default function Assets() {
     });
   }, [visibleIds]);
 
+  /** Quantidade de tickers distintos visíveis (após unificação). */
+  const tickerCount = useMemo(
+    () => new Set(filtered.map(a => a.ticker.trim().toUpperCase())).size,
+    [filtered],
+  );
+
+  /** Seleção em massa por ids reais de lote — nunca por ticker. */
+  const toggleIds = (ids: string[], select: boolean) => {
+    setSelected(prev => {
+      const next = new Set(prev);
+      ids.forEach(id => { if (select) next.add(id); else next.delete(id); });
+      return next;
+    });
+  };
+
   const toggleOne = (id?: string) => {
+
     if (!id) return;
     setSelected(prev => {
       const next = new Set(prev);
