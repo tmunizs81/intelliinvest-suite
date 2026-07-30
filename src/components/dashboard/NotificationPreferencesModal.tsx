@@ -7,7 +7,7 @@ interface Props {
   open: boolean;
   onClose: () => void;
   settings: TelegramSettings;
-  onSave: (s: TelegramSettings) => Promise<void> | void;
+  onSave: (s: TelegramSettings, botToken?: string) => Promise<void> | void;
 }
 
 const EVENTS: { key: EventKey; label: string; desc: string }[] = [
@@ -22,8 +22,10 @@ const EVENTS: { key: EventKey; label: string; desc: string }[] = [
 export default function NotificationPreferencesModal({ open, onClose, settings, onSave }: Props) {
   const [local, setLocal] = useState<TelegramSettings>(settings);
   const [saving, setSaving] = useState(false);
+  /** Token digitado: vive só neste estado, nunca é persistido nem relido. */
+  const [botToken, setBotToken] = useState('');
 
-  useEffect(() => { if (open) setLocal(settings); }, [open, settings]);
+  useEffect(() => { if (open) { setLocal(settings); setBotToken(''); } }, [open, settings]);
 
   if (!open) return null;
 

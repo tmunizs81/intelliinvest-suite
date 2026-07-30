@@ -1627,7 +1627,8 @@ function TelegramTab() {
 
   const loadSettings = useCallback(async () => {
     if (!user) return;
-    const { data } = await supabase.from('telegram_settings').select('*').eq('user_id', user.id).maybeSingle();
+    const { data: rows } = await (supabase as any).rpc('get_my_telegram_settings');
+    const data = Array.isArray(rows) ? rows[0] : rows;
     if (data) {
       setSettings(data);
       setChatId(data.chat_id || '');
@@ -1644,7 +1645,8 @@ function TelegramTab() {
     if (!linkCode || !user) return;
     setPolling(true);
     const interval = setInterval(async () => {
-      const { data } = await supabase.from('telegram_settings').select('*').eq('user_id', user.id).maybeSingle();
+      const { data: rows } = await (supabase as any).rpc('get_my_telegram_settings');
+      const data = Array.isArray(rows) ? rows[0] : rows;
       if (data && data.chat_id && !data.link_code) {
         setSettings(data);
         setChatId(data.chat_id);
@@ -2044,7 +2046,7 @@ function BackupTab() {
         supabase.from('holdings').select('*').eq('user_id', user.id),
         supabase.from('transactions').select('*').eq('user_id', user.id),
         supabase.from('alerts').select('*').eq('user_id', user.id),
-        supabase.from('telegram_settings').select('id,user_id,chat_id,enabled,link_code,created_at,updated_at').eq('user_id', user.id),
+        (supabase as any).rpc('get_my_telegram_settings'),
         (supabase as any).from('family_members').select('*').eq('owner_id', user.id),
       ]);
       const backup = {
@@ -2054,7 +2056,7 @@ function BackupTab() {
         transactions: transactionsRes.data || [],
         alerts: alertsRes.data || [],
         // O bot_token nunca sai do servidor: o backup carrega apenas metadados.
-        telegramSettings: (telegramRes.data || []).map((t: any) => ({ ...t, bot_token: null })),
+        telegramSettings: telegramRes.data || [],
         familyMembers: familyRes.data || [],
       };
       if (format === 'json') {
