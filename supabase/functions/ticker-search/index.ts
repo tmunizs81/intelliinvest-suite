@@ -1,5 +1,11 @@
 import { resolveCaller } from "../_shared/auth.ts";
 import { enforceRateLimit } from "../_shared/rate-limit.ts";
+import { withHttpCache, cacheKey, cacheHeaders, CACHE_TTL } from "../_shared/http-cache.ts";
+import { logMetric } from "../_telemetry.ts";
+
+const NS = "ticker-search";
+let COLD_START = true;
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
