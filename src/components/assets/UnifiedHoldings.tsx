@@ -807,7 +807,13 @@ function MobileCard({
             <p className="font-mono text-[13px] font-semibold tabular-nums">{hasPrice ? formatCurrency(agg.value) : '—'}</p>
             {hasPrice && (
               <p className={`font-mono text-[11px] tabular-nums ${agg.profit >= 0 ? 'text-gain' : 'text-loss'}`}>
-                {formatCurrency(agg.profit)} ({formatPercent(agg.profitPct)})
+                {isPropertyAsset(agg) ? (
+                  <Info tip={<PropertyTip agg={agg} metric="profit" />}>
+                    {formatCurrency(agg.profit)} ({formatPercent(agg.profitPct)})
+                  </Info>
+                ) : (
+                  <>{formatCurrency(agg.profit)} ({formatPercent(agg.profitPct)})</>
+                )}
               </p>
             )}
           </div>
