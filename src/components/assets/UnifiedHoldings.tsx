@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect, useCallback, memo, type KeyboardEvent, type ReactNode } from 'react';
+import { useMemo, useState, useEffect, useCallback, useRef, memo, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
 import {
   ChevronRight, ChevronDown, Pencil, Trash2, ArrowUpRight, ArrowDownRight, ArrowUp, ArrowDown,
   AlertTriangle,
