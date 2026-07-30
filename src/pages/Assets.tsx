@@ -49,7 +49,7 @@ function RowCheckbox({ checked, onChange, label }: { checked: boolean; onChange:
 export default function Assets() {
   const navigate = useNavigate();
   const { density } = useBrokerLogoSettings();
-  const { assets, holdings, cashBalance, cashBalances, loading, refresh, addHolding, updateHolding, deleteHolding, sellHolding, updateCashBalance, loadCashMovements } = usePortfolio();
+  const { assets, holdings, cashBalance, cashBalances, loading, refresh, addHolding, updateHolding, deleteHolding, bulkDeleteHoldings, sellHolding, updateCashBalance, loadCashMovements } = usePortfolio();
   const [modalOpen, setModalOpen] = useState(false);
   const [editingHolding, setEditingHolding] = useState<HoldingRow | null>(null);
   const [sellOpen, setSellOpen] = useState(false);
@@ -76,6 +76,10 @@ export default function Assets() {
   const [custodyOpen, setCustodyOpen] = useState(false);
   const [bulkYahooOpen, setBulkYahooOpen] = useState(false);
   const [csvBulkOpen, setCsvBulkOpen] = useState(false);
+  // Seleção em lote (ids de holdings) e colapso por corretora
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
 
   const handleSell = (holdingRow: HoldingRow, asset: Asset) => {
     setSellingHolding(holdingRow);
