@@ -1,5 +1,8 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { requireUser } from "../_shared/auth.ts";
+import { enforceRateLimit } from "../_shared/rate-limit.ts";
+import { logSecurityEvent } from "../_shared/security-log.ts";
+
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
