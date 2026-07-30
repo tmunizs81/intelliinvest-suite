@@ -322,6 +322,21 @@ export default function Assets() {
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <button
+            onClick={() => setReconcileOpen(true)}
+            className={`h-9 px-3 rounded-lg border text-sm flex items-center gap-2 transition-all ${
+              reconcilePending > 0
+                ? 'border-amber-500/40 bg-amber-500/10 text-amber-500 hover:bg-amber-500/20'
+                : 'border-border bg-card text-muted-foreground hover:text-foreground'
+            }`}
+            title="Revisar e reatribuir corretoras antes de unificar posições"
+          >
+            <AlertTriangle className="h-4 w-4" />
+            Reconciliar corretoras
+            {reconcilePending > 0 && (
+              <span className="rounded-full bg-amber-500/20 px-1.5 text-[10px] font-semibold">{reconcilePending}</span>
+            )}
+          </button>
+          <button
             onClick={() => setCustodyOpen(true)}
             disabled={holdings.length === 0}
             className="h-9 px-3 rounded-lg border border-[hsl(270,70%,60%)]/30 bg-[hsl(270,70%,60%)]/10 text-sm text-[hsl(270,70%,85%)] hover:bg-[hsl(270,70%,60%)]/20 flex items-center gap-2 transition-all disabled:opacity-50"
