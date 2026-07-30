@@ -117,12 +117,6 @@ test.describe('data isolation between accounts', () => {
       const raw = Object.keys(localStorage).find((k) => k.startsWith('sb-') && k.endsWith('-auth-token'));
       return raw ? JSON.parse(localStorage.getItem(raw)!)?.user?.id ?? null : null;
     });
-    const holdingsA = await page.evaluate(async () => {
-      const raw = Object.keys(localStorage).find((k) => k.startsWith('sb-') && k.endsWith('-auth-token'));
-      const token = raw ? JSON.parse(localStorage.getItem(raw)!)?.access_token : null;
-      return token ? token.slice(0, 0) : null; // token não é exposto no relatório
-    });
-    expect(holdingsA).toBeDefined();
 
     await page.getByRole('button', { name: /sair|logout/i }).click();
     await page.waitForURL(/\/auth/);
