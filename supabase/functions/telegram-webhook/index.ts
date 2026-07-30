@@ -1,5 +1,8 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
-import { requireTelegramSecret } from "../_shared/auth.ts";
+import { verifyTelegramSecret } from "../_shared/auth.ts";
+import { enforceRateLimit } from "../_shared/rate-limit.ts";
+import { logSecurityEvent } from "../_shared/security-log.ts";
+
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
