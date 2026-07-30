@@ -1058,7 +1058,8 @@ const MobileCard = memo(function MobileCard({
       )}
     </div>
   );
-}
+});
+
 
 /* ------------------------------------------------------------------ *
  * Agregação
