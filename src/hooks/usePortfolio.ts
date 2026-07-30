@@ -36,7 +36,8 @@ async function fetchFxRatesBRL(): Promise<{ USD: number; EUR: number }> {
       USD: parseFloat(j?.USDBRL?.bid) || 5.5,
       EUR: parseFloat(j?.EURBRL?.bid) || 6.0,
     };
-    await setCache(cacheKey, rates, 60 * 60 * 1000);
+    // Câmbio é dado público: cache compartilhado (sem dono).
+    await setCache(cacheKey, rates, 60 * 60 * 1000, { owner: null });
     return rates;
   } catch {
     return { USD: 5.5, EUR: 6.0 };
