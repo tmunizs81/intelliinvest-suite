@@ -453,6 +453,7 @@ const TickerRow = memo(function TickerRow({
   const multi = agg.lots.length > 1;
   const single = agg.lots[0];
   const hasPrice = agg.currentPrice > 0;
+  const isProp = isPropertyAsset(agg);
 
   const onKeyDown = useRowKeys({
     onOpen: () => onOpen(single.asset),
