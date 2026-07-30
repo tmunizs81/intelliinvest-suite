@@ -1160,15 +1160,19 @@ export default function UnifiedHoldings({
     [visibleAssets, holdings, sort],
   );
 
-  /* Aviso amigável: imóveis homônimos jamais podem compartilhar uma linha. */
+  /* Aviso amigável + auditoria: imóveis homônimos jamais compartilham linha. */
   const mergeIssues = useMemo(() => detectPropertyMergeIssues(aggregates), [aggregates]);
+  const [auditOpen, setAuditOpen] = useState(false);
+  const auditRows = useMemo(() => buildMergeAudit(aggregates), [aggregates]);
+
   useEffect(() => {
-    if (mergeIssues.length === 0) return;
+    if (mergeIssues.length === 0) { setAuditOpen(false); return; }
     const list = mergeIssues.map((i) => `${i.ticker} (${i.lots})`).join(', ');
     toast.warning('Imóveis com o mesmo código detectados', {
       id: 'property-merge-warning',
       description: `${list}. Cada imóvel é um bem único — renomeie o código para mantê-los separados nos relatórios.`,
-      duration: 8000,
+      duration: 12000,
+      action: { label: 'Revisar posições', onClick: () => setAuditOpen(true) },
     });
   }, [mergeIssues]);
 
@@ -1180,11 +1184,13 @@ export default function UnifiedHoldings({
       const arr = map.get(key);
       if (arr) arr.push(a); else map.set(key, [a]);
     });
-    return Array.from(map.entries())
+    const groups = Array.from(map.entries())
       .map(([broker, items]) => {
         const rows = sortAggregates(aggregateByTicker(items, holdings), sort);
         const value = rows.reduce((s, r) => s + r.value, 0);
         const cost = rows.reduce((s, r) => s + r.cost, 0);
+        const propertyRows = rows.filter(isPropertyAsset);
+        const financialRows = rows.filter((r) => !isPropertyAsset(r));
         return {
           broker,
           label: broker === NO_BROKER ? 'Sem corretora' : broker,
@@ -1193,10 +1199,24 @@ export default function UnifiedHoldings({
           cost,
           gain: value - cost,
           ids: rows.flatMap((r) => r.ids),
+          /* Auditoria dos totais: quantas linhas vêm de cada regra de agregação. */
+          propertyCount: propertyRows.length,
+          propertyValue: propertyRows.reduce((s, r) => s + r.value, 0),
+          financialCount: financialRows.length,
+          financialValue: financialRows.reduce((s, r) => s + r.value, 0),
+          lotCount: rows.reduce((s, r) => s + r.lots.length, 0),
         };
       })
       .sort((a, b) => (a.broker === NO_BROKER ? 1 : b.broker === NO_BROKER ? -1 : b.value - a.value));
+
+    return groups.map((g) => ({
+      ...g,
+      /** Peso da corretora dentro da visão filtrada — base dos percentuais exibidos. */
+      share: 0,
+      totalVisible: groups.reduce((s, x) => s + x.value, 0),
+    }));
   }, [visibleAssets, holdings, viewMode, sort]);
+
 
   /* ---------- filtro de classe (desktop + mobile) ---------- */
   const classFilterBar = (
