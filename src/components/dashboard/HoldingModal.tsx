@@ -65,6 +65,8 @@ export default function HoldingModal({ open, onClose, onSave, editData, onUpdate
   const [avgPrice, setAvgPrice] = useState('');
   const [sector, setSector] = useState('');
   const [broker, setBroker] = useState('');
+  /** Sugestão de corretora — NUNCA aplicada automaticamente (evita ligar o ativo à corretora errada). */
+  const [brokerSuggestion, setBrokerSuggestion] = useState<string | null>(null);
   const [yieldRate, setYieldRate] = useState('');
   const [indexerType, setIndexerType] = useState<string>('Pós-fixado');
   const [fixedIncomeSubtype, setFixedIncomeSubtype] = useState<string>('CDB');
