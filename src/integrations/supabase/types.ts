@@ -1263,6 +1263,20 @@ export type Database = {
         Returns: undefined
       }
       get_dashboard_bootstrap: { Args: never; Returns: Json }
+      get_my_telegram_settings: {
+        Args: never
+        Returns: {
+          chat_id: string
+          email_address: string
+          enabled: boolean
+          event_prefs: Json
+          has_bot_token: boolean
+          id: string
+          link_code: string
+          notify_email: boolean
+          updated_at: string
+        }[]
+      }
       get_observability_dashboard: { Args: { _hours?: number }; Returns: Json }
       get_trace: {
         Args: { _trace_id: string }
@@ -1356,6 +1370,28 @@ export type Database = {
           isOneToOne: false
           isSetofReturn: true
         }
+      }
+      list_sensitive_access_log: {
+        Args: { _limit?: number }
+        Returns: {
+          action: string
+          created_at: string
+          id: string
+          meta: Json
+          outcome: string
+          resource: string
+          subject_id: string
+        }[]
+      }
+      log_sensitive_access: {
+        Args: {
+          _action: string
+          _meta?: Json
+          _outcome?: string
+          _resource: string
+          _target_user?: string
+        }
+        Returns: undefined
       }
       mark_snapshot_failure_resolved: {
         Args: { _user_id: string }
