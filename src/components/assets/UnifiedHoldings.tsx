@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect, useCallback, memo, type KeyboardEvent, type ReactNode } from 'react';
+import { useMemo, useState, useEffect, useCallback, useRef, memo, forwardRef, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
 import {
   ChevronRight, ChevronDown, Pencil, Trash2, ArrowUpRight, ArrowDownRight, ArrowUp, ArrowDown,
   AlertTriangle,
@@ -12,6 +12,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 /* ------------------------------------------------------------------ *
  * Modelo de apresentação
@@ -75,6 +76,60 @@ const GRID =
 
 const FOCUS_RING =
   'focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background';
+
+/**
+ * `content-visibility: auto` faz o browser pular layout/paint das linhas fora
+ * da viewport. `contain-intrinsic-size` reserva a altura estimada, evitando
+ * saltos na barra de rolagem — chave para scroll suave em carteiras grandes.
+ */
+const ROW_CV: CSSProperties = { contentVisibility: 'auto', containIntrinsicSize: 'auto 44px' } as CSSProperties;
+const CARD_CV: CSSProperties = { contentVisibility: 'auto', containIntrinsicSize: 'auto 96px' } as CSSProperties;
+
+const NOOP = () => {};
+
+/** Quantidade inicial de linhas e tamanho de cada lote incremental. */
+const PAGE_SIZE = 40;
+
+/**
+ * Renderização progressiva: monta as primeiras `PAGE_SIZE` linhas na hora e
+ * adiciona os lotes seguintes conforme o sentinela entra na viewport. Mantém o
+ * primeiro paint barato sem quebrar Ctrl+F/scroll (nada é desmontado depois).
+ */
+const ListSentinel = forwardRef<HTMLDivElement, { remaining: number }>(function ListSentinel({ remaining }, ref) {
+  return (
+    <div ref={ref} className="px-4 py-3 text-center text-[11px] text-muted-foreground" aria-hidden>
+      Carregando mais {remaining} {remaining === 1 ? 'linha' : 'linhas'}…
+    </div>
+  );
+});
+
+function useProgressiveList(total: number, deps: unknown[]) {
+  const [limit, setLimit] = useState(PAGE_SIZE);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+
+  // Reinicia ao trocar filtro/ordenação/visão.
+  useEffect(() => { setLimit(PAGE_SIZE); }, deps); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (limit >= total) return;
+    const el = sentinelRef.current;
+    if (!el || typeof IntersectionObserver === 'undefined') { setLimit(total); return; }
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setLimit((prev) => Math.min(prev + PAGE_SIZE, total));
+        }
+      },
+      { rootMargin: '600px 0px' },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [limit, total]);
+
+  return { limit, sentinelRef, hasMore: limit < total };
+}
+
+
 
 /* ------------------------------------------------------------------ *
  * Ordenação persistida
@@ -432,7 +487,7 @@ function useRowKeys({
 interface RowProps {
   agg: TickerAggregate;
   expanded: boolean;
-  onToggleExpand: () => void;
+  onToggleExpand: (key: string) => void;
   selected: Set<string>;
   onToggleIds: (ids: string[], select: boolean) => void;
   onOpen: (asset: Asset) => void;
@@ -590,8 +645,8 @@ const TickerRow = memo(function TickerRow({
   const onKeyDown = useRowKeys({
     onOpen: () => onOpen(single.asset),
     onSelect: () => onToggleIds(agg.ids, !allSelected),
-    onExpand: multi && !expanded ? onToggleExpand : undefined,
-    onCollapse: multi && expanded ? onToggleExpand : undefined,
+    onExpand: multi && !expanded ? () => onToggleExpand(agg.key) : undefined,
+    onCollapse: multi && expanded ? () => onToggleExpand(agg.key) : undefined,
   });
 
   return (
@@ -605,6 +660,7 @@ const TickerRow = memo(function TickerRow({
         aria-expanded={multi ? expanded : undefined}
         aria-label={`${agg.ticker}, ${agg.name}, total ${formatCurrency(agg.value)}`}
         onKeyDown={onKeyDown}
+        style={ROW_CV}
         className={`group ${GRID} ${FOCUS_RING} cursor-pointer border-b border-border/40 px-4 py-2.5 transition-colors hover:bg-accent/40 ${
           allSelected || someSelected ? 'bg-primary/[0.06]' : ''
         }`}
@@ -620,7 +676,7 @@ const TickerRow = memo(function TickerRow({
         {/* ativo */}
         <div className="flex min-w-0 items-center gap-2.5">
           <button
-            onClick={(e) => { e.stopPropagation(); if (multi) onToggleExpand(); }}
+            onClick={(e) => { e.stopPropagation(); if (multi) onToggleExpand(agg.key); }}
             aria-label={multi ? `${expanded ? 'Recolher' : 'Expandir'} corretoras de ${agg.ticker}` : undefined}
             aria-expanded={multi ? expanded : undefined}
             tabIndex={multi ? 0 : -1}
@@ -779,7 +835,7 @@ const TickerRow = memo(function TickerRow({
         <div>
           {multi ? (
             <button
-              onClick={(e) => { e.stopPropagation(); onToggleExpand(); }}
+              onClick={(e) => { e.stopPropagation(); onToggleExpand(agg.key); }}
               aria-expanded={expanded}
               className={`ml-auto flex h-7 items-center justify-end rounded-md px-2 text-[10px] font-medium text-muted-foreground opacity-0 transition-opacity hover:text-primary group-hover:opacity-100 group-focus-within:opacity-100 ${FOCUS_RING}`}
             >
@@ -892,7 +948,7 @@ function LotRow({
  * Cartão "table-like" — mobile
  * ------------------------------------------------------------------ */
 
-function MobileCard({
+const MobileCard = memo(function MobileCard({
   agg, expanded, onToggleExpand, selected, onToggleIds, onOpen, onEdit, onSell, onDelete, showBrokers,
 }: RowProps & { showBrokers: boolean }) {
   const allSelected = agg.ids.length > 0 && agg.ids.every((id) => selected.has(id));
@@ -904,12 +960,17 @@ function MobileCard({
   const onKeyDown = useRowKeys({
     onOpen: () => onOpen(single.asset),
     onSelect: () => onToggleIds(agg.ids, !allSelected),
-    onExpand: multi && !expanded ? onToggleExpand : undefined,
-    onCollapse: multi && expanded ? onToggleExpand : undefined,
+    onExpand: multi && !expanded ? () => onToggleExpand(agg.key) : undefined,
+    onCollapse: multi && expanded ? () => onToggleExpand(agg.key) : undefined,
   });
 
   return (
-    <div className={`border-b border-border/50 ${allSelected || someSelected ? 'bg-primary/[0.06]' : ''}`} data-holdings-card data-agg-key={agg.key}>
+    <div
+      style={expanded ? undefined : CARD_CV}
+      className={`border-b border-border/50 ${allSelected || someSelected ? 'bg-primary/[0.06]' : ''}`}
+      data-holdings-card
+      data-agg-key={agg.key}
+    >
       <div
         data-holdings-row
         role="row"
@@ -979,7 +1040,7 @@ function MobileCard({
           {showBrokers && (
             multi ? (
               <button
-                onClick={(e) => { e.stopPropagation(); onToggleExpand(); }}
+                onClick={(e) => { e.stopPropagation(); onToggleExpand(agg.key); }}
                 aria-expanded={expanded}
                 aria-label={`${expanded ? 'Recolher' : 'Expandir'} corretoras de ${agg.ticker}`}
                 className={`inline-flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-[10px] text-muted-foreground ${FOCUS_RING}`}
@@ -1058,7 +1119,8 @@ function MobileCard({
       )}
     </div>
   );
-}
+});
+
 
 /* ------------------------------------------------------------------ *
  * Agregação
@@ -1324,12 +1386,14 @@ export default function UnifiedHoldings({
     );
   }, []);
 
-  const toggleExpand = (t: string) =>
+  const toggleExpand = useCallback((t: string) => {
     setExpanded((prev) => {
       const next = new Set(prev);
       if (next.has(t)) next.delete(t); else next.add(t);
       return next;
     });
+  }, []);
+
 
   const visibleAssets = useMemo(
     () => filterByClass(assets, classFilter),
@@ -1475,7 +1539,19 @@ export default function UnifiedHoldings({
     </div>
   );
 
-  const rowProps = { selected, onToggleIds, onOpen, onEdit, onSell, onDelete };
+  /* Objeto estável: sem isso todo re-render invalidaria o memo das linhas. */
+  const rowProps = useMemo(
+    () => ({ selected, onToggleIds, onOpen, onEdit, onSell, onDelete }),
+    [selected, onToggleIds, onOpen, onEdit, onSell, onDelete],
+  );
+
+  /* Um único layout montado por vez: metade dos nós no DOM e zero trabalho duplicado. */
+  const isMobile = useIsMobile();
+  const { limit, sentinelRef, hasMore } = useProgressiveList(
+    viewMode === 'ticker' ? aggregates.length : 0,
+    [classFilter, sort.key, sort.dir, viewMode, isMobile],
+  );
+  const visibleRows = useMemo(() => aggregates.slice(0, limit), [aggregates, limit]);
 
   /* ---------- barra de ordenação (mobile) ---------- */
   const mobileSortBar = (
@@ -1588,76 +1664,88 @@ export default function UnifiedHoldings({
         </p>
       )}
       {/* --------- Desktop: grade densa --------- */}
-      <div className="hidden overflow-x-auto md:block">
-        <div className="min-w-[1100px]">
-          {header}
-          {viewMode === 'ticker' &&
-            aggregates.map((agg) => (
-              <TickerRow
-                key={agg.key}
-                agg={agg}
-                expanded={expanded.has(agg.key)}
-                onToggleExpand={() => toggleExpand(agg.key)}
-                showBrokerColumn
-                {...rowProps}
-              />
-            ))}
+      {!isMobile && (
+        <div className="overflow-x-auto">
+          <div className="min-w-[1100px]">
+            {header}
+            {viewMode === 'ticker' && (
+              <>
+                {visibleRows.map((agg) => (
+                  <TickerRow
+                    key={agg.key}
+                    agg={agg}
+                    expanded={expanded.has(agg.key)}
+                    onToggleExpand={toggleExpand}
+                    showBrokerColumn
+                    {...rowProps}
+                  />
+                ))}
+                {hasMore && <ListSentinel ref={sentinelRef} remaining={aggregates.length - visibleRows.length} />}
+              </>
+            )}
+
+            {viewMode === 'broker' &&
+              brokerGroups.map((g) => (
+                <div key={g.broker}>
+                  {brokerHeader(g)}
+                  {!collapsedBrokers.has(g.broker) &&
+                    g.rows.map((agg) => (
+                      <TickerRow
+                        key={`${g.broker}::${agg.key}`}
+                        agg={agg}
+                        expanded={false}
+                        onToggleExpand={NOOP}
+                        showBrokerColumn={false}
+                        {...rowProps}
+                      />
+                    ))}
+                </div>
+              ))}
+          </div>
+        </div>
+      )}
+
+      {/* --------- Mobile: cartões table-like --------- */}
+      {isMobile && (
+        <div>
+          {mobileSortBar}
+          {viewMode === 'ticker' && (
+            <>
+              {visibleRows.map((agg) => (
+                <MobileCard
+                  key={agg.key}
+                  agg={agg}
+                  expanded={expanded.has(agg.key)}
+                  onToggleExpand={toggleExpand}
+                  showBrokerColumn
+                  showBrokers
+                  {...rowProps}
+                />
+              ))}
+              {hasMore && <ListSentinel ref={sentinelRef} remaining={aggregates.length - visibleRows.length} />}
+            </>
+          )}
 
           {viewMode === 'broker' &&
             brokerGroups.map((g) => (
               <div key={g.broker}>
-                {brokerHeader(g)}
+                {brokerHeader(g, true)}
                 {!collapsedBrokers.has(g.broker) &&
                   g.rows.map((agg) => (
-                    <TickerRow
+                    <MobileCard
                       key={`${g.broker}::${agg.key}`}
                       agg={agg}
                       expanded={false}
-                      onToggleExpand={() => {}}
+                      onToggleExpand={NOOP}
                       showBrokerColumn={false}
+                      showBrokers={false}
                       {...rowProps}
                     />
                   ))}
               </div>
             ))}
         </div>
-      </div>
-
-      {/* --------- Mobile: cartões table-like --------- */}
-      <div className="md:hidden">
-        {mobileSortBar}
-        {viewMode === 'ticker' &&
-          aggregates.map((agg) => (
-            <MobileCard
-              key={agg.key}
-              agg={agg}
-              expanded={expanded.has(agg.key)}
-              onToggleExpand={() => toggleExpand(agg.key)}
-              showBrokerColumn
-              showBrokers
-              {...rowProps}
-            />
-          ))}
-
-        {viewMode === 'broker' &&
-          brokerGroups.map((g) => (
-            <div key={g.broker}>
-              {brokerHeader(g, true)}
-              {!collapsedBrokers.has(g.broker) &&
-                g.rows.map((agg) => (
-                  <MobileCard
-                    key={`${g.broker}::${agg.key}`}
-                    agg={agg}
-                    expanded={false}
-                    onToggleExpand={() => {}}
-                    showBrokerColumn={false}
-                    showBrokers={false}
-                    {...rowProps}
-                  />
-                ))}
-            </div>
-          ))}
-      </div>
+      )}
     </div>
   );
 }
