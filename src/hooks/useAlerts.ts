@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { getCached } from '@/lib/persistentCache';
+import { getCached, userScopedKey } from '@/lib/persistentCache';
 
 export type AlertType = 'price_above' | 'price_below' | 'variation_up' | 'variation_down' | 'stop_loss' | 'take_profit';
 export type AlertStatus = 'active' | 'triggered' | 'paused';
@@ -106,7 +106,7 @@ export function useAlerts() {
     // Seed instantly from dashboard bootstrap cache (SWR) — avoids duplicate fetch
     let bootstrapFresh = false;
     (async () => {
-      const boot = await getCached<any>(`dashboard_bootstrap:${user.id}`);
+      const boot = await getCached<any>(userScopedKey(user.id, `dashboard_bootstrap:${user.id}`), { owner: user.id });
       if (boot?.alerts) {
         setAlerts(boot.alerts as AlertRow[]);
         const gen = boot.generated_at ? new Date(boot.generated_at).getTime() : 0;

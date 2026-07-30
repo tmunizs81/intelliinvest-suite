@@ -79,7 +79,7 @@ export function usePortfolioMetrics() {
 
         setMetrics(data as PortfolioMetrics | null);
         setError(null);
-        if (data) await setCache(cacheKey, data, CACHE_TTL.SNAPSHOTS);
+        if (data) await setCache(cacheKey, data, CACHE_TTL.SNAPSHOTS, { owner: uid });
       } catch (e: any) {
         setError(e.message || "Erro ao carregar métricas");
       } finally {
