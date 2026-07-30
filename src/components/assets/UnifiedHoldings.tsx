@@ -521,7 +521,9 @@ const TickerRow = memo(function TickerRow({
 
         {/* qtd */}
         <div className="truncate text-right font-mono text-[12px] tabular-nums">
-          {multi ? (
+          {isProp ? (
+            <Info tip={<PropertyTip agg={agg} metric="quantity" />}>{num(agg.quantity)}</Info>
+          ) : multi ? (
             <Info tip={<BrokerBreakdownTip agg={agg} />}>{num(agg.quantity)}</Info>
           ) : (
             <span title={num(agg.quantity)}>{num(agg.quantity)}</span>
@@ -532,17 +534,23 @@ const TickerRow = memo(function TickerRow({
         <div className="text-right font-mono text-[12px] tabular-nums text-muted-foreground">
           <Info
             tip={
-              <div className="space-y-1">
-                <p className="font-semibold">Preço médio ponderado</p>
-                <p>Custo total ÷ quantidade total{multi ? ', somando todos os lotes/corretoras.' : '.'}</p>
-                <p className="font-mono tabular-nums">
-                  {formatCurrency(agg.cost)} ÷ {num(agg.quantity, 6)} = {formatCurrency(agg.avgPrice)}
-                </p>
-              </div>
+              isProp ? (
+                <PropertyTip agg={agg} metric="avgPrice" />
+              ) : (
+                <div className="space-y-1">
+                  <p className="font-semibold">Preço médio ponderado</p>
+                  <p>Custo total ÷ quantidade total{multi ? ', somando todos os lotes/corretoras.' : '.'}</p>
+                  <p className="font-mono tabular-nums">
+                    {formatCurrency(agg.cost)} ÷ {num(agg.quantity, 6)} = {formatCurrency(agg.avgPrice)}
+                  </p>
+                </div>
+              )
             }
           >
             {formatCurrency(agg.avgPrice)}
           </Info>
+        </div>
+
         </div>
 
         {/* atual */}
