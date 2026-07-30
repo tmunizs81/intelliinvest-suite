@@ -250,7 +250,11 @@ describe("isolamento — segredo do Telegram nunca chega ao cliente", () => {
     const offenders: string[] = [];
     for (const file of SRC_FILES) {
       const content = read(file);
-      if (/from\(['"]telegram_settings['"]\)[\s\S]{0,80}\.select\(/.test(content)) {
+      // Só é problema quando a leitura pode trazer o segredo: select('*') ou bot_token.
+      const risky = /from\(['"]telegram_settings['"]\)[\s\S]{0,120}\.select\(\s*['"`](\*|[^'"`]*bot_token[^'"`]*)['"`]/.test(
+        content,
+      );
+      if (risky) {
         offenders.push(file);
       }
     }
