@@ -82,17 +82,14 @@ export default function Assets() {
     preloadBrokers(brokerFacets.slice(0, 8).map(([b]) => b));
   }, [brokerFacets]);
 
-  const brokerByTicker = useMemo(() => {
-    const m = new Map<string, string>();
-    holdings.forEach((h) => { if (h.broker) m.set(h.ticker, h.broker); });
-    return m;
-  }, [holdings]);
+  /** Corretora do lote — sempre do próprio registro, nunca de outro ticker igual. */
+  const brokerOf = (a: Asset) => (a.broker || '').trim();
 
   const filtered = useMemo(() => {
     const list = assets.filter(a => {
       const matchSearch = !search || a.ticker.toLowerCase().includes(search.toLowerCase()) || a.name.toLowerCase().includes(search.toLowerCase());
       const matchType = !typeFilter || a.type === typeFilter;
-      const matchBroker = !brokerFilter || (brokerByTicker.get(a.ticker) || '') === brokerFilter;
+      const matchBroker = !brokerFilter || brokerOf(a) === brokerFilter;
       return matchSearch && matchType && matchBroker;
     });
     if (sortBy === 'default') return list;
@@ -102,13 +99,88 @@ export default function Assets() {
         case 'value_desc': return (b.currentPrice * b.quantity) - (a.currentPrice * a.quantity);
         case 'value_asc': return (a.currentPrice * a.quantity) - (b.currentPrice * b.quantity);
         case 'name_asc': return a.ticker.localeCompare(b.ticker);
-        case 'broker_asc': return (brokerByTicker.get(a.ticker) || 'zz').localeCompare(brokerByTicker.get(b.ticker) || 'zz');
+        case 'broker_asc': return (brokerOf(a) || 'zzz').localeCompare(brokerOf(b) || 'zzz');
         case 'change_desc': return (b.change24h || 0) - (a.change24h || 0);
         default: return 0;
       }
     });
     return sorted;
-  }, [assets, search, typeFilter, brokerFilter, sortBy, brokerByTicker]);
+  }, [assets, search, typeFilter, brokerFilter, sortBy]);
+
+  /** Agrupamento por corretora — a fonte da verdade visual do módulo. */
+  const groups = useMemo(() => {
+    const map = new Map<string, Asset[]>();
+    filtered.forEach((a) => {
+      const key = brokerOf(a) || NO_BROKER;
+      const arr = map.get(key);
+      if (arr) arr.push(a); else map.set(key, [a]);
+    });
+    return Array.from(map.entries())
+      .map(([broker, items]) => {
+        const value = items.reduce((s, a) => s + a.currentPrice * a.quantity, 0);
+        const cost = items.reduce((s, a) => s + a.avgPrice * a.quantity, 0);
+        return { broker, items, value, cost, gain: value - cost };
+      })
+      .sort((a, b) => {
+        if (a.broker === NO_BROKER) return 1;
+        if (b.broker === NO_BROKER) return -1;
+        return b.value - a.value;
+      });
+  }, [filtered]);
+
+  const visibleIds = useMemo(
+    () => filtered.map(a => a.holdingId).filter(Boolean) as string[],
+    [filtered],
+  );
+
+  // Mantém a seleção coerente quando a lista muda (filtro, exclusão, refresh)
+  useEffect(() => {
+    setSelected(prev => {
+      const next = new Set<string>();
+      prev.forEach(id => { if (visibleIds.includes(id)) next.add(id); });
+      return next.size === prev.size ? prev : next;
+    });
+  }, [visibleIds]);
+
+  const toggleOne = (id?: string) => {
+    if (!id) return;
+    setSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleGroup = (items: Asset[]) => {
+    const ids = items.map(a => a.holdingId).filter(Boolean) as string[];
+    const allSelected = ids.length > 0 && ids.every(id => selected.has(id));
+    setSelected(prev => {
+      const next = new Set(prev);
+      ids.forEach(id => { if (allSelected) next.delete(id); else next.add(id); });
+      return next;
+    });
+  };
+
+  const allVisibleSelected = visibleIds.length > 0 && visibleIds.every(id => selected.has(id));
+  const toggleAllVisible = () => {
+    setSelected(allVisibleSelected ? new Set() : new Set(visibleIds));
+  };
+
+  const handleBulkDelete = async () => {
+    const ids = Array.from(selected);
+    if (ids.length === 0) return;
+    if (!confirm(`Remover ${ids.length} ${ids.length === 1 ? 'ativo' : 'ativos'} da carteira? Esta ação não pode ser desfeita.`)) return;
+    setBulkDeleting(true);
+    try {
+      await bulkDeleteHoldings(ids);
+      setSelected(new Set());
+      toast.success(`${ids.length} ${ids.length === 1 ? 'ativo removido' : 'ativos removidos'}`);
+    } catch (err: any) {
+      toast.error(err?.message || 'Erro ao remover ativos');
+    } finally {
+      setBulkDeleting(false);
+    }
+  };
 
   const total = assets.reduce((s, a) => s + a.currentPrice * a.quantity, 0);
   const cost = assets.reduce((s, a) => s + a.avgPrice * a.quantity, 0);
@@ -118,6 +190,7 @@ export default function Assets() {
     if (!confirm('Remover este ativo da carteira?')) return;
     await deleteHolding(id);
   };
+
 
   const handleCSVImport = async () => {
     if (!importData.trim()) return;
