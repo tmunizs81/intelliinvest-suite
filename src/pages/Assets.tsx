@@ -49,7 +49,7 @@ function RowCheckbox({ checked, onChange, label }: { checked: boolean; onChange:
 export default function Assets() {
   const navigate = useNavigate();
   const { density } = useBrokerLogoSettings();
-  const { assets, holdings, cashBalance, cashBalances, loading, refresh, addHolding, updateHolding, deleteHolding, bulkDeleteHoldings, sellHolding, updateCashBalance, loadCashMovements } = usePortfolio();
+  const { assets, holdings, cashBalance, cashBalances, loading, refresh, addHolding, updateHolding, deleteHolding, bulkDeleteHoldings, restoreHoldings, reassignBroker, sellHolding, updateCashBalance, loadCashMovements } = usePortfolio();
   const [modalOpen, setModalOpen] = useState(false);
   const [editingHolding, setEditingHolding] = useState<HoldingRow | null>(null);
   const [sellOpen, setSellOpen] = useState(false);
