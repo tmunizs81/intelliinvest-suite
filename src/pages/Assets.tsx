@@ -146,26 +146,8 @@ export default function Assets() {
     return sorted;
   }, [assets, search, typeFilter, brokerFilter, sortBy]);
 
-  /** Agrupamento por corretora — a fonte da verdade visual do módulo. */
-  const groups = useMemo(() => {
-    const map = new Map<string, Asset[]>();
-    filtered.forEach((a) => {
-      const key = brokerOf(a) || NO_BROKER;
-      const arr = map.get(key);
-      if (arr) arr.push(a); else map.set(key, [a]);
-    });
-    return Array.from(map.entries())
-      .map(([broker, items]) => {
-        const value = items.reduce((s, a) => s + a.currentPrice * a.quantity, 0);
-        const cost = items.reduce((s, a) => s + a.avgPrice * a.quantity, 0);
-        return { broker, items, value, cost, gain: value - cost };
-      })
-      .sort((a, b) => {
-        if (a.broker === NO_BROKER) return 1;
-        if (b.broker === NO_BROKER) return -1;
-        return b.value - a.value;
-      });
-  }, [filtered]);
+
+
 
   const visibleIds = useMemo(
     () => filtered.map(a => a.holdingId).filter(Boolean) as string[],
