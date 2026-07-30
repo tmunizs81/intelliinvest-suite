@@ -567,6 +567,99 @@ export type Database = {
         }
         Relationships: []
       }
+      http_cache: {
+        Row: {
+          cache_key: string
+          created_at: string
+          expires_at: string
+          hit_count: number
+          id: number
+          namespace: string
+          payload: Json
+          updated_at: string
+        }
+        Insert: {
+          cache_key: string
+          created_at?: string
+          expires_at: string
+          hit_count?: number
+          id?: number
+          namespace: string
+          payload: Json
+          updated_at?: string
+        }
+        Update: {
+          cache_key?: string
+          created_at?: string
+          expires_at?: string
+          hit_count?: number
+          id?: number
+          namespace?: string
+          payload?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      job_queue: {
+        Row: {
+          attempts: number
+          created_at: string
+          dedupe_key: string | null
+          finished_at: string | null
+          id: string
+          job_type: string
+          last_error: string | null
+          locked_at: string | null
+          max_attempts: number
+          payload: Json
+          priority: number
+          result: Json | null
+          run_after: string
+          started_at: string | null
+          status: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          dedupe_key?: string | null
+          finished_at?: string | null
+          id?: string
+          job_type: string
+          last_error?: string | null
+          locked_at?: string | null
+          max_attempts?: number
+          payload?: Json
+          priority?: number
+          result?: Json | null
+          run_after?: string
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          dedupe_key?: string | null
+          finished_at?: string | null
+          id?: string
+          job_type?: string
+          last_error?: string | null
+          locked_at?: string | null
+          max_attempts?: number
+          payload?: Json
+          priority?: number
+          result?: Json | null
+          run_after?: string
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       notification_log: {
         Row: {
           channel: string
@@ -970,8 +1063,44 @@ export type Database = {
       }
     }
     Functions: {
+      claim_jobs: {
+        Args: {
+          _limit?: number
+          _lock_timeout_seconds?: number
+          _max_per_user?: number
+        }
+        Returns: {
+          attempts: number
+          created_at: string
+          dedupe_key: string | null
+          finished_at: string | null
+          id: string
+          job_type: string
+          last_error: string | null
+          locked_at: string | null
+          max_attempts: number
+          payload: Json
+          priority: number
+          result: Json | null
+          run_after: string
+          started_at: string | null
+          status: string
+          updated_at: string
+          user_id: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "job_queue"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       cleanup_old_snapshots: { Args: never; Returns: number }
       cleanup_security_data: { Args: never; Returns: number }
+      complete_job: {
+        Args: { _error?: string; _job_id: string; _result?: Json }
+        Returns: undefined
+      }
       consume_rate_limit: {
         Args: {
           _max_requests: number
@@ -985,6 +1114,15 @@ export type Database = {
           retry_after_seconds: number
         }[]
       }
+      enqueue_job: {
+        Args: {
+          _dedupe_key?: string
+          _job_type: string
+          _payload?: Json
+          _priority?: number
+        }
+        Returns: string
+      }
       enqueue_snapshot_failure: {
         Args: {
           _error?: string
@@ -995,6 +1133,7 @@ export type Database = {
         Returns: undefined
       }
       get_dashboard_bootstrap: { Args: never; Returns: Json }
+      get_observability_dashboard: { Args: { _hours?: number }; Returns: Json }
       get_user_email: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {
@@ -1002,6 +1141,23 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      http_cache_get: {
+        Args: { _key: string; _namespace: string }
+        Returns: Json
+      }
+      http_cache_invalidate: {
+        Args: { _key_prefix?: string; _namespace: string }
+        Returns: number
+      }
+      http_cache_put: {
+        Args: {
+          _key: string
+          _namespace: string
+          _payload: Json
+          _ttl_seconds: number
+        }
+        Returns: undefined
       }
       import_transactions_atomic: { Args: { _rows: Json }; Returns: Json }
       list_pending_snapshot_failures: {
