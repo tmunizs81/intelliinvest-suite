@@ -1,10 +1,11 @@
 import { useState, useRef, useMemo, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
-  Plus, Upload, Download, Search, Pencil, Trash2, ArrowUpRight,
-  ArrowDownRight, ChevronRight, Loader2, FileSpreadsheet, X, AlertTriangle, FileUp,
+  Plus, Upload, Download, Search, Trash2,
+  ChevronRight, Loader2, FileSpreadsheet, X, AlertTriangle, FileUp,
   Wallet, DollarSign, Building2, ArrowUpDown, ChevronDown,
 } from 'lucide-react';
+
 import { toast } from 'sonner';
 import { usePortfolio, type HoldingRow } from '@/hooks/usePortfolio';
 import HoldingModal from '@/components/dashboard/HoldingModal';
@@ -24,14 +25,6 @@ import UnifiedHoldings, { type AssetsViewMode } from '@/components/assets/Unifie
 
 
 
-const typeBadgeClass: Record<string, string> = {
-  'Ação': 'bg-primary/10 text-primary',
-  'FII': 'bg-[hsl(270,70%,60%)]/10 text-[hsl(270,70%,85%)]',
-  'ETF': 'bg-[hsl(38,92%,50%)]/10 text-[hsl(38,92%,80%)]',
-  'ETF Internacional': 'bg-emerald-500/10 text-emerald-400',
-  'Cripto': 'bg-[hsl(160,84%,39%)]/10 text-[hsl(160,84%,80%)]',
-  'Renda Fixa': 'bg-secondary text-secondary-foreground',
-};
 
 /** Checkbox acessível e consistente com o design system. */
 function RowCheckbox({ checked, onChange, label }: { checked: boolean; onChange: () => void; label: string }) {
@@ -146,26 +139,8 @@ export default function Assets() {
     return sorted;
   }, [assets, search, typeFilter, brokerFilter, sortBy]);
 
-  /** Agrupamento por corretora — a fonte da verdade visual do módulo. */
-  const groups = useMemo(() => {
-    const map = new Map<string, Asset[]>();
-    filtered.forEach((a) => {
-      const key = brokerOf(a) || NO_BROKER;
-      const arr = map.get(key);
-      if (arr) arr.push(a); else map.set(key, [a]);
-    });
-    return Array.from(map.entries())
-      .map(([broker, items]) => {
-        const value = items.reduce((s, a) => s + a.currentPrice * a.quantity, 0);
-        const cost = items.reduce((s, a) => s + a.avgPrice * a.quantity, 0);
-        return { broker, items, value, cost, gain: value - cost };
-      })
-      .sort((a, b) => {
-        if (a.broker === NO_BROKER) return 1;
-        if (b.broker === NO_BROKER) return -1;
-        return b.value - a.value;
-      });
-  }, [filtered]);
+
+
 
   const visibleIds = useMemo(
     () => filtered.map(a => a.holdingId).filter(Boolean) as string[],
@@ -196,25 +171,9 @@ export default function Assets() {
     });
   };
 
-  const toggleOne = (id?: string) => {
 
-    if (!id) return;
-    setSelected(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
-      return next;
-    });
-  };
 
-  const toggleGroup = (items: Asset[]) => {
-    const ids = items.map(a => a.holdingId).filter(Boolean) as string[];
-    const allSelected = ids.length > 0 && ids.every(id => selected.has(id));
-    setSelected(prev => {
-      const next = new Set(prev);
-      ids.forEach(id => { if (allSelected) next.delete(id); else next.add(id); });
-      return next;
-    });
-  };
+
 
   const allVisibleSelected = visibleIds.length > 0 && visibleIds.every(id => selected.has(id));
   const toggleAllVisible = () => {
@@ -634,138 +593,21 @@ export default function Assets() {
               )}
             </div>
 
-            {/* Grade unificada por ticker (desktop) */}
-            <div className="hidden overflow-x-auto md:block">
-              <UnifiedHoldings
-                assets={filtered}
-                holdings={holdings}
-                viewMode={viewMode}
-                selected={selected}
-                onToggleIds={toggleIds}
-                onOpen={(a) => navigate(assetRoute(a.ticker, a.broker, a.holdingId))}
-                onEdit={(h) => { setEditingHolding(h); setModalOpen(true); }}
-                onSell={handleSell}
-                onDelete={handleDelete}
-                brokerFilter={brokerFilter}
-                onBrokerFilter={setBrokerFilter}
-              />
-            </div>
+            {/* Grade unificada por ticker — responsiva (grade no desktop, cartões no mobile) */}
+            <UnifiedHoldings
+              assets={filtered}
+              holdings={holdings}
+              viewMode={viewMode}
+              selected={selected}
+              onToggleIds={toggleIds}
+              onOpen={(a) => navigate(assetRoute(a.ticker, a.broker, a.holdingId))}
+              onEdit={(h) => { setEditingHolding(h); setModalOpen(true); }}
+              onSell={handleSell}
+              onDelete={handleDelete}
+              brokerFilter={brokerFilter}
+              onBrokerFilter={setBrokerFilter}
+            />
 
-
-            {/* Mobile Card View — agrupado por corretora */}
-            <div className="md:hidden">
-              {groups.map((g) => {
-                const ids = g.items.map(a => a.holdingId).filter(Boolean) as string[];
-                const groupSelected = ids.length > 0 && ids.every(id => selected.has(id));
-                const label = g.broker === NO_BROKER ? 'Sem corretora' : g.broker;
-                return (
-                  <div key={g.broker}>
-                    <div className="flex items-center gap-2 bg-muted/40 border-y border-border px-4 py-2">
-                      <RowCheckbox checked={groupSelected} onChange={() => toggleGroup(g.items)} label={`Selecionar todos de ${label}`} />
-                      {g.broker !== NO_BROKER && <BrokerLogo broker={g.broker} size={16} />}
-                      <span className="text-xs font-semibold">{label}</span>
-                      <span className="text-[10px] text-muted-foreground">({g.items.length})</span>
-                      <span className="ml-auto font-mono text-[11px] text-muted-foreground">{formatCurrency(g.value)}</span>
-                    </div>
-                    <div className="divide-y divide-border">
-                      {g.items.map((asset) => {
-                        const assetTotal = asset.currentPrice * asset.quantity;
-                        const assetCost = asset.avgPrice * asset.quantity;
-                        const profit = assetTotal - assetCost;
-                        const profitPct = assetCost > 0 ? (profit / assetCost) * 100 : 0;
-                        const isPositive = asset.change24h >= 0;
-                        const isProfitable = profit >= 0;
-                        const holdingRow = holdings.find(h => h.id === asset.holdingId);
-                        const isSelected = !!asset.holdingId && selected.has(asset.holdingId);
-
-                        return (
-                          <div
-                            key={asset.holdingId || `${asset.ticker}::${g.broker}`}
-                            className={`p-4 hover:bg-accent/30 active:bg-accent/50 transition-colors cursor-pointer ${isSelected ? 'bg-primary/5' : ''}`}
-                            onClick={() => navigate(assetRoute(asset.ticker, asset.broker, asset.holdingId))}
-                          >
-                            <div className="flex items-start justify-between mb-2">
-                              <div className="flex items-start gap-2 min-w-0">
-                                <span className="mt-1" onClick={e => e.stopPropagation()}>
-                                  <RowCheckbox
-                                    checked={isSelected}
-                                    onChange={() => toggleOne(asset.holdingId)}
-                                    label={`Selecionar ${asset.ticker} em ${label}`}
-                                  />
-                                </span>
-                                <div className="min-w-0">
-                                  <div className="flex items-center gap-2">
-                                    <span className="font-bold font-mono">{asset.ticker}</span>
-                                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${typeBadgeClass[asset.type] || ''}`}>
-                                      {asset.type}
-                                    </span>
-                                  </div>
-                                  <p className="text-xs text-muted-foreground mt-0.5 truncate">{asset.name}</p>
-                                  {density === 'full' && g.broker !== NO_BROKER && (
-                                    <p className="text-[10px] text-muted-foreground/70">{g.broker}</p>
-                                  )}
-                                </div>
-                              </div>
-                              <div className="text-right">
-                                <p className="font-mono font-semibold text-sm">
-                                  {asset.currentPrice > 0 ? formatCurrency(asset.currentPrice) : '—'}
-                                </p>
-                                {asset.currentPrice > 0 && asset.currency && asset.currency !== 'BRL' && asset.originalPrice && asset.originalPrice > 0 && (
-                                  <p className="text-[10px] text-muted-foreground font-mono">
-                                    {formatCurrency(asset.originalPrice, asset.currency)}
-                                  </p>
-                                )}
-                                {asset.currentPrice > 0 && (
-                                  <span className={`inline-flex items-center gap-0.5 text-xs font-mono ${isPositive ? 'text-gain' : 'text-loss'}`}>
-                                    {isPositive ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
-                                    {formatPercent(asset.change24h)}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                            <div className="flex items-center justify-between text-xs">
-                              <div className="flex items-center gap-3 text-muted-foreground">
-                                <span>{asset.quantity} un</span>
-                                <span>PM {formatCurrency(asset.avgPrice)}</span>
-                                <span>{asset.allocation}%</span>
-                              </div>
-                              {asset.currentPrice > 0 && (
-                                <span className={`font-mono font-medium ${isProfitable ? 'text-gain' : 'text-loss'}`}>
-                                  {formatCurrency(profit)} ({formatPercent(profitPct)})
-                                </span>
-                              )}
-                            </div>
-                            {holdingRow && (
-                              <div className="flex items-center justify-end gap-1 mt-2" onClick={e => e.stopPropagation()}>
-                                <button
-                                  onClick={() => handleSell(holdingRow, asset)}
-                                  className="h-7 px-2 rounded flex items-center gap-1 text-[10px] font-semibold text-[hsl(var(--loss-foreground))] bg-[hsl(var(--loss)/0.1)] hover:bg-[hsl(var(--loss)/0.2)] transition-colors"
-                                >
-                                  <ArrowDownRight className="h-3 w-3" />
-                                  Vender
-                                </button>
-                                <button
-                                  onClick={() => { setEditingHolding(holdingRow); setModalOpen(true); }}
-                                  className="h-7 w-7 rounded flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                                >
-                                  <Pencil className="h-3.5 w-3.5" />
-                                </button>
-                                <button
-                                  onClick={() => handleDelete(holdingRow.id)}
-                                  className="h-7 w-7 rounded flex items-center justify-center text-muted-foreground hover:text-[hsl(var(--loss-foreground))] hover:bg-[hsl(var(--loss)/0.1)] transition-colors"
-                                >
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
           </>
         )}
       </div>
