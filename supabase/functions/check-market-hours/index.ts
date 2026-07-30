@@ -2,6 +2,7 @@
 // Reads rules with kind='market_open' or 'market_close'; meta.market = 'B3'|'NYSE'|'NASDAQ'|'LSE'|'TSE' (or 'ALL').
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { admin, dispatchAlert } from "../_shared/telegram.ts";
+import { requireCron } from "../_shared/auth.ts";
 
 type MK = { code: string; label: string; tz: string; openH: number; openM: number; closeH: number; closeM: number };
 
@@ -39,6 +40,10 @@ function detectTransition(now: Date, mk: MK, windowMin: number): 'open' | 'close
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+
+  // Rota de automação: exige x-cron-secret (ou service role). Bloqueia chamadas públicas.
+  const denied = requireCron(req);
+  if (denied) return denied;
   try {
     const db = admin();
     const now = new Date();

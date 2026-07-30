@@ -1,6 +1,7 @@
 // Cron: 12:00 UTC (09:00 São Paulo). Sends portfolio summary to opted-in users.
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { admin, dispatchAlert, brl, pct } from "../_shared/telegram.ts";
+import { requireCron } from "../_shared/auth.ts";
 
 async function summarizeUser(userId: string, ruleId: string, cooldown: number) {
   const db = admin();
@@ -43,6 +44,10 @@ ${rank || "— sem posições —"}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+
+  // Rota de automação: exige x-cron-secret (ou service role). Bloqueia chamadas públicas.
+  const denied = requireCron(req);
+  if (denied) return denied;
   try {
     const db = admin();
     const { data: rules } = await db

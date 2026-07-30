@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { requireCron } from "../_shared/auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -144,6 +145,10 @@ function formatEmailHtml(alert: any, quote: QuoteResult): string {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+
+  // Rota de automação: exige x-cron-secret (ou service role). Bloqueia chamadas públicas.
+  const denied = requireCron(req);
+  if (denied) return denied;
 
   try {
     const supabase = createClient(
