@@ -1,5 +1,8 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { requireUser } from "../_shared/auth.ts";
+import { enforceRateLimit } from "../_shared/rate-limit.ts";
+import { logSecurityEvent } from "../_shared/security-log.ts";
+
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -236,6 +239,28 @@ Deno.serve(async (req) => {
 
   const authed = await requireUser(req);
   if (authed instanceof Response) return authed;
+
+  // Cota persistida: 12 análises/min e 120/dia por usuário verificado.
+  // ai-trader é a rota mais cara (contexto macro + notícias + LLM longo).
+  const limitedMinute = await enforceRateLimit(req, authed.id, {
+    resource: "ai-trader", max: 12, windowSeconds: 60,
+  });
+  if (limitedMinute) return limitedMinute;
+
+  const limitedDay = await enforceRateLimit(req, authed.id, {
+    resource: "ai-trader:daily", max: 120, windowSeconds: 86400,
+  });
+  if (limitedDay) return limitedDay;
+
+  logSecurityEvent(req, {
+    function_name: "ai-trader",
+    outcome: "allowed",
+    reason: "authenticated_call",
+    status_code: 200,
+    subject_id: authed.id,
+    claims: authed.claims,
+  });
+
 
   try {
     const { messages, portfolio, analysisType } = await req.json();

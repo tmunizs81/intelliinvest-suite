@@ -1,3 +1,5 @@
+import { resolveCaller } from "../_shared/auth.ts";
+import { enforceRateLimit } from "../_shared/rate-limit.ts";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -7,6 +9,18 @@ const corsHeaders = {
 // importance: -1 = low, 0 = medium, 1 = high
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+
+  // Proxy de dados de mercado: exige sessão válida (ou chamada interna) para não
+  // servir de gateway anônimo em cima da nossa cota de Yahoo/Brapi/BCB.
+  const caller = await resolveCaller(req);
+  if (caller instanceof Response) return caller;
+
+  if (!caller.isInternal) {
+    const limited = await enforceRateLimit(req, caller.subjectId, {
+      resource: "economic-calendar", max: 30, windowSeconds: 60,
+    });
+    if (limited) return limited;
+  }
 
   try {
     const u = new URL(req.url);

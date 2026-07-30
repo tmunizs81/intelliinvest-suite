@@ -1,3 +1,5 @@
+import { resolveCaller } from "../_shared/auth.ts";
+import { enforceRateLimit } from "../_shared/rate-limit.ts";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -15,6 +17,18 @@ interface SearchResult {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
+  }
+
+  // Proxy de dados de mercado: exige sessão válida (ou chamada interna) para não
+  // servir de gateway anônimo em cima da nossa cota de Yahoo/Brapi/BCB.
+  const caller = await resolveCaller(req);
+  if (caller instanceof Response) return caller;
+
+  if (!caller.isInternal) {
+    const limited = await enforceRateLimit(req, caller.subjectId, {
+      resource: "ticker-search", max: 60, windowSeconds: 60,
+    });
+    if (limited) return limited;
   }
 
   try {

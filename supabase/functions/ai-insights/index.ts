@@ -1,5 +1,6 @@
 import { withAICache, normalizePortfolioForCache } from "../ai-cache-helper.ts";
-import { requireCaller } from "../_shared/auth.ts";
+import { resolveCaller } from "../_shared/auth.ts";
+import { enforceRateLimit } from "../_shared/rate-limit.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -8,22 +9,10 @@ const corsHeaders = {
   "Access-Control-Expose-Headers": "x-ai-provider",
 };
 
-// ─── Per-user rate limiting ───
-const userCalls = new Map<string, number[]>();
-const MAX_CALLS_PER_MIN = 10;
+// Rate limit persistido: 10 chamadas/min por usuário VERIFICADO.
+// O antigo limitador lia `sub` de atob(jwt) — forjável e por isolate.
+const RATE_RULE = { resource: "ai-insights", max: 10, windowSeconds: 60 };
 
-function isRateLimited(req: Request): boolean {
-  const auth = req.headers.get("authorization") || "";
-  const parts = auth.replace("Bearer ", "").split(".");
-  let userId = "anon";
-  try { if (parts[1]) { const p = JSON.parse(atob(parts[1])); userId = p.sub || "anon"; } } catch {}
-  const now = Date.now();
-  const calls = (userCalls.get(userId) || []).filter(t => now - t < 60000);
-  if (calls.length >= MAX_CALLS_PER_MIN) return true;
-  calls.push(now);
-  userCalls.set(userId, calls);
-  return false;
-}
 
 async function callAI(body) {
   const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
@@ -48,8 +37,14 @@ Deno.serve(async (req) => {
 
   // Somente sessão válida (ou chamada interna cron/service): evita uso do endpoint
   // como proxy gratuito de LLM e vazamento de dados entre contas.
-  const denied = await requireCaller(req);
-  if (denied) return denied;
+  const caller = await resolveCaller(req);
+  if (caller instanceof Response) return caller;
+
+  if (!caller.isInternal) {
+    const limited = await enforceRateLimit(req, caller.subjectId, RATE_RULE);
+    if (limited) return limited;
+  }
+
 
   try {
     const { portfolio } = await req.json();

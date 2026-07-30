@@ -8,14 +8,16 @@
  * beneficia todas as tarefas de uma vez.
  */
 import {
-  corsHeaders, corsPreflight, jsonResponse, errorResponse, rateLimitResponse,
-  extractUserId, isRateLimited, callDeepSeek, parseDeepSeekJson,
+  corsHeaders, corsPreflight, jsonResponse, errorResponse,
+  isRateLimited, callDeepSeek, parseDeepSeekJson,
 } from "../_ai-core.ts";
 import { withAICache } from "../ai-cache-helper.ts";
 import { buildInsightsPrompt, type InsightsPayload } from "../_ai-prompts/insights.ts";
 import { buildScoringPrompt, type ScoringPayload } from "../_ai-prompts/scoring.ts";
 import { logMetric } from "../_telemetry.ts";
-import { requireCaller } from "../_shared/auth.ts";
+import { resolveCaller } from "../_shared/auth.ts";
+import { enforceRateLimit } from "../_shared/rate-limit.ts";
+
 
 type TaskBuilder = (payload: any) => {
   cacheKey: string;
@@ -36,12 +38,15 @@ Deno.serve(async (req) => {
 
   // Somente sessão válida (ou chamada interna cron/service): evita uso do endpoint
   // como proxy gratuito de LLM e vazamento de dados entre contas.
-  const denied = await requireCaller(req);
-  if (denied) return denied;
+  const caller = await resolveCaller(req);
+  if (caller instanceof Response) return caller;
 
   const started = performance.now();
   let taskName = "unknown";
-  let userId: string | null = null;
+  // Identidade VERIFICADA (assinatura do JWT conferida) — base do rate limit
+  // e da telemetria. Nunca vem de atob(jwt).
+  let userId: string | null = caller.isInternal ? null : caller.subjectId;
+
 
   const finish = (status: number, extras: { cache_hit?: boolean; tokens_in?: number; tokens_out?: number; error?: string } = {}) => {
     logMetric({
@@ -72,8 +77,20 @@ Deno.serve(async (req) => {
   const builder = TASKS[task];
   if (!builder) { finish(400, { error: "unknown task" }); return errorResponse(`Task desconhecida: ${task}`, 400); }
 
-  userId = extractUserId(req);
-  if (isRateLimited(userId)) { finish(429, { error: "rate limited" }); return rateLimitResponse(); }
+  // Amortecedor local + cota persistida (atômica, vale para todos os isolates).
+  if (!caller.isInternal) {
+    if (isRateLimited(caller.subjectId)) {
+      finish(429, { error: "rate limited (local)" });
+      return errorResponse("Limite de chamadas atingido. Aguarde alguns instantes.", 429);
+    }
+    const limited = await enforceRateLimit(req, caller.subjectId, {
+      resource: `ai-router:${task}`,
+      max: 20,
+      windowSeconds: 60,
+    });
+    if (limited) { finish(429, { error: "rate limited" }); return limited; }
+  }
+
 
   let spec;
   try {

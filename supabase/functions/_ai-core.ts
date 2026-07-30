@@ -14,30 +14,36 @@ export const corsHeaders = {
   "Access-Control-Expose-Headers": "x-ai-provider, x-ai-cached, x-ai-cache-age",
 };
 
-// ─── Rate limit por usuário (in-memory, por instância) ───
+// ─── Rate limit ───
+// ATENÇÃO: o limitador em memória abaixo é apenas um amortecedor local por
+// isolate. O limite real e à prova de forja vive em `_shared/rate-limit.ts`
+// (contador atômico no Postgres) e DEVE ser chamado com o id verificado do
+// usuário. Nunca derive identidade de `atob(jwt)` — é trivialmente forjável.
+export { enforceRateLimit, consumeRateLimit } from "./_shared/rate-limit.ts";
+
 const userCalls = new Map<string, number[]>();
 const MAX_CALLS_PER_MIN = 15;
 
-export function extractUserId(req: Request): string {
-  const auth = req.headers.get("authorization") || "";
-  const parts = auth.replace("Bearer ", "").split(".");
-  try {
-    if (parts[1]) {
-      const p = JSON.parse(atob(parts[1]));
-      return p.sub || "anon";
-    }
-  } catch { /* ignore */ }
-  return "anon";
+/**
+ * @deprecated Use `resolveCaller(req)` de `_shared/auth.ts`: a identidade lá é
+ * validada contra o servidor de auth (assinatura + expiração).
+ */
+export function extractUserId(_req: Request): string {
+  throw new Error(
+    "extractUserId foi removido: use resolveCaller(req).subjectId (identidade verificada).",
+  );
 }
 
-export function isRateLimited(userId: string, max = MAX_CALLS_PER_MIN): boolean {
+/** Amortecedor local (por isolate). Requer subjectId JÁ verificado. */
+export function isRateLimited(verifiedSubjectId: string, max = MAX_CALLS_PER_MIN): boolean {
   const now = Date.now();
-  const calls = (userCalls.get(userId) || []).filter((t) => now - t < 60_000);
+  const calls = (userCalls.get(verifiedSubjectId) || []).filter((t) => now - t < 60_000);
   if (calls.length >= max) return true;
   calls.push(now);
-  userCalls.set(userId, calls);
+  userCalls.set(verifiedSubjectId, calls);
   return false;
 }
+
 
 // ─── DeepSeek client ───
 export interface DeepSeekBody {

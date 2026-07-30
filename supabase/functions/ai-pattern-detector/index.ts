@@ -1,25 +1,15 @@
-import { requireCaller } from "../_shared/auth.ts";
+import { resolveCaller } from "../_shared/auth.ts";
+import { enforceRateLimit } from "../_shared/rate-limit.ts";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
   "Access-Control-Expose-Headers": "x-ai-provider",
 };
 
-const userCalls = new Map<string, number[]>();
-const MAX_CALLS_PER_MIN = 10;
+// Cota persistida por usuário verificado (o contador antigo usava atob(jwt)).
+const RATE_RULE = { resource: "ai-pattern-detector", max: 10, windowSeconds: 60 };
 
-function isRateLimited(req: Request): boolean {
-  const auth = req.headers.get("authorization") || "";
-  const parts = auth.replace("Bearer ", "").split(".");
-  let userId = "anon";
-  try { if (parts[1]) { const p = JSON.parse(atob(parts[1])); userId = p.sub || "anon"; } } catch {}
-  const now = Date.now();
-  const calls = (userCalls.get(userId) || []).filter(t => now - t < 60000);
-  if (calls.length >= MAX_CALLS_PER_MIN) return true;
-  calls.push(now);
-  userCalls.set(userId, calls);
-  return false;
-}
 
 async function callAI(body) {
   const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
@@ -125,18 +115,19 @@ Deno.serve(async (req) => {
 
   // Somente sessão válida (ou chamada interna cron/service): evita uso do endpoint
   // como proxy gratuito de LLM e vazamento de dados entre contas.
-  const denied = await requireCaller(req);
-  if (denied) return denied;
+  const caller = await resolveCaller(req);
+  if (caller instanceof Response) return caller;
 
   const emptyFallback = (reason: string) => new Response(
     JSON.stringify({ patterns: [], _provider: "local", _fallback: true, _reason: reason }),
     { headers: { ...corsHeaders, "Content-Type": "application/json" } }
   );
 
-  if (isRateLimited(req)) {
-    console.warn("Rate limited, returning empty patterns");
-    return emptyFallback("limite de chamadas");
+  if (!caller.isInternal) {
+    const limited = await enforceRateLimit(req, caller.subjectId, RATE_RULE);
+    if (limited) return emptyFallback("limite de chamadas");
   }
+
 
   try {
     const { tickers, assets } = await req.json();

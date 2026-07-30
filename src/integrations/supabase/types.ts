@@ -276,6 +276,39 @@ export type Database = {
         }
         Relationships: []
       }
+      api_rate_limits: {
+        Row: {
+          created_at: string
+          id: number
+          request_count: number
+          resource: string
+          subject_id: string
+          updated_at: string
+          window_seconds: number
+          window_start: string
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          request_count?: number
+          resource: string
+          subject_id: string
+          updated_at?: string
+          window_seconds: number
+          window_start: string
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          request_count?: number
+          resource?: string
+          subject_id?: string
+          updated_at?: string
+          window_seconds?: number
+          window_start?: string
+        }
+        Relationships: []
+      }
       audit_logs: {
         Row: {
           action: string
@@ -674,6 +707,51 @@ export type Database = {
         }
         Relationships: []
       }
+      security_events: {
+        Row: {
+          claims: Json | null
+          created_at: string
+          function_name: string
+          id: string
+          ip: string | null
+          key_id: string | null
+          meta: Json | null
+          outcome: string
+          reason: string
+          status_code: number | null
+          subject_id: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          claims?: Json | null
+          created_at?: string
+          function_name: string
+          id?: string
+          ip?: string | null
+          key_id?: string | null
+          meta?: Json | null
+          outcome?: string
+          reason: string
+          status_code?: number | null
+          subject_id?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          claims?: Json | null
+          created_at?: string
+          function_name?: string
+          id?: string
+          ip?: string | null
+          key_id?: string | null
+          meta?: Json | null
+          outcome?: string
+          reason?: string
+          status_code?: number | null
+          subject_id?: string | null
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
       serial_keys: {
         Row: {
           activated_at: string | null
@@ -893,6 +971,20 @@ export type Database = {
     }
     Functions: {
       cleanup_old_snapshots: { Args: never; Returns: number }
+      cleanup_security_data: { Args: never; Returns: number }
+      consume_rate_limit: {
+        Args: {
+          _max_requests: number
+          _resource: string
+          _subject_id: string
+          _window_seconds?: number
+        }
+        Returns: {
+          allowed: boolean
+          current_count: number
+          retry_after_seconds: number
+        }[]
+      }
       enqueue_snapshot_failure: {
         Args: {
           _error?: string

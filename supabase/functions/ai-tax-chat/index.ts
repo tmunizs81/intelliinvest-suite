@@ -1,35 +1,27 @@
-import { requireCaller } from "../_shared/auth.ts";
+import { resolveCaller } from "../_shared/auth.ts";
+import { enforceRateLimit } from "../_shared/rate-limit.ts";
 // AI Tax Chat - Q&A conversacional sobre IRPF de investimentos
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const userCalls = new Map<string, number[]>();
-function checkRateLimit(req: Request): Response | null {
-  const auth = req.headers.get("authorization") || "";
-  const parts = auth.replace("Bearer ", "").split(".");
-  let uid = "anon";
-  try { if (parts[1]) uid = JSON.parse(atob(parts[1])).sub || "anon"; } catch {}
-  const now = Date.now();
-  const calls = (userCalls.get(uid) || []).filter(t => now - t < 60000);
-  if (calls.length >= 20) {
-    return new Response(JSON.stringify({ error: "Rate limit: 20/min" }), {
-      status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
-  calls.push(now); userCalls.set(uid, calls);
-  return null;
-}
-
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   // Somente sessão válida (ou chamada interna cron/service): evita uso do endpoint
   // como proxy gratuito de LLM e vazamento de dados entre contas.
-  const denied = await requireCaller(req);
-  if (denied) return denied;
-  const rl = checkRateLimit(req); if (rl) return rl;
+  // Identidade verificada (assinatura + expiração) e cota persistida no Postgres:
+  // o Map em memória anterior valia por isolate e a chave vinha de atob(jwt).
+  const caller = await resolveCaller(req);
+  if (caller instanceof Response) return caller;
+
+  if (!caller.isInternal) {
+    const limited = await enforceRateLimit(req, caller.subjectId, {
+      resource: "ai-tax-chat", max: 20, windowSeconds: 60,
+    });
+    if (limited) return limited;
+  }
 
   try {
     const { messages, context } = await req.json();

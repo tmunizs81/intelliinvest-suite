@@ -1,3 +1,6 @@
+import { getUser } from "../_shared/auth.ts";
+import { enforceRateLimit } from "../_shared/rate-limit.ts";
+import { logSecurityEvent } from "../_shared/security-log.ts";
 /**
  * yahoo-stream — WebSocket relay para o streamer do Yahoo Finance.
  *
@@ -60,13 +63,38 @@ function base64ToBytes(b64: string): Uint8Array {
   return out;
 }
 
-Deno.serve((req) => {
+Deno.serve(async (req) => {
   const upgrade = req.headers.get("upgrade") || "";
   if (upgrade.toLowerCase() !== "websocket") {
     return new Response("Expected WebSocket upgrade", { status: 426 });
   }
 
+  // O handshake WebSocket do browser não permite headers customizados, então o
+  // JWT vem em `?access_token=`. A validação é a mesma (assinatura + expiração):
+  // sem sessão real ninguém abre um túnel permanente sobre a nossa cota Yahoo.
+  const url = new URL(req.url);
+  const token = url.searchParams.get("access_token") || "";
+  const authedReq = new Request(req.url, {
+    headers: token ? { authorization: `Bearer ${token}` } : {},
+  });
+  const user = await getUser(authedReq);
+  if (!user) {
+    logSecurityEvent(req, {
+      function_name: "yahoo-stream",
+      reason: token ? "invalid_or_expired_jwt" : "missing_access_token",
+      status_code: 401,
+    });
+    return new Response("Unauthorized", { status: 401 });
+  }
+
+  // Um usuário pode abrir no máximo 10 streams por minuto (reconexões inclusas).
+  const limited = await enforceRateLimit(req, user.id, {
+    resource: "yahoo-stream", max: 10, windowSeconds: 60,
+  });
+  if (limited) return limited;
+
   const { socket: client, response } = Deno.upgradeWebSocket(req);
+
   let yahoo: WebSocket | null = null;
   let pending: string[] = [];
   let closed = false;
