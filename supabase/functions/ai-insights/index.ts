@@ -1,6 +1,10 @@
 import { withAICache, normalizePortfolioForCache } from "../ai-cache-helper.ts";
 import { resolveCaller } from "../_shared/auth.ts";
 import { enforceRateLimit } from "../_shared/rate-limit.ts";
+import { logMetric } from "../_telemetry.ts";
+
+let COLD_START = true;
+
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
