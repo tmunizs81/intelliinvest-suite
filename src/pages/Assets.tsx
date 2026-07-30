@@ -18,9 +18,9 @@ import { type Asset, formatCurrency, formatPercent } from '@/lib/mockData';
 import CustodyModal from '@/components/dashboard/CustodyModal';
 import { BrokerLogo, preloadBrokers } from '@/lib/brokerLogos';
 import { useBrokerLogoSettings, setLogoDensity } from '@/lib/brokerLogoSettings';
+import BrokerReconciliationModal from '@/components/dashboard/BrokerReconciliationModal';
+import { reconciliationGroups, assetRoute, NO_BROKER, brokerLabel } from '@/lib/holdingsIsolation';
 
-/** Bucket para lotes sem corretora definida — nunca é fundido com outra corretora. */
-const NO_BROKER = '__SEM_CORRETORA__';
 
 const typeBadgeClass: Record<string, string> = {
   'Ação': 'bg-primary/10 text-primary',
