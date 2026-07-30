@@ -1834,7 +1834,23 @@ export default function UnifiedHoldings({
         <div className="overflow-x-auto">
           <div className="min-w-[1100px]">
             {header}
-            {viewMode === 'ticker' && (
+            {viewMode === 'ticker' && (virtualized ? (
+              <VirtualRows
+                items={aggregates}
+                estimateSize={ROW_EST}
+                overscan={14}
+                getKey={(agg) => agg.key}
+                renderItem={(agg) => (
+                  <TickerRow
+                    agg={agg}
+                    expanded={expanded.has(agg.key)}
+                    onToggleExpand={toggleExpand}
+                    showBrokerColumn
+                    {...rowProps}
+                  />
+                )}
+              />
+            ) : (
               <>
                 {visibleRows.map((agg) => (
                   <TickerRow
@@ -1846,70 +1862,40 @@ export default function UnifiedHoldings({
                     {...rowProps}
                   />
                 ))}
-                {hasMore && <ListSentinel ref={sentinelRef} remaining={aggregates.length - visibleRows.length} />}
+                {hasMore && (
+                  <ListSentinel ref={sentinelRef} rowHeight={ROW_EST} remaining={aggregates.length - visibleRows.length} />
+                )}
+              </>
+            ))}
+
+            {viewMode === 'broker' && (
+              <>
+                {visibleBrokerGroups.map((g) => (
+                  <div key={g.broker}>
+                    {brokerHeader(g)}
+                    {!collapsedBrokers.has(g.broker) &&
+                      g.rows.map((agg) => (
+                        <TickerRow
+                          key={`${g.broker}::${agg.key}`}
+                          agg={agg}
+                          expanded={false}
+                          onToggleExpand={NOOP}
+                          showBrokerColumn={false}
+                          {...rowProps}
+                        />
+                      ))}
+                  </div>
+                ))}
+                {hasMoreBrokers && (
+                  <div ref={brokerSentinelRef}>
+                    {pendingBrokerGroups.map((g) => (
+                      <BrokerGroupSkeleton key={g.broker} label={g.label} rows={g.rows.length} />
+                    ))}
+                  </div>
+                )}
               </>
             )}
 
-            {viewMode === 'broker' &&
-              brokerGroups.map((g) => (
-                <div key={g.broker}>
-                  {brokerHeader(g)}
-                  {!collapsedBrokers.has(g.broker) &&
-                    g.rows.map((agg) => (
-                      <TickerRow
-                        key={`${g.broker}::${agg.key}`}
-                        agg={agg}
-                        expanded={false}
-                        onToggleExpand={NOOP}
-                        showBrokerColumn={false}
-                        {...rowProps}
-                      />
-                    ))}
-                </div>
-              ))}
-          </div>
-        </div>
-      )}
-
-      {/* --------- Mobile: cartões table-like --------- */}
-      {isMobile && (
-        <div>
-          {mobileSortBar}
-          {viewMode === 'ticker' && (
-            <>
-              {visibleRows.map((agg) => (
-                <MobileCard
-                  key={agg.key}
-                  agg={agg}
-                  expanded={expanded.has(agg.key)}
-                  onToggleExpand={toggleExpand}
-                  showBrokerColumn
-                  showBrokers
-                  {...rowProps}
-                />
-              ))}
-              {hasMore && <ListSentinel ref={sentinelRef} remaining={aggregates.length - visibleRows.length} />}
-            </>
-          )}
-
-          {viewMode === 'broker' &&
-            brokerGroups.map((g) => (
-              <div key={g.broker}>
-                {brokerHeader(g, true)}
-                {!collapsedBrokers.has(g.broker) &&
-                  g.rows.map((agg) => (
-                    <MobileCard
-                      key={`${g.broker}::${agg.key}`}
-                      agg={agg}
-                      expanded={false}
-                      onToggleExpand={NOOP}
-                      showBrokerColumn={false}
-                      showBrokers={false}
-                      {...rowProps}
-                    />
-                  ))}
-              </div>
-            ))}
         </div>
       )}
     </div>
