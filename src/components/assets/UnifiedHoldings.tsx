@@ -1057,7 +1057,32 @@ export default function UnifiedHoldings({
         };
       })
       .sort((a, b) => (a.broker === NO_BROKER ? 1 : b.broker === NO_BROKER ? -1 : b.value - a.value));
-  }, [assets, holdings, viewMode, sort]);
+  }, [visibleAssets, holdings, viewMode, sort]);
+
+  /* ---------- filtro de classe (desktop + mobile) ---------- */
+  const classFilterBar = (
+    <div className="flex items-center gap-1.5 overflow-x-auto border-b border-border bg-card/95 px-3 py-2 no-scrollbar md:px-4">
+      <span className="shrink-0 text-[10px] uppercase tracking-wider text-muted-foreground">Classe</span>
+      {(['all', 'financial', 'property'] as AssetClassFilter[]).map((k) => {
+        const active = classFilter === k;
+        return (
+          <button
+            key={k}
+            onClick={() => setClassFilter(k)}
+            aria-pressed={active}
+            data-class-filter={k}
+            aria-label={`Filtrar por ${CLASS_FILTER_LABELS[k]}`}
+            className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors ${FOCUS_RING} ${
+              active ? 'border-primary/40 bg-primary/15 text-primary' : 'border-border text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            {CLASS_FILTER_LABELS[k]}
+            <span className="font-mono text-[10px] tabular-nums opacity-70">{counts[k]}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
 
   const SortHeader = ({ label, sortKey, align = 'right' }: { label: string; sortKey?: SortKey; align?: 'left' | 'right' }) => {
     if (!sortKey) return <div className={align === 'right' ? 'text-right' : ''}>{label}</div>;
