@@ -19,6 +19,7 @@ const navItems = [
   { to: '/analysis', label: 'Análise Avançada', icon: BarChart3 },
   { to: '/comparator', label: 'Comparador', icon: TrendingUp },
   { to: '/family', label: 'Carteira Familiar', icon: Users },
+  { to: '/jobs', label: 'Tarefas', icon: ListChecks },
   { to: '/settings', label: 'Configurações', icon: Settings },
   { to: '/manual', label: 'Manual', icon: Book },
 ];
