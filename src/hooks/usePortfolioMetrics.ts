@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { getCached, setCache, CACHE_TTL } from "@/lib/persistentCache";
+import { getCached, setCache, CACHE_TTL, userScopedKey } from "@/lib/persistentCache";
 
 export interface PortfolioMetrics {
   user_id: string;
@@ -45,10 +45,10 @@ export function usePortfolioMetrics() {
         const uid = auth.user?.id;
         if (!uid) { setLoading(false); return; }
 
-        const cacheKey = `${CACHE_PREFIX}${uid}`;
+        const cacheKey = userScopedKey(uid, `${CACHE_PREFIX}${uid}`);
 
         if (!force) {
-          const cached = await getCached<PortfolioMetrics>(cacheKey);
+          const cached = await getCached<PortfolioMetrics>(cacheKey, { owner: uid });
           if (cached) {
             setMetrics(cached);
             setLoading(false);
@@ -79,7 +79,7 @@ export function usePortfolioMetrics() {
 
         setMetrics(data as PortfolioMetrics | null);
         setError(null);
-        if (data) await setCache(cacheKey, data, CACHE_TTL.SNAPSHOTS);
+        if (data) await setCache(cacheKey, data, CACHE_TTL.SNAPSHOTS, { owner: uid });
       } catch (e: any) {
         setError(e.message || "Erro ao carregar métricas");
       } finally {

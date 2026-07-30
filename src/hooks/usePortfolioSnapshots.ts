@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { type Asset } from '@/lib/mockData';
-import { getCached } from '@/lib/persistentCache';
+import { getCached, userScopedKey } from '@/lib/persistentCache';
 
 export interface SnapshotRow {
   snapshot_date: string;
@@ -33,7 +33,7 @@ export function usePortfolioSnapshots() {
   useEffect(() => {
     if (!user) return;
     (async () => {
-      const boot = await getCached<any>(`dashboard_bootstrap:${user.id}`);
+      const boot = await getCached<any>(userScopedKey(user.id, `dashboard_bootstrap:${user.id}`), { owner: user.id });
       if (boot?.snapshots?.length) {
         setSnapshots(mapRows(boot.snapshots));
         const gen = boot.generated_at ? new Date(boot.generated_at).getTime() : 0;

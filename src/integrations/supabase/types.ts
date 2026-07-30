@@ -1162,6 +1162,17 @@ export type Database = {
       }
     }
     Functions: {
+      admin_list_telegram_overview: {
+        Args: never
+        Returns: {
+          chat_id: string
+          email_address: string
+          enabled: boolean
+          notify_email: boolean
+          updated_at: string
+          user_id: string
+        }[]
+      }
       cancel_my_job: { Args: { _job_id: string }; Returns: Json }
       circuit_check: {
         Args: { _cooldown_seconds?: number; _name: string }

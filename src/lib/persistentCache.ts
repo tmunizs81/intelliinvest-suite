@@ -12,6 +12,24 @@ interface CacheEntry<T = any> {
   data: T;
   expiresAt: number;  // timestamp
   createdAt: number;
+  /**
+   * Conta dona da entrada. Entradas gravadas por um usuário nunca são servidas
+   * a outro, mesmo que a chave colida e mesmo que a limpeza de logout falhe.
+   */
+  owner?: string | null;
+}
+
+export interface CacheScope {
+  /** id do usuário logado; `null`/undefined = dado público (cotações, câmbio). */
+  owner?: string | null;
+}
+
+/**
+ * Monta uma chave de cache isolada por conta.
+ * Use SEMPRE que o conteúdo derivar de dados da carteira do usuário.
+ */
+export function userScopedKey(userId: string | null | undefined, key: string): string {
+  return `u:${userId ?? 'anon'}:${key}`;
 }
 
 function openDB(): Promise<IDBDatabase> {
@@ -32,7 +50,7 @@ function openDB(): Promise<IDBDatabase> {
   });
 }
 
-export async function getCached<T>(key: string): Promise<T | null> {
+export async function getCached<T>(key: string, scope?: CacheScope): Promise<T | null> {
   try {
     const db = await openDB();
     return new Promise((resolve) => {
@@ -41,7 +59,12 @@ export async function getCached<T>(key: string): Promise<T | null> {
       const req = store.get(key);
       req.onsuccess = () => {
         const entry = req.result as CacheEntry<T> | undefined;
+        const expectedOwner = scope?.owner ?? null;
+        const entryOwner = entry?.owner ?? null;
         if (!entry || Date.now() > entry.expiresAt) {
+          resolve(null);
+        } else if (entryOwner !== expectedOwner) {
+          // Dono diferente: descarta silenciosamente (nunca vaza entre contas).
           resolve(null);
         } else {
           resolve(entry.data);
@@ -54,7 +77,7 @@ export async function getCached<T>(key: string): Promise<T | null> {
   }
 }
 
-export async function setCache<T>(key: string, data: T, ttlMs: number): Promise<void> {
+export async function setCache<T>(key: string, data: T, ttlMs: number, scope?: CacheScope): Promise<void> {
   try {
     const db = await openDB();
     return new Promise((resolve) => {
@@ -65,6 +88,7 @@ export async function setCache<T>(key: string, data: T, ttlMs: number): Promise<
         data,
         expiresAt: Date.now() + ttlMs,
         createdAt: Date.now(),
+        owner: scope?.owner ?? null,
       };
       store.put(entry);
       tx.oncomplete = () => resolve();

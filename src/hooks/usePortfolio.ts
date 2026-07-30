@@ -6,7 +6,7 @@ import { type Asset } from '@/lib/mockData';
 import { classifyAssetType } from '@/lib/assetClassification';
 import { calculateFixedIncomeValue, fetchReferenceRates } from '@/lib/fixedIncomeCalculator';
 import { fetchWithRetry, withCircuitBreaker, deduplicateRequest, checkRateLimit } from '@/lib/apiResilience';
-import { getCached, setCache, CACHE_TTL } from '@/lib/persistentCache';
+import { getCached, setCache, CACHE_TTL, userScopedKey } from '@/lib/persistentCache';
 import { toast } from 'sonner';
 import { validateReassignment, normalizeBroker, holdingKey, brokerLabel } from '@/lib/holdingsIsolation';
 
@@ -36,7 +36,8 @@ async function fetchFxRatesBRL(): Promise<{ USD: number; EUR: number }> {
       USD: parseFloat(j?.USDBRL?.bid) || 5.5,
       EUR: parseFloat(j?.EURBRL?.bid) || 6.0,
     };
-    await setCache(cacheKey, rates, 60 * 60 * 1000);
+    // Câmbio é dado público: cache compartilhado (sem dono).
+    await setCache(cacheKey, rates, 60 * 60 * 1000, { owner: null });
     return rates;
   } catch {
     return { USD: 5.5, EUR: 6.0 };
@@ -148,7 +149,8 @@ export function usePortfolio() {
           );
           quotes = result;
           // Cache for 5 min
-          await setCache(cacheKey, quotes, CACHE_TTL.QUOTES);
+          // Cotações são dado público de mercado: cache compartilhado (sem dono).
+          await setCache(cacheKey, quotes, CACHE_TTL.QUOTES, { owner: null });
         }
       }
 
@@ -298,7 +300,7 @@ export function usePortfolio() {
   useEffect(() => {
     if (!user) return;
     (async () => {
-      const boot = await getCached<any>(`dashboard_bootstrap:${user.id}`);
+      const boot = await getCached<any>(userScopedKey(user.id, `dashboard_bootstrap:${user.id}`), { owner: user.id });
       if (boot?.holdings?.length && holdings.length === 0) {
         setHoldings(boot.holdings as HoldingRow[]);
       }

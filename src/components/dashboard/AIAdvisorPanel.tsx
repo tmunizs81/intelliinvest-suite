@@ -2,7 +2,7 @@ import { useState, useRef, lazy, Suspense } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { type Asset } from '@/lib/mockData';
 import { useAIRateLimit } from '@/hooks/useAIRateLimit';
-import { getCached, setCache, CACHE_TTL } from '@/lib/persistentCache';
+import { getCached, setCache, CACHE_TTL, userScopedKey } from '@/lib/persistentCache';
 import { Bot, Send, Loader2, Sparkles } from 'lucide-react';
 const ReactMarkdown = lazy(() => import('react-markdown'));
 
@@ -32,10 +32,20 @@ export default function AIAdvisorPanel({ assets, cashBalance = 0 }: Props) {
     setResponse('');
     setQuestion(q);
 
-    // Check persistent cache
+    // Sessão do usuário: o endpoint exige JWT válido (a publishable key é recusada).
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData.session?.access_token;
+    const uid = sessionData.session?.user?.id ?? null;
+    if (!accessToken || !uid) {
+      setResponse('❌ Sessão expirada. Entre novamente para usar o consultor.');
+      setLoading(false);
+      return;
+    }
+
+    // Cache isolado por conta (chave + dono da entrada).
     const tickers = assets.map(a => a.ticker).sort().join(',');
-    const cacheKey = `ai-advisor:${tickers}:${q}`;
-    const cached = await getCached<string>(cacheKey);
+    const cacheKey = userScopedKey(uid, `ai-advisor:${tickers}:${q}`);
+    const cached = await getCached<string>(cacheKey, { owner: uid });
     if (cached) {
       setResponse(cached);
       setLoading(false);
@@ -49,7 +59,8 @@ export default function AIAdvisorPanel({ assets, cashBalance = 0 }: Props) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify({ assets, cashBalance, question: q }),
         signal: abortRef.current.signal,
@@ -88,7 +99,7 @@ export default function AIAdvisorPanel({ assets, cashBalance = 0 }: Props) {
 
       // Cache the complete response
       if (fullText) {
-        await setCache(cacheKey, fullText, CACHE_TTL.AI_RESPONSE);
+        await setCache(cacheKey, fullText, CACHE_TTL.AI_RESPONSE, { owner: uid });
       }
     } catch (err: any) {
       if (err.name !== 'AbortError') {
