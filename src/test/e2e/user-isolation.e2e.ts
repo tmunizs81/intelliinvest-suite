@@ -38,11 +38,11 @@ async function dumpUserScopedStorage(page: Page) {
     }
     // rough IndexedDB entry count
     return new Promise<{ ls: Record<string, string>; idbKeys: string[] }>((resolve) => {
-      const req = indexedDB.open('simplynvest-cache');
+      const req = indexedDB.open('simplynvest_cache');
       req.onsuccess = () => {
         const db = req.result;
-        if (!db.objectStoreNames.contains('kv')) return resolve({ ls, idbKeys: [] });
-        const tx = db.transaction('kv', 'readonly').objectStore('kv').getAllKeys();
+        if (!db.objectStoreNames.contains('cache')) return resolve({ ls, idbKeys: [] });
+        const tx = db.transaction('cache', 'readonly').objectStore('cache').getAllKeys();
         tx.onsuccess = () => resolve({ ls, idbKeys: (tx.result as string[]) ?? [] });
         tx.onerror = () => resolve({ ls, idbKeys: [] });
       };
@@ -91,5 +91,65 @@ test.describe('data isolation between accounts', () => {
     for (const t of new Set(tickersA)) {
       expect(bHtml, `user B must not see ticker ${t} from user A`).not.toContain(t);
     }
+  });
+
+  test('cache entries are always scoped to the signed-in user id', async ({ page }) => {
+    await login(page, USER_A.email, USER_A.pass);
+    await page.waitForSelector('text=/Patrimônio Total/i', { timeout: 20_000 });
+    const uidA = await page.evaluate(() => {
+      const raw = Object.keys(localStorage).find((k) => k.startsWith('sb-') && k.endsWith('-auth-token'));
+      return raw ? JSON.parse(localStorage.getItem(raw)!)?.user?.id ?? null : null;
+    });
+    const { idbKeys } = await dumpUserScopedStorage(page);
+    const personal = idbKeys.filter((k) => /ai-insights|dashboard_bootstrap|portfolio_metrics/.test(k));
+    for (const k of personal) {
+      expect(k, `entrada pessoal sem escopo: ${k}`).toContain(`u:${uidA}`);
+      expect(k, 'entrada gravada em esquema antigo').toMatch(/^v\d+:/);
+    }
+  });
+
+  test('two users in sequence: UI, endpoints and cache stay separated', async ({ page }) => {
+    const responsesB: string[] = [];
+
+    await login(page, USER_A.email, USER_A.pass);
+    await page.waitForSelector('text=/Patrimônio Total/i', { timeout: 20_000 });
+    const uidA = await page.evaluate(() => {
+      const raw = Object.keys(localStorage).find((k) => k.startsWith('sb-') && k.endsWith('-auth-token'));
+      return raw ? JSON.parse(localStorage.getItem(raw)!)?.user?.id ?? null : null;
+    });
+    const holdingsA = await page.evaluate(async () => {
+      const raw = Object.keys(localStorage).find((k) => k.startsWith('sb-') && k.endsWith('-auth-token'));
+      const token = raw ? JSON.parse(localStorage.getItem(raw)!)?.access_token : null;
+      return token ? token.slice(0, 0) : null; // token não é exposto no relatório
+    });
+    expect(holdingsA).toBeDefined();
+
+    await page.getByRole('button', { name: /sair|logout/i }).click();
+    await page.waitForURL(/\/auth/);
+
+    page.on('response', async (res) => {
+      if (!/\/rest\/v1\/|\/functions\/v1\//.test(res.url())) return;
+      try { responsesB.push(await res.text()); } catch { /* binário */ }
+    });
+
+    await login(page, USER_B.email, USER_B.pass);
+    await page.waitForSelector('text=/Patrimônio Total/i', { timeout: 20_000 });
+
+    // 1. Nenhuma resposta de API da sessão B pode conter o id do usuário A.
+    for (const body of responsesB) {
+      expect(body, 'endpoint devolveu dados do usuário anterior').not.toContain(uidA!);
+    }
+
+    // 2. Nenhuma entrada de cache remanescente pertence ao usuário A.
+    const { idbKeys, ls } = await dumpUserScopedStorage(page);
+    expect(idbKeys.filter((k) => k.includes(`u:${uidA}`))).toEqual([]);
+    expect(Object.keys(ls).filter((k) => k.includes(uidA!))).toEqual([]);
+
+    // 3. Nenhum token de bot do Telegram trafega para o cliente.
+    for (const body of responsesB) {
+      expect(body).not.toMatch(/"bot_token"\s*:\s*"(?!null)/);
+    }
+    const storageDump = await page.evaluate(() => JSON.stringify(localStorage));
+    expect(storageDump).not.toContain('bot_token');
   });
 });
