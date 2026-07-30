@@ -1375,12 +1375,14 @@ export default function UnifiedHoldings({
     );
   }, []);
 
-  const toggleExpand = (t: string) =>
+  const toggleExpand = useCallback((t: string) => {
     setExpanded((prev) => {
       const next = new Set(prev);
       if (next.has(t)) next.delete(t); else next.add(t);
       return next;
     });
+  }, []);
+
 
   const visibleAssets = useMemo(
     () => filterByClass(assets, classFilter),
