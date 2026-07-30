@@ -16,6 +16,9 @@ const PUBLIC_ALLOWLIST = new Set<string>([
   "health-check",
 ]);
 
+/** Rotas cujo guard é o secret do provedor externo (não há sessão de usuário). */
+const PROVIDER_SECRET_ROUTES = new Set<string>(["telegram-webhook"]);
+
 /** Rotas que exigem sessão de usuário (não aceitam apenas cron secret). */
 const USER_ONLY = new Set<string>([
   "ai-trader",
@@ -76,7 +79,7 @@ Deno.test("rotas de usuário não aceitam apenas o cron secret", async () => {
     const fn = fns.find((f) => f.name === name);
     assert(fn, `função ${name} não encontrada`);
     assert(
-      /requireUser|getClaims/.test(fn!.source),
+      /requireUser|getClaims|auth\.getUser\(/.test(fn!.source),
       `${name} deve exigir requireUser (sessão real), não apenas requireCaller/cron`,
     );
   }
