@@ -148,7 +148,8 @@ export function usePortfolio() {
           );
           quotes = result;
           // Cache for 5 min
-          await setCache(cacheKey, quotes, CACHE_TTL.QUOTES);
+          // Cotações são dado público de mercado: cache compartilhado (sem dono).
+          await setCache(cacheKey, quotes, CACHE_TTL.QUOTES, { owner: null });
         }
       }
 

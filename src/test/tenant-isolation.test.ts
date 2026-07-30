@@ -113,7 +113,7 @@ describe("isolamento — Edge Functions", () => {
   const PUBLIC_BY_DESIGN = new Set(["health-check"]);
 
   const GUARDS =
-    /resolveCaller|requireUser|requireCaller|requireCron|requireTelegramSecret|auth\.getUser\(|auth\.getClaims\(|getUser\(req|getUser\(authedReq/;
+    /resolveCaller|requireUser|requireCaller|requireCron|requireTelegramSecret|telegramSecret|secret-token|auth\.getUser\(|auth\.getClaims\(|getUser\(req|getUser\(authedReq/;
 
   const entrypoints = FUNCTION_FILES.filter(
     (f) => basename(f) === "index.ts" && read(f).includes("Deno.serve"),
