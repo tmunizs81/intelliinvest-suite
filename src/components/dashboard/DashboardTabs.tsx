@@ -1,6 +1,7 @@
 import { LayoutDashboard, BarChart3, Brain, Briefcase, Bell, Settings2, CalendarClock } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useCalendarSettings } from '@/hooks/useCalendarSettings';
+import EconomicCalendarCarousel from './EconomicCalendarCarousel';
 
 export const dashboardTabs = [
   { id: 'resumo', label: 'Resumo', icon: LayoutDashboard },
@@ -57,8 +58,8 @@ export default function DashboardTabs({ activeTab, onTabChange, isMobile }: Prop
   }
 
   return (
-    <div className="sticky top-0 z-30 bg-background/95 backdrop-blur-sm border-b border-border">
-      <div className="flex items-center gap-1 px-1 py-1">
+    <div className="sticky top-0 z-30 bg-background/95 backdrop-blur-sm border-b border-border flex items-center justify-between px-1">
+      <div className="flex items-center gap-1 py-1">
         {visibleTabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -85,6 +86,12 @@ export default function DashboardTabs({ activeTab, onTabChange, isMobile }: Prop
           );
         })}
       </div>
+
+      {position === 'top' && (
+        <div className="hidden lg:block max-w-[400px] flex-1">
+          <EconomicCalendarCarousel variant="compact" />
+        </div>
+      )}
     </div>
   );
 }

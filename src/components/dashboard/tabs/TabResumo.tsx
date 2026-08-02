@@ -57,10 +57,7 @@ export default function TabResumo({ assets, lastUpdate, nextUpdate, snapshots, s
   return (
     <>
       <LiveTickerBar assets={assets} />
-      {position === 'top' && (
-        <EconomicCalendarCarousel assets={assets} variant={mode} />
-      )}
-      {/* EconomicCalendarCarousel movido para a aba Calendário */}
+      {/* EconomicCalendarCarousel removido do corpo do resumo, movido para o topo/aba conforme config */}
       <Panel noPadding>
         <PortfolioSummary assets={assets} lastUpdate={lastUpdate} nextUpdate={nextUpdate} />
       </Panel>
