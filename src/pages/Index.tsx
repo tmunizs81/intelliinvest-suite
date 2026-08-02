@@ -15,6 +15,7 @@ import { usePortfolioSnapshots } from '@/hooks/usePortfolioSnapshots';
 import { useDashboardBootstrap } from '@/hooks/useDashboardBootstrap';
 import { usePriceRefreshWorker } from '@/hooks/usePriceRefreshWorker';
 import { useSnapshotRealtime } from '@/hooks/useSnapshotRealtime';
+import EconomicCalendarCarousel from '@/components/dashboard/EconomicCalendarCarousel';
 import FreshnessBadge from '@/components/dashboard/FreshnessBadge';
 import ReconcileBadge from '@/components/dashboard/ReconcileBadge';
 import { usePrivacyModeProvider, PrivacyContext } from '@/hooks/usePrivacyMode';
@@ -36,6 +37,8 @@ const TabFallback = () => (
   </div>
 );
 
+import { useCalendarSettings } from '@/hooks/useCalendarSettings';
+
 const Index = () => {
   const isMobile = useIsMobile();
   useDashboardBootstrap(); // primes IndexedDB cache for instant SWR paint across hooks
@@ -52,6 +55,13 @@ const Index = () => {
   const [editingHolding, setEditingHolding] = useState<HoldingRow | null>(null);
   const [activeTab, setActiveTab] = useState<DashboardTab>('resumo');
   const [kioskMode, setKioskMode] = useState(false);
+  const { position } = useCalendarSettings();
+
+  useEffect(() => {
+    if (activeTab === 'calendario' && position === 'top') {
+      setActiveTab('resumo');
+    }
+  }, [position, activeTab]);
 
   const handleEdit = (holding: HoldingRow) => {
     setEditingHolding(holding);
@@ -129,7 +139,13 @@ const Index = () => {
             <DashboardSkeleton />
           ) : (
             <div className="pb-12">
-              <DashboardTabs activeTab={activeTab} onTabChange={setActiveTab} isMobile={isMobile} />
+              <DashboardTabs activeTab={activeTab} onTabChange={setActiveTab} isMobile={isMobile} assets={assets} />
+              
+              {isMobile && position === 'top' && (
+                <div className="mt-3 px-1">
+                  <EconomicCalendarCarousel assets={assets} variant="compact" />
+                </div>
+              )}
 
               <AnimatePresence mode="wait">
                 <motion.div

@@ -1,5 +1,8 @@
 import { LayoutDashboard, BarChart3, Brain, Briefcase, Bell, Settings2, CalendarClock } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useCalendarSettings } from '@/hooks/useCalendarSettings';
+import EconomicCalendarCarousel from './EconomicCalendarCarousel';
+import { type Asset } from '@/lib/mockData';
 
 export const dashboardTabs = [
   { id: 'resumo', label: 'Resumo', icon: LayoutDashboard },
@@ -17,14 +20,18 @@ interface Props {
   activeTab: DashboardTab;
   onTabChange: (tab: DashboardTab) => void;
   isMobile?: boolean;
+  assets?: Asset[];
 }
 
-export default function DashboardTabs({ activeTab, onTabChange, isMobile }: Props) {
+export default function DashboardTabs({ activeTab, onTabChange, isMobile, assets = [] }: Props) {
+  const { position } = useCalendarSettings();
+  const visibleTabs = dashboardTabs.filter(t => t.id !== 'calendario' || position === 'tab');
+
   if (isMobile) {
     return (
       <div className="sticky top-14 z-30 bg-background/95 backdrop-blur-sm border-b border-border -mx-4 px-1">
         <div className="flex overflow-x-auto no-scrollbar">
-          {dashboardTabs.map((tab) => {
+          {visibleTabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
             return (
@@ -53,9 +60,9 @@ export default function DashboardTabs({ activeTab, onTabChange, isMobile }: Prop
   }
 
   return (
-    <div className="sticky top-0 z-30 bg-background/95 backdrop-blur-sm border-b border-border">
-      <div className="flex items-center gap-1 px-1 py-1">
-        {dashboardTabs.map((tab) => {
+    <div className="sticky top-0 z-30 bg-background/95 backdrop-blur-sm border-b border-border flex items-center justify-between px-1">
+      <div className="flex items-center gap-1 py-1">
+        {visibleTabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
           return (
@@ -81,6 +88,12 @@ export default function DashboardTabs({ activeTab, onTabChange, isMobile }: Prop
           );
         })}
       </div>
+
+      {position === 'top' && (
+        <div className="hidden lg:block max-w-[500px] flex-1">
+          <EconomicCalendarCarousel variant="compact" assets={assets} />
+        </div>
+      )}
     </div>
   );
 }
