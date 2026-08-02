@@ -28,6 +28,7 @@ const TabAnalise = lazy(() => import('@/components/dashboard/tabs/TabAnalise'));
 const TabIA = lazy(() => import('@/components/dashboard/tabs/TabIA'));
 const TabAlertas = lazy(() => import('@/components/dashboard/tabs/TabAlertas'));
 const TabMais = lazy(() => import('@/components/dashboard/tabs/TabMais'));
+const TabCalendario = lazy(() => import('@/components/dashboard/tabs/TabCalendario'));
 
 const TabFallback = () => (
   <div className="flex items-center justify-center py-20">
@@ -174,6 +175,9 @@ const Index = () => {
                       )}
                       {activeTab === 'alertas' && (
                         <TabAlertas assets={assets} isMobile={isMobile} />
+                      )}
+                      {activeTab === 'calendario' && (
+                        <TabCalendario assets={assets} isMobile={isMobile} />
                       )}
                       {activeTab === 'mais' && (
                         <TabMais assets={assets} isMobile={isMobile} />
