@@ -2,6 +2,7 @@ import { LayoutDashboard, BarChart3, Brain, Briefcase, Bell, Settings2, Calendar
 import { motion } from 'framer-motion';
 import { useCalendarSettings } from '@/hooks/useCalendarSettings';
 import EconomicCalendarCarousel from './EconomicCalendarCarousel';
+import { type Asset } from '@/lib/mockData';
 
 export const dashboardTabs = [
   { id: 'resumo', label: 'Resumo', icon: LayoutDashboard },
@@ -19,9 +20,10 @@ interface Props {
   activeTab: DashboardTab;
   onTabChange: (tab: DashboardTab) => void;
   isMobile?: boolean;
+  assets?: Asset[];
 }
 
-export default function DashboardTabs({ activeTab, onTabChange, isMobile }: Props) {
+export default function DashboardTabs({ activeTab, onTabChange, isMobile, assets = [] }: Props) {
   const { position } = useCalendarSettings();
   const visibleTabs = dashboardTabs.filter(t => t.id !== 'calendario' || position === 'tab');
 
@@ -88,8 +90,8 @@ export default function DashboardTabs({ activeTab, onTabChange, isMobile }: Prop
       </div>
 
       {position === 'top' && (
-        <div className="hidden lg:block max-w-[400px] flex-1">
-          <EconomicCalendarCarousel variant="compact" />
+        <div className="hidden lg:block max-w-[500px] flex-1">
+          <EconomicCalendarCarousel variant="compact" assets={assets} />
         </div>
       )}
     </div>
