@@ -1,4 +1,4 @@
-import { LayoutDashboard, BarChart3, Brain, Briefcase, Bell, Settings2 } from 'lucide-react';
+import { LayoutDashboard, BarChart3, Brain, Briefcase, Bell, Settings2, CalendarClock } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export const dashboardTabs = [
@@ -6,6 +6,7 @@ export const dashboardTabs = [
   { id: 'carteira', label: 'Carteira', icon: Briefcase },
   { id: 'analise', label: 'Análise', icon: BarChart3 },
   { id: 'ia', label: 'IA', icon: Brain },
+  { id: 'calendario', label: 'Calendário', icon: CalendarClock },
   { id: 'alertas', label: 'Alertas', icon: Bell },
   { id: 'mais', label: 'Mais', icon: Settings2 },
 ] as const;

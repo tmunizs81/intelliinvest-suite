@@ -8,7 +8,7 @@ import HealthScorePanel from '@/components/dashboard/HealthScorePanel';
 import TreemapPanel from '@/components/dashboard/TreemapPanel';
 import SectorRadarPanel from '@/components/dashboard/SectorRadarPanel';
 import EventsCalendarPanel from '@/components/dashboard/EventsCalendarPanel';
-import EconomicCalendarCarousel from '@/components/dashboard/EconomicCalendarCarousel';
+// EconomicCalendarCarousel movido para a aba Calendário
 import RealEstatePanel from '@/components/dashboard/RealEstatePanel';
 import AchievementsPanel from '@/components/dashboard/AchievementsPanel';
 import LiveTickerBar from '@/components/dashboard/LiveTickerBar';
@@ -53,7 +53,7 @@ export default function TabResumo({ assets, lastUpdate, nextUpdate, snapshots, s
   return (
     <>
       <LiveTickerBar assets={assets} />
-      <EconomicCalendarCarousel assets={assets} />
+      {/* EconomicCalendarCarousel removido */}
       <Panel noPadding>
         <PortfolioSummary assets={assets} lastUpdate={lastUpdate} nextUpdate={nextUpdate} />
       </Panel>
