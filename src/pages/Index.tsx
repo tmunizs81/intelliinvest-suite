@@ -36,6 +36,8 @@ const TabFallback = () => (
   </div>
 );
 
+import { useCalendarSettings } from '@/hooks/useCalendarSettings';
+
 const Index = () => {
   const isMobile = useIsMobile();
   useDashboardBootstrap(); // primes IndexedDB cache for instant SWR paint across hooks
@@ -52,6 +54,13 @@ const Index = () => {
   const [editingHolding, setEditingHolding] = useState<HoldingRow | null>(null);
   const [activeTab, setActiveTab] = useState<DashboardTab>('resumo');
   const [kioskMode, setKioskMode] = useState(false);
+  const { position } = useCalendarSettings();
+
+  useEffect(() => {
+    if (activeTab === 'calendario' && position === 'top') {
+      setActiveTab('resumo');
+    }
+  }, [position, activeTab]);
 
   const handleEdit = (holding: HoldingRow) => {
     setEditingHolding(holding);
