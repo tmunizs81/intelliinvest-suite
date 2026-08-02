@@ -13,6 +13,8 @@ import RealEstatePanel from '@/components/dashboard/RealEstatePanel';
 import AchievementsPanel from '@/components/dashboard/AchievementsPanel';
 import LiveTickerBar from '@/components/dashboard/LiveTickerBar';
 import PortfolioSummary from '@/components/dashboard/PortfolioSummary';
+import EconomicCalendarCarousel from '@/components/dashboard/EconomicCalendarCarousel';
+import { useCalendarSettings } from '@/hooks/useCalendarSettings';
 
 interface Props {
   assets: Asset[];
@@ -50,10 +52,15 @@ function Grid2({ children }: { children: React.ReactNode }) {
 }
 
 export default function TabResumo({ assets, lastUpdate, nextUpdate, snapshots, snapshotsLoading, isMobile }: Props) {
+  const { position, mode } = useCalendarSettings();
+
   return (
     <>
       <LiveTickerBar assets={assets} />
-      {/* EconomicCalendarCarousel removido */}
+      {position === 'top' && (
+        <EconomicCalendarCarousel assets={assets} variant={mode} />
+      )}
+      {/* EconomicCalendarCarousel movido para a aba Calendário */}
       <Panel noPadding>
         <PortfolioSummary assets={assets} lastUpdate={lastUpdate} nextUpdate={nextUpdate} />
       </Panel>
