@@ -106,6 +106,8 @@ export default function SettingsPage() {
   );
 }
 
+import { useCalendarSettings } from '@/hooks/useCalendarSettings';
+
 // ─── GENERAL TAB ───
 function GeneralTab() {
   const { user } = useAuth();
@@ -159,6 +161,7 @@ function GeneralTab() {
       {/* Activate License */}
       {!license && <ActivateLicenseCard />}
 
+      <CalendarSettingsCard />
       <BrokerLogoSettingsCard />
     </div>
   );
@@ -192,6 +195,69 @@ interface PreviewInfo {
   width: number;
   height: number;
   size_bytes: number;
+}
+
+function CalendarSettingsCard() {
+  const { position, setPosition, mode, setMode } = useCalendarSettings();
+
+  return (
+    <div className="rounded-lg border border-border bg-card p-5 space-y-4">
+      <div>
+        <h3 className="font-semibold flex items-center gap-2">
+          <Calendar className="h-4 w-4" /> Calendário Econômico
+        </h3>
+        <p className="text-xs text-muted-foreground mt-1">
+          Escolha onde e como exibir o calendário de eventos macroeconômicos.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <label className="text-xs font-medium uppercase text-muted-foreground">Posição</label>
+          <div className="flex gap-1 bg-muted rounded-md p-1">
+            <button
+              onClick={() => setPosition('tab')}
+              className={`flex-1 px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
+                position === 'tab' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Aba Separada
+            </button>
+            <button
+              onClick={() => setPosition('top')}
+              className={`flex-1 px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
+                position === 'top' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Topo do Resumo
+            </button>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-xs font-medium uppercase text-muted-foreground">Modo de Visualização (Topo)</label>
+          <div className="flex gap-1 bg-muted rounded-md p-1">
+            <button
+              onClick={() => setMode('compact')}
+              className={`flex-1 px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
+                mode === 'compact' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Compacto
+            </button>
+            <button
+              onClick={() => setMode('full')}
+              className={`flex-1 px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
+                mode === 'full' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Expandido
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function BrokerLogoSettingsCard() {
