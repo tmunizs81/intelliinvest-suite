@@ -15,6 +15,7 @@ import { usePortfolioSnapshots } from '@/hooks/usePortfolioSnapshots';
 import { useDashboardBootstrap } from '@/hooks/useDashboardBootstrap';
 import { usePriceRefreshWorker } from '@/hooks/usePriceRefreshWorker';
 import { useSnapshotRealtime } from '@/hooks/useSnapshotRealtime';
+import EconomicCalendarCarousel from '@/components/dashboard/EconomicCalendarCarousel';
 import FreshnessBadge from '@/components/dashboard/FreshnessBadge';
 import ReconcileBadge from '@/components/dashboard/ReconcileBadge';
 import { usePrivacyModeProvider, PrivacyContext } from '@/hooks/usePrivacyMode';
@@ -138,7 +139,13 @@ const Index = () => {
             <DashboardSkeleton />
           ) : (
             <div className="pb-12">
-              <DashboardTabs activeTab={activeTab} onTabChange={setActiveTab} isMobile={isMobile} />
+              <DashboardTabs activeTab={activeTab} onTabChange={setActiveTab} isMobile={isMobile} assets={assets} />
+              
+              {isMobile && position === 'top' && (
+                <div className="mt-3 px-1">
+                  <EconomicCalendarCarousel assets={assets} variant="compact" />
+                </div>
+              )}
 
               <AnimatePresence mode="wait">
                 <motion.div
