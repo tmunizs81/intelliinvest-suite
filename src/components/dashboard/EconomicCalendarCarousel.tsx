@@ -437,10 +437,10 @@ export default function EconomicCalendarPanel({ assets = [], variant = 'full' }:
               event={modalEvent}
               onClose={() => setModalEvent(null)}
               tz={tz}
-              onAlertToggle={toggleAlert}
-              hasAlert={!!alerts[modalEvent.id]}
-              onTickerAlert={createTickerAlert}
-              assets={assets}
+              onToggleAlert={() => toggleAlert(modalEvent)}
+              alertOn={!!alerts[modalEvent.id]}
+              onCreateTickerAlert={createTickerAlert}
+              affected={enrichedById.get(modalEvent.id)?.affected || []}
             />
           </Suspense>
         )}
